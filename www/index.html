@@ -431,8 +431,9 @@ body::before {
     </div>
     <div class="card">
       <div class="card-title">Your data</div>
-      <div class="card-sub">Wallet = your account. Optional PIN locks this device only.</div>
-      <button class="btn btn-ghost" style="margin-top:10px;width:100%" onclick="switchWallet()">🔄 Switch wallet (first-time setup again)</button>
+      <div class="card-sub">Wallet = your account. PIN is tied to your wallet on this device — each wallet has its own.</div>
+      <button class="btn btn-ghost" style="margin-top:10px;width:100%" onclick="openPinSetupModal(true)">🔒 Set or change PIN</button>
+      <button class="btn btn-ghost" style="margin-top:8px;width:100%" onclick="switchWallet()">🔄 Switch wallet (first-time setup again)</button>
       <button class="btn btn-ghost" style="margin-top:8px;width:100%" onclick="exportMyData()">⬇️ Export my data</button>
       <button class="btn btn-ghost" style="margin-top:8px;width:100%;color:var(--red)" onclick="deleteMyData()">🗑️ Delete all my data</button>
       <label style="display:flex;align-items:center;gap:10px;margin-top:14px;font-size:15px;cursor:pointer">
@@ -504,11 +505,25 @@ body::before {
   </div>
 </div>
 
-<!-- PIN unlock (return visits) -->
+<!-- PIN setup (after wallet connect — tied to that wallet) -->
+<div class="overlay hidden" id="pinSetupOverlay">
+  <div class="modal">
+    <h2>🔒 Device PIN</h2>
+    <p class="pin-hint" id="pinSetupHint">Set a PIN for this wallet on this device. Each wallet has its own PIN — not shared with other accounts.</p>
+    <input class="field" id="pinSetupInput" type="password" placeholder="4+ digit PIN" maxlength="8">
+    <input class="field" id="pinSetupConfirm" type="password" placeholder="Confirm PIN" maxlength="8"
+      onkeydown="if(event.key==='Enter')savePinSetup()">
+    <p class="err" id="pinSetupErr"></p>
+    <button class="btn btn-primary" style="width:100%" onclick="savePinSetup()">Save PIN</button>
+    <button class="btn btn-ghost" id="pinSetupSkipBtn" style="width:100%;margin-top:8px" onclick="skipPinSetup()">Skip — wallet only (no device lock)</button>
+  </div>
+</div>
+
+<!-- PIN unlock (return visits — verified against saved wallet) -->
 <div class="overlay hidden" id="pinOverlay">
   <div class="modal">
     <h2>Unlock Binai 🔒</h2>
-    <p class="pin-hint" id="pinWalletHint">Enter your PIN — your wallet is already linked.</p>
+    <p class="pin-hint" id="pinWalletHint">Enter the PIN for your saved wallet.</p>
     <input class="field" id="pinUnlockInput" type="password" placeholder="4+ digit PIN" maxlength="8"
       onkeydown="if(event.key==='Enter')unlockApp()">
     <p class="err" id="pinUnlockErr"></p>
@@ -523,7 +538,7 @@ body::before {
     <div class="terms-modal-body">
       <p class="terms-updated">Last updated: June 2026 · Binai on Lightchain</p>
       <div class="terms-section"><h3>Your identity</h3>
-        <p>Your wallet address is your Binai account ID. An optional PIN locks the app on your device only — it is stored locally, not on our server.</p></div>
+        <p>Your wallet address is your Binai account ID. An optional PIN locks the app on your device only — stored locally, keyed to your wallet address, not on our server.</p></div>
       <div class="terms-divider"></div>
       <div class="terms-section"><h3>What we store</h3>
         <p>Display name, language, preferences, memories, notes, reminders, chat history, subscription/usage records. Stored on Railway cloud infrastructure.</p></div>
@@ -633,8 +648,7 @@ body::before {
     <label style="font-size:14px;color:var(--text2);display:block;margin-bottom:6px">Your language</label>
     <div class="lang-grid" id="langGrid"></div>
     <input class="field" id="onboardName" placeholder="Your name (optional)">
-    <input class="field" id="onboardPin" type="password" placeholder="App PIN (recommended, 4+ digits)" maxlength="8">
-    <p style="font-size:13px;color:var(--text2);margin:-6px 0 12px;line-height:1.45">Wallet setup is once. PIN unlocks Binai on return visits — like LightChat, but with a device lock.</p>
+    <p style="font-size:13px;color:var(--text2);margin:0 0 12px;line-height:1.45">Wallet setup is once. After that, you'll set a PIN tied to <em>your</em> wallet — so two accounts can both use "1234" without mixing up.</p>
     <p style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:12px">By continuing you confirm you accepted our <a class="footer-link" href="#" onclick="showTerms('view');return false">Terms &amp; Disclosures</a>.</p>
     <button class="btn btn-primary" style="width:100%" onclick="finishOnboarding()">Continue → Connect wallet</button>
   </div>
@@ -704,11 +718,11 @@ function acceptTerms() {
   localStorage.setItem('binai_terms_version', TERMS_VERSION);
   hideTerms();
   document.getElementById('topDisclaimer').classList.add('visible');
-  if (!checkPinGate()) return;
   startApp();
   const saved = localStorage.getItem('binai_wallet') || '';
   if (isValidWallet(saved)) {
     wallet = saved.toLowerCase();
+    if (!checkPinGate()) return;
     restoreSession();
   }
 }
@@ -773,12 +787,7 @@ function initOnboarding() {
 
 function finishOnboarding() {
   const name = document.getElementById('onboardName').value.trim();
-  const pin = document.getElementById('onboardPin').value.trim();
   if (name) localStorage.setItem('binai_name', name);
-  if (pin.length >= 4) {
-    localStorage.setItem('binai_pin', pin);
-    sessionStorage.removeItem('binai_unlocked');
-  }
   localStorage.setItem('binai_onboarded', '1');
   document.getElementById('onboardOverlay').classList.add('hidden');
   if (name) document.getElementById('nameInput').value = name;
@@ -787,6 +796,41 @@ function finishOnboarding() {
 
 function isValidWallet(w) {
   return typeof w === 'string' && /^0x[a-fA-F0-9]{40}$/.test(w.trim());
+}
+function getWalletPins() {
+  try { return JSON.parse(localStorage.getItem('binai_wallet_pins') || '{}'); }
+  catch (_) { return {}; }
+}
+function getWalletPin(addr) {
+  if (!isValidWallet(addr)) return '';
+  return getWalletPins()[addr.toLowerCase()] || '';
+}
+function setWalletPin(addr, pin) {
+  if (!isValidWallet(addr)) return;
+  const pins = getWalletPins();
+  pins[addr.toLowerCase()] = pin;
+  localStorage.setItem('binai_wallet_pins', JSON.stringify(pins));
+}
+function unlockSessionKey(addr) {
+  return 'binai_unlocked_' + (addr || '').toLowerCase();
+}
+function isSessionUnlocked(addr) {
+  return isValidWallet(addr) && sessionStorage.getItem(unlockSessionKey(addr)) === '1';
+}
+function setSessionUnlocked(addr) {
+  if (isValidWallet(addr)) sessionStorage.setItem(unlockSessionKey(addr), '1');
+}
+function clearSessionUnlocked(addr) {
+  if (isValidWallet(addr)) sessionStorage.removeItem(unlockSessionKey(addr));
+}
+function migrateLegacyPin() {
+  const legacy = localStorage.getItem('binai_pin');
+  const saved = localStorage.getItem('binai_wallet') || '';
+  if (legacy && isValidWallet(saved) && !getWalletPin(saved)) {
+    setWalletPin(saved, legacy);
+  }
+  localStorage.removeItem('binai_pin');
+  sessionStorage.removeItem('binai_unlocked');
 }
 function isMobileDevice() {
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
@@ -826,10 +870,19 @@ async function finishWalletConnect() {
   }
   wallet = wallet.toLowerCase();
   localStorage.setItem('binai_wallet', wallet);
-  sessionStorage.setItem('binai_unlocked', '1');
   closeWalletSetupModal();
   updateWalletPills();
   updateHero();
+  if (!getWalletPin(wallet)) {
+    openPinSetupModal(false);
+    return;
+  }
+  if (!checkPinGate()) return;
+  await completeWalletSession();
+}
+async function completeWalletSession() {
+  if (!isValidWallet(wallet)) return;
+  setSessionUnlocked(wallet);
   await saveProfile();
   await loadProfile();
   await refreshSub();
@@ -877,40 +930,103 @@ async function setupWalletFirstTime() {
 }
 function switchWallet() {
   if (!confirm('Switch wallet? You will need to set up again (paste or connect).')) return;
+  const prev = wallet || localStorage.getItem('binai_wallet') || '';
+  if (isValidWallet(prev)) clearSessionUnlocked(prev);
   wallet = '';
   provider = null;
   localStorage.removeItem('binai_wallet');
-  sessionStorage.removeItem('binai_unlocked');
   clearChat();
   setupWalletFirstTime();
 }
 
+function openPinSetupModal(fromSettings) {
+  if (!isValidWallet(wallet)) {
+    const saved = localStorage.getItem('binai_wallet') || '';
+    if (isValidWallet(saved)) wallet = saved.toLowerCase();
+  }
+  if (!isValidWallet(wallet)) {
+    alert('Connect your wallet first.');
+    return;
+  }
+  const hint = document.getElementById('pinSetupHint');
+  const wp = wallet.slice(0, 6) + '…' + wallet.slice(-4);
+  if (hint) {
+    hint.textContent = fromSettings
+      ? `Set or change the PIN for wallet ${wp} on this device. Each wallet keeps its own PIN.`
+      : `Set a PIN for wallet ${wp} on this device. It's tied to this wallet — other accounts can use the same digits safely.`;
+  }
+  document.getElementById('pinSetupInput').value = '';
+  document.getElementById('pinSetupConfirm').value = '';
+  document.getElementById('pinSetupErr').textContent = '';
+  const skip = document.getElementById('pinSetupSkipBtn');
+  if (skip) skip.style.display = fromSettings ? 'none' : 'block';
+  document.getElementById('pinSetupOverlay').classList.remove('hidden');
+}
+function closePinSetupModal() {
+  document.getElementById('pinSetupOverlay').classList.add('hidden');
+}
+async function savePinSetup() {
+  const pin = document.getElementById('pinSetupInput').value.trim();
+  const confirm = document.getElementById('pinSetupConfirm').value.trim();
+  if (pin.length < 4) {
+    document.getElementById('pinSetupErr').textContent = 'PIN must be at least 4 digits.';
+    return;
+  }
+  if (pin !== confirm) {
+    document.getElementById('pinSetupErr').textContent = 'PINs do not match.';
+    return;
+  }
+  if (!isValidWallet(wallet)) {
+    document.getElementById('pinSetupErr').textContent = 'No wallet linked.';
+    return;
+  }
+  setWalletPin(wallet, pin);
+  closePinSetupModal();
+  setSessionUnlocked(wallet);
+  await completeWalletSession();
+}
+async function skipPinSetup() {
+  if (!isValidWallet(wallet)) return;
+  closePinSetupModal();
+  setSessionUnlocked(wallet);
+  await completeWalletSession();
+}
+
 function showPinUnlock() {
   const hint = document.getElementById('pinWalletHint');
-  const saved = localStorage.getItem('binai_wallet') || '';
+  const saved = (wallet || localStorage.getItem('binai_wallet') || '').toLowerCase();
   if (hint) {
-    hint.textContent = saved
-      ? `Wallet ${saved.slice(0,6)}…${saved.slice(-4)} saved. Enter your PIN to unlock Binai on this device.`
-      : 'Enter your PIN to unlock Binai on this device.';
+    hint.textContent = isValidWallet(saved)
+      ? `Wallet ${saved.slice(0,6)}…${saved.slice(-4)} saved. Enter the PIN for this wallet.`
+      : 'Enter your wallet PIN to unlock Binai on this device.';
   }
   document.getElementById('pinUnlockErr').textContent = '';
   document.getElementById('pinUnlockInput').value = '';
   document.getElementById('pinOverlay').classList.remove('hidden');
 }
-function checkPinGate() {
-  const pin = localStorage.getItem('binai_pin');
-  if (!pin || sessionStorage.getItem('binai_unlocked') === '1') return true;
+function checkPinGate(addr) {
+  const w = (addr || wallet || localStorage.getItem('binai_wallet') || '').toLowerCase();
+  if (!isValidWallet(w)) return true;
+  wallet = w;
+  const pin = getWalletPin(w);
+  if (!pin || isSessionUnlocked(w)) return true;
   showPinUnlock();
   return false;
 }
 function unlockApp() {
-  const pin = localStorage.getItem('binai_pin');
-  const entered = document.getElementById('pinUnlockInput').value.trim();
-  if (entered !== pin) {
-    document.getElementById('pinUnlockErr').textContent = 'Wrong PIN. Try again.';
+  const w = (wallet || localStorage.getItem('binai_wallet') || '').toLowerCase();
+  if (!isValidWallet(w)) {
+    document.getElementById('pinUnlockErr').textContent = 'No wallet linked.';
     return;
   }
-  sessionStorage.setItem('binai_unlocked', '1');
+  wallet = w;
+  const stored = getWalletPin(w);
+  const entered = document.getElementById('pinUnlockInput').value.trim();
+  if (entered !== stored) {
+    document.getElementById('pinUnlockErr').textContent = 'Wrong PIN for this wallet. Try again.';
+    return;
+  }
+  setSessionUnlocked(w);
   document.getElementById('pinOverlay').classList.add('hidden');
   afterUnlock();
 }
@@ -953,15 +1069,15 @@ async function connectWallet() {
   if (isValidWallet(saved) && !provider) {
     wallet = saved.toLowerCase();
     updateWalletPills();
-    if (sessionStorage.getItem('binai_unlocked') === '1') {
+    if (isSessionUnlocked(wallet)) {
       await restoreSession();
       return;
     }
-    if (localStorage.getItem('binai_pin')) {
+    if (getWalletPin(wallet)) {
       showPinUnlock();
       return;
     }
-    sessionStorage.setItem('binai_unlocked', '1');
+    setSessionUnlocked(wallet);
     await restoreSession();
     return;
   }
@@ -1567,6 +1683,7 @@ function startApp() {
   scheduleDailyBriefing();
 }
 async function boot() {
+  migrateLegacyPin();
   await loadAppConfig();
   if (!checkTermsGate()) return;
   startApp();
