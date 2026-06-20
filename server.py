@@ -27,7 +27,9 @@ OWNER_WALLET = os.environ.get(
 ).lower()
 MONTHLY_PRICE_USD = float(os.environ.get("MONTHLY_PRICE_USD", "1.00"))
 FREE_ACTIONS_LIFETIME = int(os.environ.get("FREE_ACTIONS_LIFETIME", "5"))
-TEST_MODE = os.environ.get("TEST_MODE", "").lower() in ("1", "true", "yes")
+# Beta default: everyone unlimited. Set TEST_MODE=false when billing goes live.
+_test_flag = os.environ.get("TEST_MODE", "true").lower()
+TEST_MODE = _test_flag not in ("0", "false", "no", "off")
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
 
 _data_dir = os.environ.get("DATA_DIR", os.path.join(os.path.dirname(__file__), "data"))
