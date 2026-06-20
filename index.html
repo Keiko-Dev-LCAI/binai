@@ -432,7 +432,8 @@ body::before {
     <div class="card">
       <div class="card-title">Your data</div>
       <div class="card-sub">Wallet = your account. Optional PIN locks this device only.</div>
-      <button class="btn btn-ghost" style="margin-top:10px;width:100%" onclick="exportMyData()">⬇️ Export my data</button>
+      <button class="btn btn-ghost" style="margin-top:10px;width:100%" onclick="switchWallet()">🔄 Switch wallet (first-time setup again)</button>
+      <button class="btn btn-ghost" style="margin-top:8px;width:100%" onclick="exportMyData()">⬇️ Export my data</button>
       <button class="btn btn-ghost" style="margin-top:8px;width:100%;color:var(--red)" onclick="deleteMyData()">🗑️ Delete all my data</button>
       <label style="display:flex;align-items:center;gap:10px;margin-top:14px;font-size:15px;cursor:pointer">
         <input type="checkbox" id="dailyBriefingToggle" onchange="toggleDailyBriefing(this.checked)">
@@ -483,16 +484,35 @@ body::before {
 
 </div>
 
-<!-- PIN unlock -->
+<!-- Wallet setup (first time only — LightChat-style) -->
+<div class="overlay hidden" id="walletOverlay">
+  <div class="modal" style="max-width:400px">
+    <h2>🔗 Connect wallet</h2>
+    <p id="wcWelcomeBack" class="pin-hint" style="display:none">Welcome back — tap <strong style="color:var(--text)">Connect</strong> to continue with your saved wallet.</p>
+    <p id="wcSetupIntro" class="pin-hint">One-time setup — then Binai remembers your wallet. After that, your PIN opens the app.</p>
+    <div id="wcSetupGuide" style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;font-size:14px;color:var(--text2);line-height:1.6">
+      <div>1️⃣ Open your wallet app</div>
+      <div>2️⃣ Copy your <strong style="color:var(--text)">0x address</strong></div>
+      <div>3️⃣ Paste below and tap Connect</div>
+    </div>
+    <input class="field" id="wcAddrInput" placeholder="Paste 0x address…" autocomplete="off" autocorrect="off" spellcheck="false"
+      style="font-family:monospace;font-size:15px" onkeydown="if(event.key==='Enter')connectPastedWallet()">
+    <p class="err" id="wcAddrErr"></p>
+    <button class="btn btn-primary" style="width:100%" onclick="connectPastedWallet()">Connect →</button>
+    <button class="btn btn-ghost" id="wcInjectBtn" style="width:100%;margin-top:8px" onclick="connectInjectedWallet()">Use wallet browser extension</button>
+    <p class="pin-hint" style="margin-top:12px;text-align:center">Wallet = your Binai account · PIN unlocks this device later</p>
+  </div>
+</div>
+
+<!-- PIN unlock (return visits) -->
 <div class="overlay hidden" id="pinOverlay">
   <div class="modal">
     <h2>Unlock Binai 🔒</h2>
-    <p class="pin-hint" id="pinWalletHint">Your wallet is your account. Enter your PIN to open Binai on this device.</p>
+    <p class="pin-hint" id="pinWalletHint">Enter your PIN — your wallet is already linked.</p>
     <input class="field" id="pinUnlockInput" type="password" placeholder="4+ digit PIN" maxlength="8"
       onkeydown="if(event.key==='Enter')unlockApp()">
     <p class="err" id="pinUnlockErr"></p>
     <button class="btn btn-primary" style="width:100%" onclick="unlockApp()">Unlock</button>
-    <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="connectWallet()">Switch wallet</button>
   </div>
 </div>
 
@@ -613,7 +633,8 @@ body::before {
     <label style="font-size:14px;color:var(--text2);display:block;margin-bottom:6px">Your language</label>
     <div class="lang-grid" id="langGrid"></div>
     <input class="field" id="onboardName" placeholder="Your name (optional)">
-    <input class="field" id="onboardPin" type="password" placeholder="App PIN (optional, 4+ digits)" maxlength="8">
+    <input class="field" id="onboardPin" type="password" placeholder="App PIN (recommended, 4+ digits)" maxlength="8">
+    <p style="font-size:13px;color:var(--text2);margin:-6px 0 12px;line-height:1.45">Wallet setup is once. PIN unlocks Binai on return visits — like LightChat, but with a device lock.</p>
     <p style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:12px">By continuing you confirm you accepted our <a class="footer-link" href="#" onclick="showTerms('view');return false">Terms &amp; Disclosures</a>.</p>
     <button class="btn btn-primary" style="width:100%" onclick="finishOnboarding()">Continue → Connect wallet</button>
   </div>
@@ -685,12 +706,11 @@ function acceptTerms() {
   document.getElementById('topDisclaimer').classList.add('visible');
   if (!checkPinGate()) return;
   startApp();
-  wallet = (localStorage.getItem('binai_wallet') || '').toLowerCase();
-  if (wallet) restoreSession();
-  else if (!document.getElementById('chatMessages').querySelector('.msg'))
-    addBotMsg(testMode
-      ? "Hi! I'm Binai 💜 Connect your wallet to start — community beta, unlimited AI."
-      : "Hi! I'm Binai 💜 Connect your wallet to start.");
+  const saved = localStorage.getItem('binai_wallet') || '';
+  if (isValidWallet(saved)) {
+    wallet = saved.toLowerCase();
+    restoreSession();
+  }
 }
 function dismissTopDisclaimer() {
   document.getElementById('topDisclaimer').style.display = 'none';
@@ -762,7 +782,107 @@ function finishOnboarding() {
   localStorage.setItem('binai_onboarded', '1');
   document.getElementById('onboardOverlay').classList.add('hidden');
   if (name) document.getElementById('nameInput').value = name;
-  connectWallet();
+  setupWalletFirstTime();
+}
+
+function isValidWallet(w) {
+  return typeof w === 'string' && /^0x[a-fA-F0-9]{40}$/.test(w.trim());
+}
+function isMobileDevice() {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+function isWalletInAppBrowser() {
+  return !!(window.ethereum && (
+    window.ethereum.isMetaMask || window.ethereum.isTrust ||
+    window.ethereum.isCoinbaseWallet || /TrustWallet|MetaMaskMobile/i.test(navigator.userAgent)
+  ));
+}
+function openWalletSetupModal() {
+  const saved = localStorage.getItem('binai_wallet') || '';
+  const returning = isValidWallet(saved);
+  const welcome = document.getElementById('wcWelcomeBack');
+  const intro = document.getElementById('wcSetupIntro');
+  const guide = document.getElementById('wcSetupGuide');
+  const inp = document.getElementById('wcAddrInput');
+  if (welcome) welcome.style.display = returning ? 'block' : 'none';
+  if (intro) intro.style.display = returning ? 'none' : 'block';
+  if (guide) guide.style.display = returning ? 'none' : 'block';
+  if (inp) {
+    inp.value = returning ? saved : '';
+    if (!returning) setTimeout(() => inp.focus(), 100);
+  }
+  document.getElementById('wcAddrErr').textContent = '';
+  const inj = document.getElementById('wcInjectBtn');
+  if (inj) inj.style.display = window.ethereum ? 'block' : 'none';
+  document.getElementById('walletOverlay').classList.remove('hidden');
+}
+function closeWalletSetupModal() {
+  document.getElementById('walletOverlay').classList.add('hidden');
+}
+async function finishWalletConnect() {
+  if (!isValidWallet(wallet)) {
+    document.getElementById('wcAddrErr').textContent = 'Invalid wallet address.';
+    return;
+  }
+  wallet = wallet.toLowerCase();
+  localStorage.setItem('binai_wallet', wallet);
+  sessionStorage.setItem('binai_unlocked', '1');
+  closeWalletSetupModal();
+  updateWalletPills();
+  updateHero();
+  await saveProfile();
+  await loadProfile();
+  await refreshSub();
+  await loadMemories();
+  clearChat();
+  const hadHistory = await loadChatHistory();
+  if (!hadHistory) await showWelcomeBack();
+}
+async function connectPastedWallet() {
+  const raw = (document.getElementById('wcAddrInput').value || '').trim();
+  if (!isValidWallet(raw)) {
+    document.getElementById('wcAddrErr').textContent = 'Enter a valid 0x wallet address (42 characters).';
+    return;
+  }
+  wallet = raw.toLowerCase();
+  provider = null;
+  await finishWalletConnect();
+}
+async function connectInjectedWallet() {
+  document.getElementById('wcAddrErr').textContent = '';
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    wallet = (accounts[0] || '').toLowerCase();
+    provider = window.ethereum;
+    await finishWalletConnect();
+  } catch (e) {
+    document.getElementById('wcAddrErr').textContent = 'Wallet connect cancelled or failed.';
+  }
+}
+async function setupWalletFirstTime() {
+  document.getElementById('subErr').textContent = '';
+  const saved = localStorage.getItem('binai_wallet');
+  if (isValidWallet(saved)) {
+    wallet = saved.toLowerCase();
+    await finishWalletConnect();
+    return;
+  }
+  if (window.ethereum && (!isMobileDevice() || isWalletInAppBrowser())) {
+    try {
+      await connectInjectedWallet();
+      return;
+    } catch (_) {}
+  }
+  openWalletSetupModal();
+}
+function switchWallet() {
+  if (!confirm('Switch wallet? You will need to set up again (paste or connect).')) return;
+  wallet = '';
+  provider = null;
+  localStorage.removeItem('binai_wallet');
+  sessionStorage.removeItem('binai_unlocked');
+  clearChat();
+  setupWalletFirstTime();
 }
 
 function showPinUnlock() {
@@ -828,38 +948,41 @@ async function afterUnlock() {
   }
 }
 async function connectWallet() {
-  document.getElementById('pinOverlay').classList.add('hidden');
-  document.getElementById('subErr').textContent = '';
-  try {
-    if (window.ethereum) {
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      wallet = (accounts[0] || '').toLowerCase();
-      provider = window.ethereum;
-    } else {
-      const { EthereumProvider } = await import('https://esm.sh/@walletconnect/ethereum-provider@2.17.3');
-      wcProvider = await EthereumProvider.init({
-        projectId: WC_PROJECT_ID,
-        chains: [9200],
-        rpcMap: { 9200: 'https://rpc.mainnet.lightchain.ai' },
-        showQrModal: true,
-      });
-      await wcProvider.connect();
-      wallet = (wcProvider.accounts[0] || '').toLowerCase();
-      provider = wcProvider;
-    }
-    localStorage.setItem('binai_wallet', wallet);
-    sessionStorage.setItem('binai_unlocked', '1');
+  // Return visit: wallet already saved — PIN handles access, not wallet popup
+  const saved = localStorage.getItem('binai_wallet');
+  if (isValidWallet(saved) && !provider) {
+    wallet = saved.toLowerCase();
     updateWalletPills();
-    updateHero();
-    await saveProfile();
-    await loadProfile();
-    await refreshSub();
-    await loadMemories();
-    clearChat();
-    const hadHistory = await loadChatHistory();
-    if (!hadHistory) await showWelcomeBack();
-  } catch (e) {
-    document.getElementById('subErr').textContent = 'Wallet connect failed: ' + (e.message || e);
+    if (sessionStorage.getItem('binai_unlocked') === '1') {
+      await restoreSession();
+      return;
+    }
+    if (localStorage.getItem('binai_pin')) {
+      showPinUnlock();
+      return;
+    }
+    sessionStorage.setItem('binai_unlocked', '1');
+    await restoreSession();
+    return;
+  }
+  // First-time / switch: full wallet setup
+  await setupWalletFirstTime();
+}
+async function ensureProviderForPay() {
+  if (provider) return true;
+  if (!window.ethereum) {
+    document.getElementById('subErr').textContent = 'Open in a wallet browser or extension to pay with LCAI.';
+    return false;
+  }
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    wallet = (accounts[0] || '').toLowerCase();
+    provider = window.ethereum;
+    localStorage.setItem('binai_wallet', wallet);
+    return true;
+  } catch (_) {
+    document.getElementById('subErr').textContent = 'Wallet needed for LCAI payment.';
+    return false;
   }
 }
 function clearChat() {
@@ -1309,7 +1432,8 @@ async function refreshSub() {
 }
 
 async function subscribe() {
-  if (!wallet || !provider) { connectWallet(); return; }
+  if (!wallet) { setupWalletFirstTime(); return; }
+  if (!(await ensureProviderForPay())) return;
   document.getElementById('subErr').textContent = '';
   try {
     const pr = await fetch(API + '/api/price');
@@ -1445,14 +1569,16 @@ function startApp() {
 async function boot() {
   await loadAppConfig();
   if (!checkTermsGate()) return;
-  if (!checkPinGate()) return;
   startApp();
-  wallet = (localStorage.getItem('binai_wallet') || '').toLowerCase();
-  if (wallet) await restoreSession();
-  else if (!document.getElementById('chatMessages').querySelector('.msg'))
-    addBotMsg(testMode
-      ? "Hi! I'm Binai 💜 Your Lightchain assistant that remembers you. Community beta — unlimited AI for everyone. Connect wallet to start."
-      : "Hi! I'm Binai 💜 Your Lightchain assistant that remembers you. Connect wallet to start — 5 free AI actions, then $1/mo LCAI.");
+  const saved = localStorage.getItem('binai_wallet') || '';
+  if (!isValidWallet(saved)) {
+    if (localStorage.getItem('binai_onboarded') && !document.getElementById('chatMessages').querySelector('.msg'))
+      addBotMsg('Hi! I\'m Binai 💜 Finish wallet setup to start — tap Connect wallet.');
+    return;
+  }
+  wallet = saved.toLowerCase();
+  if (!checkPinGate()) return;
+  await restoreSession();
 }
 boot();
 </script>
