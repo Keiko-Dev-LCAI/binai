@@ -412,8 +412,8 @@ body::before {
       <div class="lang-grid" id="politicalGrid"></div>
     </div>
     <div class="card">
-      <div class="card-title">Binai's voice</div>
-      <div class="card-sub" style="margin-bottom:12px">How Binai presents — useful for voice &amp; personality later.</div>
+      <div class="card-title">How Binai presents</div>
+      <div class="card-sub" style="margin-bottom:12px">Male, female, or neutral. Neutral is the default — just Binai 💜</div>
       <div class="lang-grid" id="genderGrid"></div>
     </div>
     <div class="card">
@@ -577,9 +577,9 @@ const POLITICAL_OPTIONS = [
   {id:'independent',label:'🟣 Independent',desc:'Open-minded'},
 ];
 const GENDER_OPTIONS = [
-  {id:'neutral',label:'💜 Binai',desc:'No gender'},
-  {id:'female',label:'👩 Female',desc:'Feminine voice'},
-  {id:'male',label:'👨 Male',desc:'Masculine voice'},
+  {id:'neutral',label:'Neutral',desc:'Default — just Binai'},
+  {id:'female',label:'Female',desc:'Feminine presentation'},
+  {id:'male',label:'Male',desc:'Masculine presentation'},
 ];
 let selectedPersonality = localStorage.getItem('binai_personality') || 'warm';
 let selectedPolitical = localStorage.getItem('binai_political') || 'neutral';
