@@ -1,0 +1,20 @@
+{
+  "name": "binai",
+  "version": "1.0.0",
+  "description": "Binai — personal AI assistant on Lightchain AIVM",
+  "private": true,
+  "scripts": {
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0"
+  },
+  "capacitor": {
+    "platforms": ["android"]
+  }
+}

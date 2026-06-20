@@ -11,10 +11,11 @@ import urllib.request as urllib_req
 from urllib.parse import quote as url_quote
 
 import requests
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
-app = Flask(__name__)
+_ROOT = os.path.dirname(os.path.abspath(__file__))
+app = Flask(__name__, static_folder=_ROOT, static_url_path="")
 CORS(app, origins="*")
 
 # ── CONFIG ───────────────────────────────────────────────────────────────────
@@ -428,6 +429,16 @@ WMO = {
 
 
 # ── ROUTES ───────────────────────────────────────────────────────────────────
+
+@app.route("/")
+def serve_index():
+    return send_from_directory(_ROOT, "index.html")
+
+
+@app.route("/manifest.json")
+def serve_manifest():
+    return send_from_directory(_ROOT, "manifest.json")
+
 
 @app.route("/api/health")
 def health():
