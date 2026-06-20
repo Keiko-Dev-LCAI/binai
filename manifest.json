@@ -1,0 +1,10 @@
+{
+  "name": "Binai",
+  "short_name": "Binai",
+  "description": "The AI assistant that remembers you — powered by Lightchain AIVM",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0d1a",
+  "theme_color": "#9b7fe8",
+  "icons": []
+}

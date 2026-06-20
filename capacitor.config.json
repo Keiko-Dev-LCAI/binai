@@ -1,0 +1,8 @@
+{
+  "appId": "ai.lightchain.binai",
+  "appName": "Binai",
+  "webDir": ".",
+  "server": {
+    "androidScheme": "https"
+  }
+}
