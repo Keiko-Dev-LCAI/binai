@@ -30,7 +30,18 @@ FREE_ACTIONS_LIFETIME = int(os.environ.get("FREE_ACTIONS_LIFETIME", "5"))
 # Beta default: everyone unlimited. Set TEST_MODE=false when billing goes live.
 _test_flag = os.environ.get("TEST_MODE", "true").lower()
 TEST_MODE = _test_flag not in ("0", "false", "no", "off")
+RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
+
+LANG_NAMES = {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "pt": "Portuguese",
+    "de": "German",
+    "ja": "Japanese",
+    "zh": "Chinese",
+}
 
 _data_dir = os.environ.get("DATA_DIR", os.path.join(os.path.dirname(__file__), "data"))
 os.makedirs(_data_dir, exist_ok=True)
@@ -70,6 +81,9 @@ LONG-TERM MEMORIES:
 
 RECENT CHAT (last few turns):
 {recent_chat}
+
+LANGUAGE:
+{language_instruction}
 
 PERSONALITY:
 {personality}
@@ -304,6 +318,19 @@ def init_db():
             content TEXT NOT NULL,
             created_at INTEGER NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS rate_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            wallet TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            wallet TEXT NOT NULL,
+            user_message TEXT,
+            bot_reply TEXT,
+            rating TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
         """
     )
     conn.commit()
@@ -409,6 +436,25 @@ def usage_payload(wallet):
         "remaining_free": max(0, FREE_ACTIONS_LIFETIME - used),
         "tier": "subscribed" if sub else "free",
     }
+
+
+def check_rate_limit(wallet):
+    w = norm_wallet(wallet)
+    now = int(time.time())
+    hour_ago = now - 3600
+    conn = get_db()
+    conn.execute("DELETE FROM rate_log WHERE created_at < ?", (hour_ago,))
+    count = conn.execute(
+        "SELECT COUNT(*) as c FROM rate_log WHERE wallet = ? AND created_at > ?",
+        (w, hour_ago),
+    ).fetchone()["c"]
+    if count >= RATE_LIMIT_PER_HOUR:
+        conn.close()
+        return False, f"Rate limit: max {RATE_LIMIT_PER_HOUR} AI messages per hour. Try again later."
+    conn.execute("INSERT INTO rate_log (wallet, created_at) VALUES (?, ?)", (w, now))
+    conn.commit()
+    conn.close()
+    return True, None
 
 
 def increment_usage(wallet):
@@ -551,10 +597,16 @@ def build_prompt(wallet, user_message):
         if mems
         else "(no memories yet — encourage user to share)"
     )
+    lang = prof.get("language") or "en"
+    lang_name = LANG_NAMES.get(lang, "English")
+    language_instruction = (
+        f"Always respond in {lang_name} unless the user clearly switches to another language."
+    )
     system = BINAI_SYSTEM.format(
         profile=profile_text,
         memories=mem_text,
         recent_chat=get_recent_chat(wallet),
+        language_instruction=language_instruction,
         personality=PERSONALITIES[personality_key],
         political=POLITICAL_LEANING[political_key],
         persona_gender=PERSONA_GENDER[gender_key],
@@ -843,6 +895,120 @@ def patch_reminder(wallet, rid):
     return jsonify({"ok": True})
 
 
+@app.route("/api/chat-history/<wallet>")
+def api_chat_history(wallet):
+    w = norm_wallet(wallet)
+    limit = min(request.args.get("limit", 40, type=int), 100)
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT id, role, content, created_at FROM chat_log
+           WHERE wallet = ? AND content NOT LIKE '[safety:%'
+           ORDER BY id DESC LIMIT ?""",
+        (w, limit),
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in reversed(rows)])
+
+
+@app.route("/api/welcome/<wallet>")
+def api_welcome(wallet):
+    w = norm_wallet(wallet)
+    prof = get_profile(w) or {}
+    mems = get_memories(w, 5)
+    conn = get_db()
+    rems = conn.execute(
+        """SELECT content, due_at FROM reminders WHERE wallet = ? AND done = 0
+           ORDER BY due_at ASC LIMIT 5""",
+        (w,),
+    ).fetchall()
+    notes_n = conn.execute(
+        "SELECT COUNT(*) as c FROM notes WHERE wallet = ?", (w,)
+    ).fetchone()["c"]
+    conn.close()
+    return jsonify(
+        {
+            "name": prof.get("display_name") or "",
+            "memories": [m["content"] for m in mems],
+            "reminders": [dict(r) for r in rems],
+            "notes_count": notes_n,
+        }
+    )
+
+
+@app.route("/api/export/<wallet>")
+def api_export(wallet):
+    w = norm_wallet(wallet)
+    prof = get_profile(w) or {}
+    conn = get_db()
+    notes = conn.execute(
+        "SELECT id, content, created_at FROM notes WHERE wallet = ? ORDER BY id",
+        (w,),
+    ).fetchall()
+    reminders = conn.execute(
+        """SELECT id, content, due_at, done, created_at FROM reminders
+           WHERE wallet = ? ORDER BY id""",
+        (w,),
+    ).fetchall()
+    chats = conn.execute(
+        """SELECT role, content, created_at FROM chat_log
+           WHERE wallet = ? ORDER BY id""",
+        (w,),
+    ).fetchall()
+    conn.close()
+    return jsonify(
+        {
+            "exported_at": int(time.time()),
+            "wallet": w,
+            "profile": prof,
+            "memories": get_memories(w, 500),
+            "notes": [dict(r) for r in notes],
+            "reminders": [dict(r) for r in reminders],
+            "chat_log": [dict(r) for r in chats],
+        }
+    )
+
+
+@app.route("/api/data/<wallet>", methods=["DELETE"])
+def api_delete_data(wallet):
+    w = norm_wallet(wallet)
+    conn = get_db()
+    for table in ("memories", "notes", "reminders", "chat_log", "usage", "feedback"):
+        conn.execute(f"DELETE FROM {table} WHERE wallet = ?", (w,))
+    conn.execute("DELETE FROM subscriptions WHERE wallet = ?", (w,))
+    conn.execute(
+        """UPDATE profiles SET display_name = '', preferences = '{}',
+           updated_at = ? WHERE wallet = ?""",
+        (int(time.time()), w),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "deleted": True})
+
+
+@app.route("/api/feedback", methods=["POST"])
+def api_feedback():
+    data = request.json or {}
+    wallet = norm_wallet(data.get("wallet"))
+    rating = (data.get("rating") or "").strip()
+    if not wallet or rating not in ("bad", "good"):
+        return jsonify({"error": "wallet and rating (good/bad) required"}), 400
+    conn = get_db()
+    conn.execute(
+        """INSERT INTO feedback (wallet, user_message, bot_reply, rating, created_at)
+           VALUES (?, ?, ?, ?, ?)""",
+        (
+            wallet,
+            (data.get("user_message") or "")[:500],
+            (data.get("bot_reply") or "")[:2000],
+            rating,
+            int(time.time()),
+        ),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
     data = request.json or {}
@@ -850,6 +1016,9 @@ def api_chat():
     message = (data.get("message") or "").strip()
     if not wallet or not message:
         return jsonify({"error": "wallet and message required"}), 400
+    allowed, rate_msg = check_rate_limit(wallet)
+    if not allowed:
+        return jsonify({"error": rate_msg, "code": "rate_limited"}), 429
     ok, reason = can_use_ai(wallet)
     if not ok:
         return jsonify(

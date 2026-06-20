@@ -76,6 +76,18 @@ body::before {
 .msg.user { background: rgba(255,255,255,0.06); border: 1px solid var(--border);
   align-self: flex-end; }
 .msg.thinking { color: var(--text2); font-style: italic; animation: pulse 1.5s infinite; }
+.msg-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.msg-action-btn {
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text2);
+  border-radius: 999px; padding: 4px 10px; font-size: 12px; cursor: pointer; font-family: inherit;
+}
+.msg-action-btn:hover { border-color: var(--purple); color: var(--text); }
+.wait-banner {
+  display: none; background: rgba(155,127,232,0.12); border: 1px solid rgba(155,127,232,0.25);
+  border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; font-size: 14px; color: var(--text2);
+}
+.wait-banner.visible { display: block; }
+.pin-hint { font-size: 13px; color: var(--text2); margin-bottom: 12px; line-height: 1.5; }
 @keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
 
 .input-row { display: flex; gap: 8px; align-items: flex-end; }
@@ -319,6 +331,7 @@ body::before {
     </div>
   </div>
   <div class="panel active" id="panel-chat">
+    <div class="wait-banner" id="waitBanner">⏳ Binai is thinking on Lightchain AIVM — beta can take up to 2 min. Feel free to check notes or reminders while you wait.</div>
     <div class="chat-messages" id="chatMessages">
       <div class="prompt-grid" id="promptGrid">
         <button type="button" class="prompt-card" onclick="usePrompt('Remember my favorite coffee is iced latte')">
@@ -417,9 +430,24 @@ body::before {
       <div class="lang-grid" id="genderGrid"></div>
     </div>
     <div class="card">
+      <div class="card-title">Your data</div>
+      <div class="card-sub">Wallet = your account. Optional PIN locks this device only.</div>
+      <button class="btn btn-ghost" style="margin-top:10px;width:100%" onclick="exportMyData()">⬇️ Export my data</button>
+      <button class="btn btn-ghost" style="margin-top:8px;width:100%;color:var(--red)" onclick="deleteMyData()">🗑️ Delete all my data</button>
+      <label style="display:flex;align-items:center;gap:10px;margin-top:14px;font-size:15px;cursor:pointer">
+        <input type="checkbox" id="dailyBriefingToggle" onchange="toggleDailyBriefing(this.checked)">
+        Daily morning briefing reminder
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;margin-top:10px;font-size:15px;cursor:pointer">
+        <input type="checkbox" id="notifToggle" onchange="toggleNotifications(this.checked)">
+        Reminder notifications
+      </label>
+    </div>
+    <div class="card">
       <div class="card-title">Legal</div>
       <div class="card-sub">Terms, disclaimers, privacy summary, and no-refund policy.</div>
-      <button class="btn btn-ghost" style="margin-top:12px;width:100%" onclick="showTerms('view')">📋 Terms &amp; Disclosures</button>
+      <button class="btn btn-ghost" style="margin-top:10px;width:100%" onclick="showTerms('view')">📋 Terms &amp; Disclosures</button>
+      <button class="btn btn-ghost" style="margin-top:8px;width:100%" onclick="showPrivacy()">🔐 Privacy Policy</button>
     </div>
     <div class="card">
       <div class="card-title">About Binai</div>
@@ -453,6 +481,43 @@ body::before {
   </div>
 </aside>
 
+</div>
+
+<!-- PIN unlock -->
+<div class="overlay hidden" id="pinOverlay">
+  <div class="modal">
+    <h2>Unlock Binai 🔒</h2>
+    <p class="pin-hint" id="pinWalletHint">Your wallet is your account. Enter your PIN to open Binai on this device.</p>
+    <input class="field" id="pinUnlockInput" type="password" placeholder="4+ digit PIN" maxlength="8"
+      onkeydown="if(event.key==='Enter')unlockApp()">
+    <p class="err" id="pinUnlockErr"></p>
+    <button class="btn btn-primary" style="width:100%" onclick="unlockApp()">Unlock</button>
+    <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="connectWallet()">Switch wallet</button>
+  </div>
+</div>
+
+<!-- Privacy Policy -->
+<div class="overlay hidden" id="privacyOverlay">
+  <div class="modal terms-modal">
+    <div class="terms-modal-head"><h2>🔐 Privacy Policy</h2></div>
+    <div class="terms-modal-body">
+      <p class="terms-updated">Last updated: June 2026 · Binai on Lightchain</p>
+      <div class="terms-section"><h3>Your identity</h3>
+        <p>Your wallet address is your Binai account ID. An optional PIN locks the app on your device only — it is stored locally, not on our server.</p></div>
+      <div class="terms-divider"></div>
+      <div class="terms-section"><h3>What we store</h3>
+        <p>Display name, language, preferences, memories, notes, reminders, chat history, subscription/usage records. Stored on Railway cloud infrastructure.</p></div>
+      <div class="terms-divider"></div>
+      <div class="terms-section"><h3>What we don't do</h3>
+        <p>We do not sell your data. We do not read your mic until you tap the mic button. Voice is converted to text by your browser/device where supported.</p></div>
+      <div class="terms-divider"></div>
+      <div class="terms-section"><h3>Your controls</h3>
+        <p>Export or delete all your data anytime in Settings → Your data.</p></div>
+    </div>
+    <div class="terms-modal-foot">
+      <button class="btn btn-ghost" style="width:100%" onclick="hidePrivacy()">Close</button>
+    </div>
+  </div>
 </div>
 
 <!-- Terms & Disclosures -->
@@ -618,7 +683,14 @@ function acceptTerms() {
   localStorage.setItem('binai_terms_version', TERMS_VERSION);
   hideTerms();
   document.getElementById('topDisclaimer').classList.add('visible');
+  if (!checkPinGate()) return;
   startApp();
+  wallet = (localStorage.getItem('binai_wallet') || '').toLowerCase();
+  if (wallet) restoreSession();
+  else if (!document.getElementById('chatMessages').querySelector('.msg'))
+    addBotMsg(testMode
+      ? "Hi! I'm Binai 💜 Connect your wallet to start — community beta, unlimited AI."
+      : "Hi! I'm Binai 💜 Connect your wallet to start.");
 }
 function dismissTopDisclaimer() {
   document.getElementById('topDisclaimer').style.display = 'none';
@@ -683,23 +755,80 @@ function finishOnboarding() {
   const name = document.getElementById('onboardName').value.trim();
   const pin = document.getElementById('onboardPin').value.trim();
   if (name) localStorage.setItem('binai_name', name);
-  if (pin.length >= 4) localStorage.setItem('binai_pin', pin);
+  if (pin.length >= 4) {
+    localStorage.setItem('binai_pin', pin);
+    sessionStorage.removeItem('binai_unlocked');
+  }
   localStorage.setItem('binai_onboarded', '1');
   document.getElementById('onboardOverlay').classList.add('hidden');
   if (name) document.getElementById('nameInput').value = name;
   connectWallet();
 }
 
-function checkPin() {
-  const pin = localStorage.getItem('binai_pin');
-  if (!pin) return true;
-  const entered = prompt('Enter Binai PIN');
-  return entered === pin;
+function showPinUnlock() {
+  const hint = document.getElementById('pinWalletHint');
+  const saved = localStorage.getItem('binai_wallet') || '';
+  if (hint) {
+    hint.textContent = saved
+      ? `Wallet ${saved.slice(0,6)}…${saved.slice(-4)} saved. Enter your PIN to unlock Binai on this device.`
+      : 'Enter your PIN to unlock Binai on this device.';
+  }
+  document.getElementById('pinUnlockErr').textContent = '';
+  document.getElementById('pinUnlockInput').value = '';
+  document.getElementById('pinOverlay').classList.remove('hidden');
 }
+function checkPinGate() {
+  const pin = localStorage.getItem('binai_pin');
+  if (!pin || sessionStorage.getItem('binai_unlocked') === '1') return true;
+  showPinUnlock();
+  return false;
+}
+function unlockApp() {
+  const pin = localStorage.getItem('binai_pin');
+  const entered = document.getElementById('pinUnlockInput').value.trim();
+  if (entered !== pin) {
+    document.getElementById('pinUnlockErr').textContent = 'Wrong PIN. Try again.';
+    return;
+  }
+  sessionStorage.setItem('binai_unlocked', '1');
+  document.getElementById('pinOverlay').classList.add('hidden');
+  afterUnlock();
+}
+function showPrivacy() { document.getElementById('privacyOverlay').classList.remove('hidden'); }
+function hidePrivacy() { document.getElementById('privacyOverlay').classList.add('hidden'); }
 
 // ── Wallet ───────────────────────────────────────────────────────────────────
+function updateWalletPills() {
+  if (!wallet) return;
+  const wp = wallet.slice(0,6) + '…' + wallet.slice(-4);
+  document.getElementById('walletPill').textContent = wp;
+  const wps = document.getElementById('walletPillSide');
+  if (wps) wps.textContent = wp;
+}
+async function restoreSession() {
+  if (!wallet) return;
+  updateWalletPills();
+  updateHero();
+  await loadProfile();
+  await refreshSub();
+  await loadMemories();
+  const hadHistory = await loadChatHistory();
+  if (!hadHistory) await showWelcomeBack();
+}
+async function afterUnlock() {
+  wallet = (localStorage.getItem('binai_wallet') || '').toLowerCase();
+  if (!document.getElementById('chatMessages').querySelector('.msg')) {
+    if (wallet) await restoreSession();
+    else if (!localStorage.getItem('binai_onboarded')) { /* onboarding handles */ }
+    else addBotMsg(testMode
+      ? "Hi! I'm Binai 💜 Connect your wallet to start — community beta, unlimited AI."
+      : "Hi! I'm Binai 💜 Connect your wallet to start.");
+  } else if (wallet) {
+    await restoreSession();
+  }
+}
 async function connectWallet() {
-  if (!checkPin()) return;
+  document.getElementById('pinOverlay').classList.add('hidden');
   document.getElementById('subErr').textContent = '';
   try {
     if (window.ethereum) {
@@ -719,24 +848,26 @@ async function connectWallet() {
       provider = wcProvider;
     }
     localStorage.setItem('binai_wallet', wallet);
-    const wp = wallet.slice(0,6) + '…' + wallet.slice(-4);
-    document.getElementById('walletPill').textContent = wp;
-    const wps = document.getElementById('walletPillSide');
-    if (wps) wps.textContent = wp;
+    sessionStorage.setItem('binai_unlocked', '1');
+    updateWalletPills();
     updateHero();
     await saveProfile();
     await loadProfile();
     await refreshSub();
     await loadMemories();
-    addBotMsg(wallet ? `Welcome back! I'm Binai 💜 Wallet connected. What can I help with?` :
-      'Connect your wallet to start.');
-    if (localStorage.getItem('binai_name')) {
-      const n = localStorage.getItem('binai_name');
-      addBotMsg(`I remember your name is ${n}. Nice to see you again.`);
-    }
+    clearChat();
+    const hadHistory = await loadChatHistory();
+    if (!hadHistory) await showWelcomeBack();
   } catch (e) {
     document.getElementById('subErr').textContent = 'Wallet connect failed: ' + (e.message || e);
   }
+}
+function clearChat() {
+  const box = document.getElementById('chatMessages');
+  const grid = document.getElementById('promptGrid');
+  box.querySelectorAll('.msg').forEach(m => m.remove());
+  if (grid) grid.style.display = '';
+  userHasChatted = false;
 }
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
@@ -747,15 +878,34 @@ function switchTab(name) {
   if (name === 'notes') loadNotes();
   if (name === 'reminders') loadReminders();
   if (name === 'memory') loadMemories();
-  if (name === 'settings') { refreshSub(); initPreferencePickers(); loadProfile(); }
+  if (name === 'settings') { refreshSub(); initPreferencePickers(); initSettingsToggles(); loadProfile(); }
   if (name === 'briefing') loadBriefing(false);
 }
 
 // ── Chat ─────────────────────────────────────────────────────────────────────
-function addMsg(text, who) {
+function addMsg(text, who, opts = {}) {
   const el = document.createElement('div');
   el.className = 'msg ' + who;
-  el.textContent = text;
+  const body = document.createElement('div');
+  body.className = 'msg-body';
+  body.textContent = text;
+  el.appendChild(body);
+  if (who === 'bot' && opts.actions !== false) {
+    const actions = document.createElement('div');
+    actions.className = 'msg-actions';
+    const rem = document.createElement('button');
+    rem.type = 'button';
+    rem.className = 'msg-action-btn';
+    rem.textContent = '🧠 Remember';
+    rem.onclick = () => rememberFromMsg(el);
+    const bad = document.createElement('button');
+    bad.type = 'button';
+    bad.className = 'msg-action-btn';
+    bad.textContent = '👎 Wrong';
+    bad.onclick = () => feedbackBad(el);
+    actions.append(rem, bad);
+    el.appendChild(actions);
+  }
   const box = document.getElementById('chatMessages');
   box.appendChild(el);
   if (who === 'user') {
@@ -765,20 +915,83 @@ function addMsg(text, who) {
   el.scrollIntoView({ behavior: 'smooth', block: 'end' });
   return el;
 }
-function addBotMsg(t) { return addMsg(t, 'bot'); }
-function addUserMsg(t) { return addMsg(t, 'user'); }
-
+function addBotMsg(t, opts) { return addMsg(t, 'bot', opts); }
+function addUserMsg(t) { return addMsg(t, 'user', { actions: false }); }
+let lastUserMsg = '';
+async function loadChatHistory() {
+  if (!wallet) return false;
+  try {
+    const r = await fetch(API + '/api/chat-history/' + wallet + '?limit=40');
+    const rows = await r.json();
+    if (!rows.length) return false;
+    hidePrompts();
+    userHasChatted = true;
+    rows.forEach(row => {
+      const who = row.role === 'user' ? 'user' : 'bot';
+      addMsg(row.content, who, { actions: who === 'bot' });
+    });
+    return true;
+  } catch (_) { return false; }
+}
+async function showWelcomeBack() {
+  if (!wallet) return;
+  try {
+    const r = await fetch(API + '/api/welcome/' + wallet);
+    const d = await r.json();
+    const name = d.name || localStorage.getItem('binai_name') || '';
+    let msg = name ? `Hey ${name} — welcome back 💜` : 'Welcome back 💜';
+    const bits = [];
+    if (d.memories && d.memories.length)
+      bits.push(`I remember: ${d.memories.slice(0, 3).join('; ')}`);
+    if (d.reminders && d.reminders.length)
+      bits.push(`Open reminders: ${d.reminders.slice(0, 3).map(x => x.content).join('; ')}`);
+    if (d.notes_count) bits.push(`You have ${d.notes_count} saved note(s).`);
+    if (bits.length) msg += '\n\n' + bits.join('\n');
+    else msg += '\n\nGood to see you again. What can I help with?';
+    addBotMsg(msg);
+  } catch (_) {
+    addBotMsg('Welcome back 💜 Good to see you again.');
+  }
+}
+async function rememberFromMsg(el) {
+  const text = el.querySelector('.msg-body')?.textContent?.trim();
+  if (!text || !wallet) return;
+  await fetch(API + '/api/memories/' + wallet, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ content: text.slice(0, 500) }),
+  });
+  loadMemories();
+  addBotMsg('Got it — I saved that to your memories 🧠');
+}
+async function feedbackBad(el) {
+  const reply = el.querySelector('.msg-body')?.textContent?.trim() || '';
+  if (!wallet) return;
+  await fetch(API + '/api/feedback', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ wallet, rating: 'bad', bot_reply: reply, user_message: lastUserMsg }),
+  });
+  addBotMsg('Thanks for the feedback — noted for beta tuning 👍');
+}
+let thinkTimer = null;
 async function sendChat() {
   if (!wallet) { connectWallet(); return; }
   const input = document.getElementById('chatInput');
   const msg = input.value.trim();
   if (!msg) return;
   input.value = '';
+  lastUserMsg = msg;
   addUserMsg(msg);
-  const think = addBotMsg('Binai is thinking… (beta: up to 2 min)');
+  const think = addBotMsg('Binai is thinking… 0s', { actions: false });
   think.classList.add('thinking');
+  const t0 = Date.now();
+  thinkTimer = setInterval(() => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    const body = think.querySelector('.msg-body');
+    if (body) body.textContent = `Binai is thinking… ${s}s (beta: up to 2 min)`;
+    document.getElementById('statusBar').textContent = `Waiting for AIVM… ${s}s`;
+  }, 1000);
+  document.getElementById('waitBanner').classList.add('visible');
   document.getElementById('sendBtn').disabled = true;
-  document.getElementById('statusBar').textContent = 'Waiting for Lightchain AIVM…';
   try {
     const r = await fetch(API + '/api/chat', {
       method: 'POST',
@@ -800,6 +1013,8 @@ async function sendChat() {
     think.remove();
     addBotMsg('Connection error. Is the backend running? ' + e.message);
   }
+  clearInterval(thinkTimer);
+  document.getElementById('waitBanner').classList.remove('visible');
   document.getElementById('sendBtn').disabled = false;
   document.getElementById('statusBar').textContent = 'Binai 💜 — Lightchain community beta';
 }
@@ -960,11 +1175,14 @@ async function addReminder() {
   if (!c) return;
   const dueVal = document.getElementById('remDue').value;
   const due_at = dueVal ? Math.floor(new Date(dueVal).getTime() / 1000) : null;
-  await fetch(API + '/api/reminders/' + wallet, {
+  const res = await fetch(API + '/api/reminders/' + wallet, {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ content: c, due_at }),
   });
+  const data = await res.json();
   document.getElementById('remInput').value = '';
+  if (due_at && localStorage.getItem('binai_notif') === '1')
+    scheduleReminderNotif(data.id || Date.now(), c, due_at);
   loadReminders();
 }
 async function deleteRem(id) {
@@ -1123,6 +1341,87 @@ function esc(s) {
   return d.innerHTML;
 }
 
+// ── Data export / notifications ──────────────────────────────────────────────
+async function exportMyData() {
+  if (!wallet) { connectWallet(); return; }
+  const r = await fetch(API + '/api/export/' + wallet);
+  const data = await r.json();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'binai-export-' + wallet.slice(0, 8) + '.json';
+  a.click();
+}
+async function deleteMyData() {
+  if (!wallet) { connectWallet(); return; }
+  if (!confirm('Delete ALL your Binai data (memories, notes, reminders, chat)? This cannot be undone.')) return;
+  await fetch(API + '/api/data/' + wallet, { method: 'DELETE' });
+  clearChat();
+  addBotMsg('All your data has been deleted from Binai. Your wallet connection remains.');
+  loadMemories();
+  loadNotes();
+  loadReminders();
+}
+async function requestNotifPermission() {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission !== 'denied') {
+    const p = await Notification.requestPermission();
+    return p === 'granted';
+  }
+  return false;
+}
+async function scheduleReminderNotif(id, content, due_at) {
+  const when = due_at * 1000;
+  if (when <= Date.now()) return;
+  if (window.Capacitor?.Plugins?.LocalNotifications) {
+    try {
+      const LN = window.Capacitor.Plugins.LocalNotifications;
+      await LN.schedule({
+        notifications: [{
+          id: Number(id) % 2147483647,
+          title: 'Binai reminder',
+          body: content,
+          schedule: { at: new Date(when) },
+        }],
+      });
+      return;
+    } catch (_) {}
+  }
+  if (localStorage.getItem('binai_notif') === '1' && Notification.permission === 'granted') {
+    setTimeout(() => {
+      new Notification('Binai reminder', { body: content });
+    }, when - Date.now());
+  }
+}
+async function toggleNotifications(on) {
+  localStorage.setItem('binai_notif', on ? '1' : '0');
+  document.getElementById('notifToggle').checked = on;
+  if (on) await requestNotifPermission();
+}
+function toggleDailyBriefing(on) {
+  localStorage.setItem('binai_daily_briefing', on ? '1' : '0');
+  if (on) scheduleDailyBriefing();
+}
+function scheduleDailyBriefing() {
+  const last = parseInt(localStorage.getItem('binai_briefing_last') || '0', 10);
+  const now = Date.now();
+  const day = 86400000;
+  if (now - last < day) return;
+  const h = new Date().getHours();
+  if (h >= 8 && h < 11 && wallet && localStorage.getItem('binai_daily_briefing') === '1') {
+    localStorage.setItem('binai_briefing_last', String(now));
+    if (Notification.permission === 'granted')
+      new Notification('Binai 🌅', { body: 'Your morning briefing is ready — open Binai to read it.' });
+  }
+}
+function initSettingsToggles() {
+  const n = document.getElementById('notifToggle');
+  const d = document.getElementById('dailyBriefingToggle');
+  if (n) n.checked = localStorage.getItem('binai_notif') === '1';
+  if (d) d.checked = localStorage.getItem('binai_daily_briefing') === '1';
+}
+
 // ── Boot ─────────────────────────────────────────────────────────────────────
 async function loadAppConfig() {
   try {
@@ -1137,27 +1436,23 @@ async function loadAppConfig() {
 function startApp() {
   initOnboarding();
   initPreferencePickers();
+  initSettingsToggles();
   updateHero();
-  if (wallet) {
-    const wp = wallet.slice(0,6) + '…' + wallet.slice(-4);
-    document.getElementById('walletPill').textContent = wp;
-    const wps = document.getElementById('walletPillSide');
-    if (wps) wps.textContent = wp;
-    loadProfile();
-    refreshSub();
-    loadMemories();
-  }
   if (localStorage.getItem('binai_name'))
     document.getElementById('nameInput').value = localStorage.getItem('binai_name');
-  if (!document.getElementById('chatMessages').querySelector('.msg'))
-    addBotMsg(testMode
-      ? "Hi! I'm Binai 💜 Your Lightchain assistant that remembers you. Community beta — unlimited AI for everyone. Connect wallet to start."
-      : "Hi! I'm Binai 💜 Your Lightchain assistant that remembers you. Connect wallet to start — 5 free AI actions, then $1/mo LCAI.");
+  scheduleDailyBriefing();
 }
 async function boot() {
   await loadAppConfig();
   if (!checkTermsGate()) return;
+  if (!checkPinGate()) return;
   startApp();
+  wallet = (localStorage.getItem('binai_wallet') || '').toLowerCase();
+  if (wallet) await restoreSession();
+  else if (!document.getElementById('chatMessages').querySelector('.msg'))
+    addBotMsg(testMode
+      ? "Hi! I'm Binai 💜 Your Lightchain assistant that remembers you. Community beta — unlimited AI for everyone. Connect wallet to start."
+      : "Hi! I'm Binai 💜 Your Lightchain assistant that remembers you. Connect wallet to start — 5 free AI actions, then $1/mo LCAI.");
 }
 boot();
 </script>
