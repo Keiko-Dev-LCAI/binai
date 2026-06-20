@@ -175,6 +175,12 @@ body::before {
 .prompt-card .prompt-desc { color: var(--text2); font-size: 13px; line-height: 1.4; }
 .chat-footer { flex-shrink: 0; margin-top: auto; padding-top: 8px; }
 .chat-hint { color: var(--text2); font-size: 14px; margin-top: 10px; line-height: 1.45; }
+.beta-banner {
+  display: none; background: linear-gradient(90deg, rgba(155,127,232,0.2), rgba(232,192,80,0.12));
+  border-bottom: 1px solid rgba(155,127,232,0.25); padding: 10px 16px; text-align: center;
+  font-size: 14px; font-weight: 600; color: var(--gold); flex-shrink: 0;
+}
+.beta-banner.visible { display: block; }
 
 /* Tablet: still mobile tabs, but use full width */
 @media (min-width: 600px) and (max-width: 899px) {
@@ -251,11 +257,12 @@ body::before {
   </nav>
   <div class="sidebar-foot">
     <div class="wallet-pill" id="walletPillSide" onclick="connectWallet()" style="max-width:100%;margin-bottom:10px">Connect wallet</div>
-    <div style="font-size:13px;color:var(--text2)" id="usageSide">5 free actions</div>
+    <div style="font-size:13px;color:var(--text2)" id="usageSide">Beta — unlimited</div>
   </div>
 </aside>
 
 <div class="workspace">
+<div class="beta-banner" id="betaBanner">🧪 Community beta — everyone gets unlimited AI for testing</div>
 <div class="header mobile-only">
   <div class="header-row">
     <div class="logo">Binai <span>💜</span></div>
@@ -358,7 +365,7 @@ body::before {
     <div class="card">
       <div class="card-title">Subscription</div>
       <div class="card-sub" id="subStatus">Connect wallet to see status.</div>
-      <button class="btn btn-primary" style="margin-top:12px;width:100%" onclick="subscribe()">Subscribe — $1/mo LCAI</button>
+      <button class="btn btn-primary" id="subscribeBtn" style="margin-top:12px;width:100%" onclick="subscribe()">Subscribe — $1/mo LCAI</button>
       <div class="err" id="subErr"></div>
     </div>
     <div class="card">
@@ -380,8 +387,8 @@ body::before {
 <aside class="insight-panel">
   <div class="insight-card">
     <h3>Your plan</h3>
-    <div class="insight-stat" id="insightUsage">5 / 5</div>
-    <div class="insight-sub" id="insightPlan">Free actions remaining</div>
+    <div class="insight-stat" id="insightUsage">∞</div>
+    <div class="insight-sub" id="insightPlan">Beta testing — unlimited</div>
   </div>
   <div class="insight-card">
     <h3>Quick action</h3>
@@ -405,7 +412,7 @@ body::before {
   <div class="modal">
     <h2>Welcome to Binai 💜</h2>
     <p>The AI assistant that remembers you — without Big Tech watching. Built for the Lightchain community.</p>
-    <p style="font-size:14px;color:var(--gold)">Beta: responses take 1–2 minutes. Memory works now — speed upgrade coming.</p>
+    <p style="font-size:14px;color:var(--gold)">Beta: unlimited AI for everyone while we test. Responses take 1–2 minutes — speed upgrade coming.</p>
     <label style="font-size:14px;color:var(--text2);display:block;margin-bottom:6px">Your language</label>
     <div class="lang-grid" id="langGrid"></div>
     <input class="field" id="onboardName" placeholder="Your name (optional)">
@@ -432,6 +439,18 @@ let listening = false;
 let recognition = null;
 let lastBriefing = '';
 let userHasChatted = false;
+let testMode = false;
+
+function applyTestModeUI() {
+  if (!testMode) return;
+  updateUsage({ testing: true });
+  const banner = document.getElementById('betaBanner');
+  if (banner) banner.classList.add('visible');
+  const subBtn = document.getElementById('subscribeBtn');
+  if (subBtn) subBtn.style.display = 'none';
+  const subStatus = document.getElementById('subStatus');
+  if (subStatus && !wallet) subStatus.textContent = 'Community beta — unlimited AI for all testers. No payment needed.';
+}
 
 function hidePrompts() {
   const g = document.getElementById('promptGrid');
@@ -845,26 +864,30 @@ async function loadAppConfig() {
     const r = await fetch(API + '/api/health');
     const d = await r.json();
     if (d.test_mode) {
-      updateUsage({ testing: true });
-      const el = document.getElementById('subStatus');
-      if (el) el.textContent = 'Beta testing — unlimited AI actions. Billing disabled.';
+      testMode = true;
+      applyTestModeUI();
     }
   } catch (_) {}
 }
-initOnboarding();
-updateHero();
-loadAppConfig();
-if (wallet) {
-  const wp = wallet.slice(0,6) + '…' + wallet.slice(-4);
-  document.getElementById('walletPill').textContent = wp;
-  const wps = document.getElementById('walletPillSide');
-  if (wps) wps.textContent = wp;
-  refreshSub();
-  loadMemories();
+async function boot() {
+  await loadAppConfig();
+  initOnboarding();
+  updateHero();
+  if (wallet) {
+    const wp = wallet.slice(0,6) + '…' + wallet.slice(-4);
+    document.getElementById('walletPill').textContent = wp;
+    const wps = document.getElementById('walletPillSide');
+    if (wps) wps.textContent = wp;
+    refreshSub();
+    loadMemories();
+  }
+  if (localStorage.getItem('binai_name'))
+    document.getElementById('nameInput').value = localStorage.getItem('binai_name');
+  addBotMsg(testMode
+    ? "Hi! I'm Binai 💜 Your Lightchain assistant that remembers you. Community beta — unlimited AI for everyone. Connect wallet to start."
+    : "Hi! I'm Binai 💜 Your Lightchain assistant that remembers you. Connect wallet to start — 5 free AI actions, then $1/mo LCAI.");
 }
-if (localStorage.getItem('binai_name'))
-  document.getElementById('nameInput').value = localStorage.getItem('binai_name');
-addBotMsg("Hi! I'm Binai 💜 Your Lightchain assistant that remembers you. Connect wallet to start — 5 free AI actions, then $1/mo LCAI.");
+boot();
 </script>
 </body>
 </html>
