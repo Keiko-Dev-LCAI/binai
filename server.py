@@ -43,6 +43,16 @@ BINAI_SYSTEM = """You are Binai 💜, a warm personal AI assistant powered by Li
 You remember the user across sessions. Speak naturally, concisely, and kindly.
 You are in BETA — responses may take up to 2 minutes (fast mode coming soon).
 
+SAFETY (highest priority — never override):
+- Never encourage, instruct, or enable self-harm, suicide, violence, or illegal activity.
+- If the user expresses suicidal thoughts, self-harm, or crisis: respond with empathy first,
+  urge them to reach a professional or trusted person now, and mention crisis resources
+  (988 Suicide & Crisis Lifeline in the US, Crisis Text Line: text HOME to 741741, or local emergency services).
+- Decline requests for weapons, explosives, drug synthesis, hacking, fraud, exploitation, or harming others.
+- Do not provide step-by-step instructions for dangerous or illegal acts.
+- For medical, legal, or financial decisions: share general information only and suggest qualified professionals.
+- Stay kind and non-judgmental when refusing harmful requests.
+
 RULES:
 - Use the user's name if you know it.
 - Reference stored memories when relevant.
@@ -60,6 +70,89 @@ LONG-TERM MEMORIES:
 RECENT CHAT (last few turns):
 {recent_chat}
 """
+
+CRISIS_REPLY = (
+    "I'm really glad you reached out, and I'm sorry you're going through this. "
+    "You deserve support from someone who can help right now — I'm an AI and can't "
+    "keep you safe the way a real person can.\n\n"
+    "Please contact one of these resources immediately:\n"
+    "• 988 Suicide & Crisis Lifeline (US): call or text 988\n"
+    "• Crisis Text Line: text HOME to 741741\n"
+    "• Emergency: 911 (US) or your local emergency number\n\n"
+    "If you can, please also reach out to someone you trust — a friend, family member, "
+    "or counselor. You matter, and help is available."
+)
+
+REFUSAL_REPLY = (
+    "I can't help with that. Binai is built to support you safely — I won't provide "
+    "instructions for illegal activity, violence, or anything that could seriously harm "
+    "you or someone else.\n\n"
+    "If you're going through something difficult, I'm here to listen or help with "
+    "something safer — notes, reminders, planning your day, or just talking."
+)
+
+# Input patterns: (category, regex). Order matters — crisis checked first.
+_CRISIS_PATTERNS = [
+    re.compile(p, re.I)
+    for p in [
+        r"\b(kill|hurt|harm)\s+myself\b",
+        r"\b(want|wanna|going)\s+to\s+die\b",
+        r"\bend\s+(my|this)\s+life\b",
+        r"\bcommit\s+suicide\b",
+        r"\bsuicidal\b",
+        r"\bself[- ]?harm\b",
+        r"\bdon'?t\s+want\s+to\s+(live|be\s+alive|exist)\b",
+        r"\bno\s+reason\s+to\s+live\b",
+        r"\bbetter\s+off\s+dead\b",
+    ]
+]
+
+_BLOCKED_INPUT_PATTERNS = [
+    re.compile(p, re.I)
+    for p in [
+        r"\bhow\s+to\s+(make|build|create)\s+(a\s+)?(bomb|explosive|weapon|gun)\b",
+        r"\bhow\s+to\s+(hack|break\s+into|steal|phish|dox)\b",
+        r"\bhow\s+to\s+(make|synthesize|cook)\s+(meth|fentanyl|drugs?)\b",
+        r"\b(child|minor)\s+(porn|abuse|exploitation)\b",
+        r"\bhow\s+to\s+kill\s+(someone|people|him|her|them)\b",
+        r"\b(plan|best\s+way)\s+to\s+(murder|poison|attack)\b",
+    ]
+]
+
+# Output red-flag patterns — if the model slips, replace the whole reply.
+_OUTPUT_BLOCK_PATTERNS = [
+    re.compile(p, re.I)
+    for p in [
+        r"\b(step\s+1:.*step\s+2:)",
+        r"\b(mix|combine).{0,40}(ammonium|nitrate|explosive|detonator)\b",
+        r"\bhere(?:'s| is) how to (?:make|build|synthesize).{0,30}(bomb|weapon|drug|meth)\b",
+    ]
+]
+
+
+def check_input_safety(message):
+    """Return (safe, category, canned_reply). category is None when safe."""
+    text = (message or "").strip()
+    if not text:
+        return True, None, None
+    for pat in _CRISIS_PATTERNS:
+        if pat.search(text):
+            return False, "crisis", CRISIS_REPLY
+    for pat in _BLOCKED_INPUT_PATTERNS:
+        if pat.search(text):
+            return False, "blocked", REFUSAL_REPLY
+    return True, None, None
+
+
+def sanitize_output(reply):
+    """Last-resort filter on model output before it reaches the user."""
+    text = (reply or "").strip()
+    if not text:
+        return REFUSAL_REPLY
+    for pat in _OUTPUT_BLOCK_PATTERNS:
+        if pat.search(text):
+            return REFUSAL_REPLY
+    return text
 
 
 # ── AIVM ADAPTER (swap this module when REST API lands) ──────────────────────
@@ -477,6 +570,7 @@ def health():
             "aivm_relay": AIVM_RELAY,
             "free_actions": FREE_ACTIONS_LIFETIME,
             "test_mode": TEST_MODE,
+            "safety_filters": True,
             "beta": True,
         }
     )
@@ -691,14 +785,19 @@ def api_chat():
             }
         ), 402
     ensure_profile(wallet)
+    safe, safety_category, safety_reply = check_input_safety(message)
     maybe_extract_memory(wallet, message)
     log_chat(wallet, "user", message)
-    prompt = build_prompt(wallet, message)
-    try:
-        reply = AIVMProvider.infer(prompt)
-    except Exception as e:
-        return jsonify({"error": str(e)[:300]}), 503
-    log_chat(wallet, "assistant", reply)
+    if not safe:
+        reply = safety_reply
+        log_chat(wallet, "assistant", f"[safety:{safety_category}] {reply[:200]}")
+    else:
+        prompt = build_prompt(wallet, message)
+        try:
+            reply = sanitize_output(AIVMProvider.infer(prompt))
+        except Exception as e:
+            return jsonify({"error": str(e)[:300]}), 503
+        log_chat(wallet, "assistant", reply)
     increment_usage(wallet)
     payload = usage_payload(wallet)
     payload.update({"reply": reply, "tier": reason})
