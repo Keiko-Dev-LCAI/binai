@@ -17,34 +17,57 @@
   --green: #4caf7d; --red: #e84b6a; --gold: #e8c050;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; background: var(--bg); color: var(--text);
+html, body { height: 100%; color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 18px; }
-body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; }
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 80% 50% at 15% -10%, rgba(155,127,232,0.18), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 110%, rgba(155,127,232,0.10), transparent 50%),
+    var(--bg);
+}
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image: radial-gradient(rgba(155,127,232,0.07) 1px, transparent 1px);
+  background-size: 28px 28px; opacity: 0.35;
+}
+.app-shell { position: relative; z-index: 1; }
+
+.app-shell {
+  display: flex; flex-direction: column; min-height: 100vh;
+  max-width: 520px; margin: 0 auto; width: 100%;
+}
+
+/* ── Sidebar (desktop) ── */
+.sidebar { display: none; }
+.insight-panel { display: none; }
 
 .header {
-  background: var(--bg2); border-bottom: 1px solid var(--border);
-  padding: 14px 16px; flex-shrink: 0;
+  background: rgba(18,18,42,0.85); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border); padding: 14px 16px; flex-shrink: 0;
 }
 .header-row { display: flex; align-items: center; gap: 10px; }
-.logo { font-size: 28px; font-weight: 800; }
+.logo { font-size: 28px; font-weight: 800; letter-spacing: -0.3px; }
 .logo span { color: var(--purple); }
 .badge { font-size: 13px; background: var(--purple-glow); border: 1px solid var(--purple);
   color: var(--purple); padding: 4px 10px; border-radius: 20px; font-weight: 600; }
 .wallet-pill { margin-left: auto; font-size: 13px; color: var(--text2);
-  background: var(--bg3); padding: 6px 12px; border-radius: 20px; max-width: 140px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  background: var(--bg3); padding: 6px 12px; border-radius: 20px; max-width: 160px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.wallet-pill:hover { border: 1px solid var(--purple); color: var(--text); }
 
-.tabs { display: flex; overflow-x: auto; background: var(--bg2);
+.tabs { display: flex; overflow-x: auto; background: rgba(18,18,42,0.9);
   border-bottom: 1px solid var(--border); flex-shrink: 0; scrollbar-width: none; }
 .tab { flex: 1; min-width: 72px; padding: 12px 8px; text-align: center; font-size: 15px;
   font-weight: 600; color: var(--text2); cursor: pointer; border-bottom: 3px solid transparent; }
 .tab.active { color: var(--purple); border-bottom-color: var(--purple); }
 
-.main { flex: 1; overflow-y: auto; padding: 16px; }
+.workspace { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.main { flex: 1; overflow-y: auto; padding: 16px; min-height: 0; }
 .panel { display: none; }
 .panel.active { display: block; }
 
-.chat-messages { display: flex; flex-direction: column; gap: 12px; min-height: 200px;
+.chat-messages { display: flex; flex-direction: column; gap: 12px; min-height: 240px;
   margin-bottom: 12px; }
 .msg { max-width: 92%; padding: 12px 16px; border-radius: 14px; line-height: 1.55;
   font-size: 17px; white-space: pre-wrap; word-break: break-word; }
@@ -102,11 +125,118 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 .footer-link { color: var(--purple); text-decoration: none; font-size: 15px; }
 .mem-chip { display: inline-block; background: var(--bg3); border: 1px solid var(--border);
   border-radius: 20px; padding: 6px 12px; margin: 4px 4px 0 0; font-size: 14px; }
+
+.sidebar-logo { padding: 28px 24px 20px; border-bottom: 1px solid var(--border); }
+.sidebar-logo .logo { font-size: 36px; margin-bottom: 8px; }
+.sidebar-tagline { color: var(--text2); font-size: 15px; line-height: 1.5; margin-top: 8px; }
+.sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }
+.side-nav-item {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 4px;
+  border-radius: 12px; cursor: pointer; font-size: 17px; font-weight: 600; color: var(--text2);
+  border-left: 3px solid transparent; transition: background 0.15s, color 0.15s;
+}
+.side-nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+.side-nav-item.active { background: var(--purple-glow); color: var(--purple); border-left-color: var(--purple); }
+.sidebar-foot { padding: 16px 20px 24px; border-top: 1px solid var(--border); }
+.insight-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
+  padding: 16px 18px; margin-bottom: 14px;
+}
+.insight-card h3 { font-size: 15px; color: var(--purple); text-transform: uppercase;
+  letter-spacing: 0.06em; margin-bottom: 10px; font-weight: 700; }
+.insight-stat { font-size: 28px; font-weight: 800; color: var(--text); line-height: 1.1; }
+.insight-sub { font-size: 14px; color: var(--text2); margin-top: 4px; }
+.hero-strip {
+  display: none; background: linear-gradient(135deg, rgba(155,127,232,0.12), rgba(155,127,232,0.04));
+  border: 1px solid rgba(155,127,232,0.2); border-radius: 16px; padding: 18px 22px;
+  margin-bottom: 16px;
+}
+.hero-strip h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+.hero-strip p { color: var(--text2); font-size: 15px; line-height: 1.5; }
+.hero-features {
+  display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px;
+}
+.hero-feature {
+  display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600;
+  color: var(--text); background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 999px; padding: 8px 14px;
+}
+.prompt-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin: auto 0 8px; padding: 8px 0;
+}
+.prompt-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
+  padding: 16px; cursor: pointer; text-align: left; transition: border-color 0.15s, background 0.15s;
+}
+.prompt-card:hover { border-color: var(--purple); background: var(--purple-glow); }
+.prompt-card .prompt-icon { font-size: 22px; margin-bottom: 8px; }
+.prompt-card .prompt-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.prompt-card .prompt-desc { color: var(--text2); font-size: 13px; line-height: 1.4; }
+.chat-footer { flex-shrink: 0; margin-top: auto; padding-top: 8px; }
+.chat-hint { color: var(--text2); font-size: 14px; margin-top: 10px; line-height: 1.45; }
+
+@media (min-width: 900px) {
+  .app-shell {
+    max-width: none; display: grid;
+    grid-template-columns: 260px minmax(0, 1fr) 300px;
+    grid-template-rows: 1fr; min-height: 100vh;
+  }
+  .sidebar {
+    display: flex; flex-direction: column; background: rgba(10,10,24,0.6);
+    border-right: 1px solid var(--border);
+  }
+  .insight-panel {
+    display: block; padding: 24px 20px; background: rgba(10,10,24,0.4);
+    border-left: 1px solid var(--border); overflow-y: auto;
+  }
+  .mobile-only { display: none !important; }
+  .workspace { min-height: 100vh; }
+  .main { padding: 20px 28px 16px; display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+  .panel.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  #panel-chat.active {
+    display: flex; flex-direction: column; flex: 1; min-height: 0;
+  }
+  #panel-chat.active .chat-messages {
+    flex: 1; min-height: 0; max-height: none; margin-bottom: 0;
+    padding: 8px 4px; overflow-y: auto;
+  }
+  #panel-chat.active .prompt-grid { grid-template-columns: repeat(3, 1fr); }
+  .hero-strip { display: block; }
+  .chat-messages { min-height: 0; display: flex; flex-direction: column; }
+  .msg { max-width: 75%; font-size: 18px; }
+  .status-bar { background: rgba(18,18,42,0.9); }
+  .workspace { border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+    background: rgba(13,13,26,0.55); backdrop-filter: blur(8px); }
+}
 </style>
 </head>
 <body>
 
-<div class="header">
+<div class="app-shell">
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo">Binai <span>💜</span></div>
+    <div class="badge" style="display:inline-block;margin-top:8px">BETA</div>
+    <p class="sidebar-tagline">The AI that remembers you — powered by Lightchain AIVM.</p>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="side-nav-item active" data-tab="chat" onclick="switchTab('chat')">💬 Chat</div>
+    <div class="side-nav-item" data-tab="briefing" onclick="switchTab('briefing')">🌅 Morning Brief</div>
+    <div class="side-nav-item" data-tab="notes" onclick="switchTab('notes')">📝 Notes</div>
+    <div class="side-nav-item" data-tab="reminders" onclick="switchTab('reminders')">⏰ Reminders</div>
+    <div class="side-nav-item" data-tab="memory" onclick="switchTab('memory')">🧠 Memory</div>
+    <div class="side-nav-item" data-tab="settings" onclick="switchTab('settings')">⚙️ Settings</div>
+  </nav>
+  <div class="sidebar-foot">
+    <div class="wallet-pill" id="walletPillSide" onclick="connectWallet()" style="max-width:100%;margin-bottom:10px">Connect wallet</div>
+    <div style="font-size:13px;color:var(--text2)" id="usageSide">5 free actions</div>
+  </div>
+</aside>
+
+<div class="workspace">
+<div class="header mobile-only">
   <div class="header-row">
     <div class="logo">Binai <span>💜</span></div>
     <div class="badge">BETA</div>
@@ -114,7 +244,7 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   </div>
 </div>
 
-<div class="tabs">
+<div class="tabs mobile-only">
   <div class="tab active" data-tab="chat" onclick="switchTab('chat')">💬 Chat</div>
   <div class="tab" data-tab="briefing" onclick="switchTab('briefing')">🌅 Brief</div>
   <div class="tab" data-tab="notes" onclick="switchTab('notes')">📝 Notes</div>
@@ -124,17 +254,51 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 </div>
 
 <div class="main">
-  <div class="panel active" id="panel-chat">
-    <div class="chat-messages" id="chatMessages"></div>
-    <div class="input-row">
-      <button class="btn btn-mic btn-ghost" id="micBtn" onclick="toggleMic()" title="Voice">🎤</button>
-      <textarea class="chat-input" id="chatInput" rows="1" placeholder="Talk to Binai…"
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
-      <button class="btn btn-primary" id="sendBtn" onclick="sendChat()">Send</button>
+  <div class="hero-strip" id="heroStrip">
+    <h2 id="heroGreeting">Welcome back 💜</h2>
+    <p id="heroSub">Your personal assistant on Lightchain. I remember what you tell me — try "remember my favorite coffee is iced latte."</p>
+    <div class="hero-features">
+      <div class="hero-feature">🧠 Remembers you</div>
+      <div class="hero-feature">🌅 Morning briefings</div>
+      <div class="hero-feature">🎤 Voice input</div>
     </div>
-    <p style="color:var(--text2);font-size:14px;margin-top:10px;line-height:1.45">
-      Beta: answers take 1–2 min. Say "remember …" to save facts. <span id="usageText"></span>
-    </p>
+  </div>
+  <div class="panel active" id="panel-chat">
+    <div class="chat-messages" id="chatMessages">
+      <div class="prompt-grid" id="promptGrid">
+        <button type="button" class="prompt-card" onclick="usePrompt('Remember my favorite coffee is iced latte')">
+          <div class="prompt-icon">☕</div>
+          <div class="prompt-title">Save a memory</div>
+          <div class="prompt-desc">Tell Binai something to remember forever</div>
+        </button>
+        <button type="button" class="prompt-card" onclick="usePrompt('What do you remember about me?')">
+          <div class="prompt-icon">🧠</div>
+          <div class="prompt-title">Recall memories</div>
+          <div class="prompt-desc">See what Binai already knows about you</div>
+        </button>
+        <button type="button" class="prompt-card" onclick="switchTab('briefing');loadBriefing(true)">
+          <div class="prompt-icon">🌅</div>
+          <div class="prompt-title">Morning briefing</div>
+          <div class="prompt-desc">Weather, reminders, and LCAI in one tap</div>
+        </button>
+        <button type="button" class="prompt-card" onclick="usePrompt('Help me plan my day')">
+          <div class="prompt-icon">📋</div>
+          <div class="prompt-title">Plan my day</div>
+          <div class="prompt-desc">Get a friendly start-of-day nudge</div>
+        </button>
+      </div>
+    </div>
+    <div class="chat-footer">
+      <div class="input-row">
+        <button class="btn btn-mic btn-ghost" id="micBtn" onclick="toggleMic()" title="Voice">🎤</button>
+        <textarea class="chat-input" id="chatInput" rows="1" placeholder="Talk to Binai…"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
+        <button class="btn btn-primary" id="sendBtn" onclick="sendChat()">Send</button>
+      </div>
+      <p class="chat-hint">
+        Beta: answers take 1–2 min. Say "remember …" to save facts. <span id="usageText"></span>
+      </p>
+    </div>
   </div>
 
   <div class="panel" id="panel-briefing">
@@ -191,6 +355,30 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 </div>
 
 <div class="status-bar" id="statusBar">Binai 💜 — Lightchain community beta</div>
+</div>
+
+<aside class="insight-panel">
+  <div class="insight-card">
+    <h3>Your plan</h3>
+    <div class="insight-stat" id="insightUsage">5 / 5</div>
+    <div class="insight-sub" id="insightPlan">Free actions remaining</div>
+  </div>
+  <div class="insight-card">
+    <h3>Quick action</h3>
+    <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="switchTab('briefing');loadBriefing(true)">🌅 Morning briefing</button>
+    <button class="btn btn-ghost" style="width:100%" onclick="document.getElementById('chatInput').focus();switchTab('chat')">💬 New message</button>
+  </div>
+  <div class="insight-card">
+    <h3>Memory preview</h3>
+    <div id="insightMemory" style="font-size:15px;color:var(--text2);line-height:1.5">Connect wallet to see what Binai remembers.</div>
+  </div>
+  <div class="insight-card">
+    <h3>Built on</h3>
+    <div class="insight-sub">Lightchain AIVM · LCAI · Community beta<br>Fast mode when REST API ships</div>
+  </div>
+</aside>
+
+</div>
 
 <!-- Onboarding -->
 <div class="overlay" id="onboardOverlay">
@@ -223,6 +411,16 @@ let wcProvider = null;
 let listening = false;
 let recognition = null;
 let lastBriefing = '';
+let userHasChatted = false;
+
+function hidePrompts() {
+  const g = document.getElementById('promptGrid');
+  if (g) g.style.display = 'none';
+}
+function usePrompt(text) {
+  document.getElementById('chatInput').value = text;
+  sendChat();
+}
 
 // ── Onboarding ─────────────────────────────────────────────────────────────
 function initOnboarding() {
@@ -284,7 +482,11 @@ async function connectWallet() {
       provider = wcProvider;
     }
     localStorage.setItem('binai_wallet', wallet);
-    document.getElementById('walletPill').textContent = wallet.slice(0,6) + '…' + wallet.slice(-4);
+    const wp = wallet.slice(0,6) + '…' + wallet.slice(-4);
+    document.getElementById('walletPill').textContent = wp;
+    const wps = document.getElementById('walletPillSide');
+    if (wps) wps.textContent = wp;
+    updateHero();
     await saveProfile();
     await refreshSub();
     await loadMemories();
@@ -301,7 +503,8 @@ async function connectWallet() {
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab, .side-nav-item').forEach(t =>
+    t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
   if (name === 'notes') loadNotes();
   if (name === 'reminders') loadReminders();
@@ -315,7 +518,12 @@ function addMsg(text, who) {
   const el = document.createElement('div');
   el.className = 'msg ' + who;
   el.textContent = text;
-  document.getElementById('chatMessages').appendChild(el);
+  const box = document.getElementById('chatMessages');
+  box.appendChild(el);
+  if (who === 'user') {
+    userHasChatted = true;
+    hidePrompts();
+  }
   el.scrollIntoView({ behavior: 'smooth', block: 'end' });
   return el;
 }
@@ -361,7 +569,39 @@ async function sendChat() {
 function updateUsage(d) {
   const el = document.getElementById('usageText');
   if (d.subscribed) el.textContent = 'Subscribed ✅';
-  else el.textContent = `Free: ${d.remaining_free}/${5} actions left.`;
+  else el.textContent = `Free: ${d.remaining_free}/5 actions left.`;
+  const side = document.getElementById('usageSide');
+  const iu = document.getElementById('insightUsage');
+  const ip = document.getElementById('insightPlan');
+  if (d.subscribed) {
+    if (side) side.textContent = 'Subscribed ✅';
+    if (iu) iu.textContent = 'Pro';
+    if (ip) ip.textContent = '$1/mo LCAI active';
+  } else {
+    const rem = d.remaining_free ?? 5;
+    if (side) side.textContent = `${rem}/5 free actions`;
+    if (iu) iu.textContent = `${rem} / 5`;
+    if (ip) ip.textContent = 'Free actions remaining';
+  }
+}
+
+function updateHero() {
+  const name = localStorage.getItem('binai_name') || '';
+  const h = document.getElementById('heroGreeting');
+  const s = document.getElementById('heroSub');
+  if (h) h.textContent = name ? `Hey ${name} 💜` : 'Welcome to Binai 💜';
+  if (s && wallet) s.textContent = 'I remember what you share across sessions. Ask anything — or tap Morning Briefing on the right.';
+}
+
+function syncInsightMemory(mems) {
+  const el = document.getElementById('insightMemory');
+  if (!el) return;
+  if (!mems || !mems.length) {
+    el.innerHTML = '<span style="color:var(--text2)">No memories yet. Say "remember …" in chat.</span>';
+    return;
+  }
+  el.innerHTML = mems.slice(0, 6).map(m =>
+    `<span class="mem-chip">${esc(m.content)}</span>`).join('');
 }
 
 // ── Voice ────────────────────────────────────────────────────────────────────
@@ -499,6 +739,7 @@ async function loadMemories() {
     s.textContent = m.content;
     el.appendChild(s);
   });
+  syncInsightMemory(mems);
 }
 async function addMemory() {
   if (!wallet) { connectWallet(); return; }
@@ -572,9 +813,14 @@ function esc(s) {
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 initOnboarding();
+updateHero();
 if (wallet) {
-  document.getElementById('walletPill').textContent = wallet.slice(0,6) + '…' + wallet.slice(-4);
+  const wp = wallet.slice(0,6) + '…' + wallet.slice(-4);
+  document.getElementById('walletPill').textContent = wp;
+  const wps = document.getElementById('walletPillSide');
+  if (wps) wps.textContent = wp;
   refreshSub();
+  loadMemories();
 }
 if (localStorage.getItem('binai_name'))
   document.getElementById('nameInput').value = localStorage.getItem('binai_name');
