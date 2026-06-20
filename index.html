@@ -107,6 +107,7 @@ body::before {
 
 .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 500;
   display: flex; align-items: center; justify-content: center; padding: 20px; }
+.hidden { display: none !important; }
 .overlay.hidden { display: none; }
 .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 18px;
   padding: 24px; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; }
@@ -181,6 +182,30 @@ body::before {
   font-size: 14px; font-weight: 600; color: var(--gold); flex-shrink: 0;
 }
 .beta-banner.visible { display: block; }
+.terms-modal { max-width: 520px; padding: 0; overflow: hidden; display: flex; flex-direction: column; max-height: 92vh; }
+.terms-modal-head { padding: 22px 24px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.terms-modal-head h2 { margin: 0; font-size: 22px; }
+.terms-modal-body { padding: 18px 24px; overflow-y: auto; flex: 1; }
+.terms-section { margin-bottom: 14px; }
+.terms-section h3 { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.terms-section p, .terms-section li { color: var(--text2); font-size: 14px; line-height: 1.65; margin-bottom: 8px; }
+.terms-section ul { padding-left: 18px; margin-bottom: 8px; }
+.terms-divider { height: 1px; background: var(--border); margin: 14px 0; }
+.terms-updated { font-size: 11px; color: var(--text2); margin-bottom: 14px; }
+.terms-modal-foot { padding: 16px 24px 22px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.terms-check-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; font-size: 14px; line-height: 1.5; color: var(--text2); }
+.terms-check-row input { width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; cursor: pointer; }
+.top-disclaimer {
+  display: none; background: rgba(18,18,42,0.95); color: var(--text2); font-size: 12px;
+  padding: 8px 40px 8px 16px; flex-shrink: 0; position: relative; border-bottom: 1px solid var(--border);
+  line-height: 1.5;
+}
+.top-disclaimer.visible { display: block; }
+.top-disclaimer strong { color: var(--text); }
+.top-disclaimer-close {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text2); cursor: pointer; font-size: 16px; padding: 4px 6px;
+}
 
 /* Tablet: still mobile tabs, but use full width */
 @media (min-width: 600px) and (max-width: 899px) {
@@ -262,6 +287,7 @@ body::before {
 </aside>
 
 <div class="workspace">
+<div class="top-disclaimer" id="topDisclaimer"><strong>Disclaimer:</strong> Binai is beta software provided as-is. AI responses are not professional advice. The service may go offline or be discontinued at any time. <strong>No refunds.</strong><button class="top-disclaimer-close" onclick="dismissTopDisclaimer()" aria-label="Close">✕</button></div>
 <div class="beta-banner" id="betaBanner">🧪 Community beta — everyone gets unlimited AI for testing</div>
 <div class="header mobile-only">
   <div class="header-row">
@@ -374,6 +400,11 @@ body::before {
       <button class="btn btn-ghost" onclick="saveProfile()">Save</button>
     </div>
     <div class="card">
+      <div class="card-title">Legal</div>
+      <div class="card-sub">Terms, disclaimers, privacy summary, and no-refund policy.</div>
+      <button class="btn btn-ghost" style="margin-top:12px;width:100%" onclick="showTerms('view')">📋 Terms &amp; Disclosures</button>
+    </div>
+    <div class="card">
       <div class="card-title">About Binai</div>
       <div class="card-sub">Personal AI on Lightchain AIVM. Remembers you. Community beta for Discord family. Fast mode when REST API ships.</div>
       <p style="margin-top:10px"><a class="footer-link" href="https://x.com/KeikoDevLCAI" target="_blank">@KeikoDevLCAI on X</a></p>
@@ -407,6 +438,90 @@ body::before {
 
 </div>
 
+<!-- Terms & Disclosures -->
+<div class="overlay hidden" id="termsOverlay">
+  <div class="modal terms-modal">
+    <div class="terms-modal-head">
+      <h2>📋 Terms &amp; Disclosures</h2>
+    </div>
+    <div class="terms-modal-body">
+      <p class="terms-updated">Last updated: June 2026 · Binai — Built on Lightchain</p>
+
+      <div class="terms-section">
+        <h3>1. What Binai Is</h3>
+        <p>Binai is a personal AI assistant powered by Lightchain AIVM. It is operated by an individual developer and provided as-is for the Lightchain community. Binai is <strong style="color:var(--text)">not</strong> a medical service, crisis hotline, law firm, financial adviser, or licensed professional of any kind.</p>
+      </div>
+      <div class="terms-divider"></div>
+
+      <div class="terms-section">
+        <h3>2. AI Responses — Not Professional Advice</h3>
+        <p>AI-generated responses are for general informational and personal-assistant purposes only. They may be inaccurate, incomplete, outdated, or inappropriate. Do not rely on Binai for medical, mental health, legal, financial, or safety-critical decisions.</p>
+        <p><strong style="color:var(--text)">Binai is not a substitute for emergency services.</strong> If you are in crisis or may harm yourself or others, contact emergency services or a crisis line immediately (e.g. 988 in the US). Binai cannot keep you safe in an emergency.</p>
+      </div>
+      <div class="terms-divider"></div>
+
+      <div class="terms-section">
+        <h3>3. Memory &amp; Your Data</h3>
+        <p>When you connect a wallet, Binai may store on our server:</p>
+        <ul>
+          <li>Your wallet address (used as your account identifier)</li>
+          <li>Display name, language, and preferences you provide</li>
+          <li>Memories, notes, reminders, and chat history you create in the app</li>
+          <li>Subscription and usage records</li>
+        </ul>
+        <p>Data is stored on third-party cloud infrastructure (currently Railway). We do not sell your data. You are responsible for what you ask Binai to remember. Do not store passwords, seed phrases, private keys, or highly sensitive secrets in chat or memories.</p>
+      </div>
+      <div class="terms-divider"></div>
+
+      <div class="terms-section">
+        <h3>4. Voice &amp; Device Permissions</h3>
+        <p>Voice input uses your browser or device's microphone when you tap the mic button. Binai does not record or store audio files — speech is converted to text locally by your browser where supported. Future mobile versions may request additional permissions (contacts, calendar, location) for assistant features; those will be disclosed before use.</p>
+      </div>
+      <div class="terms-divider"></div>
+
+      <div class="terms-section">
+        <h3>5. Payments &amp; No Refunds</h3>
+        <p>When billing is enabled, subscription payments are made in LCAI on the Lightchain blockchain. All on-chain transactions are final and irreversible. <strong style="color:var(--text)">No refunds will be issued under any circumstances</strong>, including service interruptions, dissatisfaction with AI output, beta downtime, accidental payment, or if the service shuts down.</p>
+        <p>LCAI price is dynamic — the LCAI amount required for $1 USD (or any listed price) may change with market conditions.</p>
+      </div>
+      <div class="terms-divider"></div>
+
+      <div class="terms-section">
+        <h3>6. Beta &amp; Service Availability</h3>
+        <p>Binai is in active beta. Features, limits, pricing, and availability may change without notice. The service may be slow, buggy, offline, or <strong style="color:var(--text)">permanently discontinued at any time</strong>. AI responses depend on Lightchain AIVM and third-party infrastructure outside the operator's control.</p>
+      </div>
+      <div class="terms-divider"></div>
+
+      <div class="terms-section">
+        <h3>7. No Warranty — Service Provided AS-IS</h3>
+        <p>THIS SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT. THE OPERATOR DOES NOT WARRANT THAT THE SERVICE WILL BE UNINTERRUPTED, ERROR-FREE, SECURE, OR THAT AI OUTPUT WILL MEET YOUR EXPECTATIONS.</p>
+      </div>
+      <div class="terms-divider"></div>
+
+      <div class="terms-section">
+        <h3>8. Limitation of Liability</h3>
+        <p>TO THE FULLEST EXTENT PERMITTED BY LAW, THE OPERATOR SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING FROM YOUR USE OF BINAI, INCLUDING BUT NOT LIMITED TO DATA LOSS, SERVICE INTERRUPTION, INACCURATE AI OUTPUT, RELIANCE ON AI ADVICE, UNAUTHORIZED ACCESS, OR HARM RESULTING FROM DELAYED OR UNAVAILABLE CRISIS SUPPORT. YOUR USE OF BINAI IS ENTIRELY AT YOUR OWN RISK.</p>
+      </div>
+      <div class="terms-divider"></div>
+
+      <div class="terms-section">
+        <h3>9. Acceptable Use</h3>
+        <p>You agree not to use Binai to plan or facilitate illegal activity, harm to yourself or others, harassment, or abuse of the service. The operator may restrict or block access at any time.</p>
+      </div>
+    </div>
+    <div class="terms-modal-foot" id="termsAcceptFoot">
+      <div class="terms-check-row">
+        <input type="checkbox" id="termsCheck" onchange="document.getElementById('termsAcceptBtn').disabled=!this.checked">
+        <label for="termsCheck">I have read and agree to these Terms &amp; Disclosures, including the no-refund policy and the fact that this service may go down or go away at any time.</label>
+      </div>
+      <button class="btn btn-primary" id="termsAcceptBtn" style="width:100%" disabled onclick="acceptTerms()">I Agree — Continue</button>
+    </div>
+    <div class="terms-modal-foot hidden" id="termsViewFoot">
+      <button class="btn btn-ghost" style="width:100%" onclick="hideTerms()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Onboarding -->
 <div class="overlay" id="onboardOverlay">
   <div class="modal">
@@ -417,6 +532,7 @@ body::before {
     <div class="lang-grid" id="langGrid"></div>
     <input class="field" id="onboardName" placeholder="Your name (optional)">
     <input class="field" id="onboardPin" type="password" placeholder="App PIN (optional, 4+ digits)" maxlength="8">
+    <p style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:12px">By continuing you confirm you accepted our <a class="footer-link" href="#" onclick="showTerms('view');return false">Terms &amp; Disclosures</a>.</p>
     <button class="btn btn-primary" style="width:100%" onclick="finishOnboarding()">Continue → Connect wallet</button>
   </div>
 </div>
@@ -440,6 +556,48 @@ let recognition = null;
 let lastBriefing = '';
 let userHasChatted = false;
 let testMode = false;
+const TERMS_VERSION = '1';
+
+function showTerms(mode) {
+  const overlay = document.getElementById('termsOverlay');
+  const acceptFoot = document.getElementById('termsAcceptFoot');
+  const viewFoot = document.getElementById('termsViewFoot');
+  const isView = mode === 'view';
+  overlay.classList.remove('hidden');
+  acceptFoot.classList.toggle('hidden', isView);
+  viewFoot.classList.toggle('hidden', !isView);
+  if (!isView) {
+    const chk = document.getElementById('termsCheck');
+    const btn = document.getElementById('termsAcceptBtn');
+    if (chk) chk.checked = false;
+    if (btn) btn.disabled = true;
+  }
+}
+function hideTerms() {
+  document.getElementById('termsOverlay').classList.add('hidden');
+}
+function acceptTerms() {
+  localStorage.setItem('binai_terms_accepted', '1');
+  localStorage.setItem('binai_terms_version', TERMS_VERSION);
+  hideTerms();
+  document.getElementById('topDisclaimer').classList.add('visible');
+  startApp();
+}
+function dismissTopDisclaimer() {
+  document.getElementById('topDisclaimer').style.display = 'none';
+  sessionStorage.setItem('binai_disclaimer_dismissed', '1');
+}
+function checkTermsGate() {
+  const accepted = localStorage.getItem('binai_terms_accepted') === '1'
+    && localStorage.getItem('binai_terms_version') === TERMS_VERSION;
+  if (!accepted) {
+    showTerms('accept');
+    return false;
+  }
+  if (!sessionStorage.getItem('binai_disclaimer_dismissed'))
+    document.getElementById('topDisclaimer').classList.add('visible');
+  return true;
+}
 
 function applyTestModeUI() {
   if (!testMode) return;
@@ -869,8 +1027,7 @@ async function loadAppConfig() {
     }
   } catch (_) {}
 }
-async function boot() {
-  await loadAppConfig();
+function startApp() {
   initOnboarding();
   updateHero();
   if (wallet) {
@@ -883,9 +1040,15 @@ async function boot() {
   }
   if (localStorage.getItem('binai_name'))
     document.getElementById('nameInput').value = localStorage.getItem('binai_name');
-  addBotMsg(testMode
-    ? "Hi! I'm Binai 💜 Your Lightchain assistant that remembers you. Community beta — unlimited AI for everyone. Connect wallet to start."
-    : "Hi! I'm Binai 💜 Your Lightchain assistant that remembers you. Connect wallet to start — 5 free AI actions, then $1/mo LCAI.");
+  if (!document.getElementById('chatMessages').querySelector('.msg'))
+    addBotMsg(testMode
+      ? "Hi! I'm Binai 💜 Your Lightchain assistant that remembers you. Community beta — unlimited AI for everyone. Connect wallet to start."
+      : "Hi! I'm Binai 💜 Your Lightchain assistant that remembers you. Connect wallet to start — 5 free AI actions, then $1/mo LCAI.");
+}
+async function boot() {
+  await loadAppConfig();
+  if (!checkTermsGate()) return;
+  startApp();
 }
 boot();
 </script>
