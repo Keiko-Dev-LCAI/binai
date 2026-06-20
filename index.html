@@ -209,7 +209,7 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 <script>
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
 const API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-  ? 'http://localhost:8190' : (window.BINAI_API || 'https://binai-production.up.railway.app');
+  ? 'http://localhost:8190' : (window.BINAI_API || location.origin);
 
 const LANGS = [
   {id:'en',label:'🇺🇸 English'},{id:'es',label:'🇪🇸 Spanish'},{id:'fr',label:'🇫🇷 French'},
