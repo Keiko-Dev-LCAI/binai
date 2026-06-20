@@ -176,6 +176,15 @@ body::before {
 .chat-footer { flex-shrink: 0; margin-top: auto; padding-top: 8px; }
 .chat-hint { color: var(--text2); font-size: 14px; margin-top: 10px; line-height: 1.45; }
 
+/* Tablet: still mobile tabs, but use full width */
+@media (min-width: 600px) and (max-width: 899px) {
+  .app-shell { max-width: none; }
+  .main { padding: 20px 24px 16px; }
+  .hero-strip { display: block; }
+  .prompt-grid { grid-template-columns: repeat(2, 1fr); }
+  .msg { max-width: 85%; }
+}
+
 @media (min-width: 900px) {
   .app-shell {
     max-width: none; display: grid;
@@ -208,6 +217,17 @@ body::before {
   .status-bar { background: rgba(18,18,42,0.9); }
   .workspace { border-left: 1px solid var(--border); border-right: 1px solid var(--border);
     background: rgba(13,13,26,0.55); backdrop-filter: blur(8px); }
+}
+
+/* Ultrawide: centered app frame — feels like a native app window, not a stretched page */
+@media (min-width: 1400px) {
+  body { display: flex; justify-content: center; }
+  .app-shell {
+    max-width: 1480px; width: 100%;
+    box-shadow: 0 0 80px rgba(0,0,0,0.45), 0 0 0 1px var(--border);
+    border-radius: 0;
+  }
+  .sidebar, .insight-panel { backdrop-filter: blur(12px); }
 }
 </style>
 </head>
