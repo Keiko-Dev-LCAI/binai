@@ -27,6 +27,7 @@ OWNER_WALLET = os.environ.get(
 ).lower()
 MONTHLY_PRICE_USD = float(os.environ.get("MONTHLY_PRICE_USD", "1.00"))
 FREE_ACTIONS_LIFETIME = int(os.environ.get("FREE_ACTIONS_LIFETIME", "5"))
+TEST_MODE = os.environ.get("TEST_MODE", "").lower() in ("1", "true", "yes")
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
 
 _data_dir = os.environ.get("DATA_DIR", os.path.join(os.path.dirname(__file__), "data"))
@@ -225,6 +226,8 @@ def get_usage(wallet):
 
 
 def can_use_ai(wallet):
+    if TEST_MODE:
+        return True, "testing"
     if is_subscribed(wallet):
         return True, "subscribed"
     used = get_usage(wallet)
@@ -233,9 +236,32 @@ def can_use_ai(wallet):
     return False, "limit_reached"
 
 
+def usage_payload(wallet):
+    w = norm_wallet(wallet)
+    used = get_usage(w)
+    sub = is_subscribed(w)
+    if TEST_MODE:
+        return {
+            "testing": True,
+            "subscribed": False,
+            "actions_used": used,
+            "free_limit": FREE_ACTIONS_LIFETIME,
+            "remaining_free": None,
+            "tier": "testing",
+        }
+    return {
+        "testing": False,
+        "subscribed": sub,
+        "actions_used": used,
+        "free_limit": FREE_ACTIONS_LIFETIME,
+        "remaining_free": max(0, FREE_ACTIONS_LIFETIME - used),
+        "tier": "subscribed" if sub else "free",
+    }
+
+
 def increment_usage(wallet):
     w = norm_wallet(wallet)
-    if is_subscribed(w):
+    if TEST_MODE or is_subscribed(w):
         return
     conn = get_db()
     conn.execute(
@@ -448,6 +474,7 @@ def health():
             "service": "Binai",
             "aivm_relay": AIVM_RELAY,
             "free_actions": FREE_ACTIONS_LIFETIME,
+            "test_mode": TEST_MODE,
             "beta": True,
         }
     )
@@ -470,22 +497,14 @@ def api_price():
 @app.route("/api/subscription/<wallet>")
 def api_subscription(wallet):
     w = norm_wallet(wallet)
-    sub = is_subscribed(w)
-    used = get_usage(w)
+    payload = usage_payload(w)
     conn = get_db()
     row = conn.execute(
         "SELECT expires_at FROM subscriptions WHERE wallet = ?", (w,)
     ).fetchone()
     conn.close()
-    return jsonify(
-        {
-            "subscribed": sub,
-            "expires_at": row["expires_at"] if row else None,
-            "actions_used": used,
-            "free_limit": FREE_ACTIONS_LIFETIME,
-            "remaining_free": max(0, FREE_ACTIONS_LIFETIME - used),
-        }
-    )
+    payload["expires_at"] = row["expires_at"] if row else None
+    return jsonify(payload)
 
 
 @app.route("/api/verify-subscription", methods=["POST"])
@@ -679,16 +698,9 @@ def api_chat():
         return jsonify({"error": str(e)[:300]}), 503
     log_chat(wallet, "assistant", reply)
     increment_usage(wallet)
-    used = get_usage(wallet)
-    return jsonify(
-        {
-            "reply": reply,
-            "actions_used": used,
-            "remaining_free": max(0, FREE_ACTIONS_LIFETIME - used),
-            "subscribed": is_subscribed(wallet),
-            "tier": reason,
-        }
-    )
+    payload = usage_payload(wallet)
+    payload.update({"reply": reply, "tier": reason})
+    return jsonify(payload)
 
 
 @app.route("/api/briefing/<wallet>")
