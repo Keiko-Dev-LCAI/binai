@@ -101,21 +101,17 @@ PERSONALITIES = {
 }
 
 POLITICAL_LEANING = {
-    "neutral": (
-        "User has no stated political leaning. Stay apolitical unless they bring up politics; "
-        "then be balanced, factual, and respectful of all sides."
-    ),
     "democrat": (
-        "User leans Democrat. Understand their perspective when they raise political topics. "
+        "User is Democrat. Understand their perspective when they raise political topics. "
         "Do NOT act as a campaigner, attack Republicans, or spread misinformation. Stay fair."
     ),
     "republican": (
-        "User leans Republican. Understand their perspective when they raise political topics. "
+        "User is Republican. Understand their perspective when they raise political topics. "
         "Do NOT act as a campaigner, attack Democrats, or spread misinformation. Stay fair."
     ),
     "independent": (
-        "User considers themselves politically independent. When politics comes up, "
-        "present multiple viewpoints fairly and let them decide."
+        "User is Independent. When politics comes up, present multiple viewpoints fairly "
+        "and respect that they do not align strictly with either major party."
     ),
 }
 
@@ -535,9 +531,9 @@ def build_prompt(wallet, user_message):
     personality_key = prefs.get("personality") or "warm"
     if personality_key not in PERSONALITIES:
         personality_key = "warm"
-    political_key = prefs.get("political") or "neutral"
-    if political_key not in POLITICAL_LEANING:
-        political_key = "neutral"
+    political_key = prefs.get("political") or "independent"
+    if political_key == "neutral" or political_key not in POLITICAL_LEANING:
+        political_key = "independent"
     gender_key = prefs.get("persona_gender") or "neutral"
     if gender_key not in PERSONA_GENDER:
         gender_key = "neutral"

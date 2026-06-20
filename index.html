@@ -408,7 +408,7 @@ body::before {
     </div>
     <div class="card">
       <div class="card-title">Your political context</div>
-      <div class="card-sub" style="margin-bottom:12px">Optional. Helps Binai understand your perspective — not a partisan mode.</div>
+      <div class="card-sub" style="margin-bottom:12px">Democrat, Republican, or Independent — helps Binai understand your perspective, not a partisan mode.</div>
       <div class="lang-grid" id="politicalGrid"></div>
     </div>
     <div class="card">
@@ -571,10 +571,9 @@ const PERSONALITIES = [
   {id:'professional',label:'💼 Pro',desc:'Polished & calm'},
 ];
 const POLITICAL_OPTIONS = [
-  {id:'neutral',label:'⚖️ Neutral',desc:'Balanced default'},
-  {id:'democrat',label:'🔵 Democrat',desc:'Your leaning'},
-  {id:'republican',label:'🔴 Republican',desc:'Your leaning'},
-  {id:'independent',label:'🟣 Independent',desc:'Open-minded'},
+  {id:'democrat',label:'Democrat',desc:'Your perspective'},
+  {id:'republican',label:'Republican',desc:'Your perspective'},
+  {id:'independent',label:'Independent',desc:'Open to all sides'},
 ];
 const GENDER_OPTIONS = [
   {id:'neutral',label:'Neutral',desc:'Default — just Binai'},
@@ -582,7 +581,8 @@ const GENDER_OPTIONS = [
   {id:'male',label:'Male',desc:'Masculine presentation'},
 ];
 let selectedPersonality = localStorage.getItem('binai_personality') || 'warm';
-let selectedPolitical = localStorage.getItem('binai_political') || 'neutral';
+let selectedPolitical = localStorage.getItem('binai_political') || 'independent';
+if (selectedPolitical === 'neutral') selectedPolitical = 'independent';
 let selectedGender = localStorage.getItem('binai_persona_gender') || 'neutral';
 
 let wallet = localStorage.getItem('binai_wallet') || '';
@@ -1050,8 +1050,8 @@ async function loadProfile() {
       localStorage.setItem('binai_personality', prefs.personality);
     }
     if (prefs.political) {
-      selectedPolitical = prefs.political;
-      localStorage.setItem('binai_political', prefs.political);
+      selectedPolitical = prefs.political === 'neutral' ? 'independent' : prefs.political;
+      localStorage.setItem('binai_political', selectedPolitical);
     }
     if (prefs.persona_gender) {
       selectedGender = prefs.persona_gender;
