@@ -25,7 +25,9 @@
 
 **Local dev:** `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && PORT=8190 .venv/bin/python server.py` → open `index.html` with backend at localhost:8190.
 
-**Railway:** New service in existing project; set `DATA_DIR=/app/data` + volume; deploy from repo.
+**Railway:** Project `binai` — **LIVE** at https://binai-production.up.railway.app · volume `binai-volume` at `/app/data` · repo `Keiko-Dev-LCAI/binai`
+
+**Android:** `android/` folder scaffolded — build APK with Android Studio: `npx cap open android`
 
 ---
 

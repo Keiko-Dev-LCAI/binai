@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Binai</string>
+    <string name="title_activity_main">Binai</string>
+    <string name="package_name">ai.lightchain.binai</string>
+    <string name="custom_url_scheme">ai.lightchain.binai</string>
+</resources>
