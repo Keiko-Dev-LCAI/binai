@@ -588,17 +588,24 @@ async function sendChat() {
 
 function updateUsage(d) {
   const el = document.getElementById('usageText');
-  if (d.subscribed) el.textContent = 'Subscribed ✅';
-  else el.textContent = `Free: ${d.remaining_free}/5 actions left.`;
   const side = document.getElementById('usageSide');
   const iu = document.getElementById('insightUsage');
   const ip = document.getElementById('insightPlan');
+  if (d.testing) {
+    if (el) el.textContent = 'Testing — unlimited actions.';
+    if (side) side.textContent = 'Testing — unlimited';
+    if (iu) iu.textContent = '∞';
+    if (ip) ip.textContent = 'Beta testing mode';
+    return;
+  }
   if (d.subscribed) {
+    if (el) el.textContent = 'Subscribed ✅';
     if (side) side.textContent = 'Subscribed ✅';
     if (iu) iu.textContent = 'Pro';
     if (ip) ip.textContent = '$1/mo LCAI active';
   } else {
     const rem = d.remaining_free ?? 5;
+    if (el) el.textContent = `Free: ${rem}/5 actions left.`;
     if (side) side.textContent = `${rem}/5 free actions`;
     if (iu) iu.textContent = `${rem} / 5`;
     if (ip) ip.textContent = 'Free actions remaining';
@@ -793,9 +800,10 @@ async function refreshSub() {
   const r = await fetch(API + '/api/subscription/' + wallet);
   const d = await r.json();
   const el = document.getElementById('subStatus');
-  if (d.subscribed) el.textContent = 'Subscribed until ' + new Date(d.expires_at * 1000).toLocaleDateString();
+  if (d.testing) el.textContent = 'Beta testing — unlimited AI actions. Billing disabled.';
+  else if (d.subscribed) el.textContent = 'Subscribed until ' + new Date(d.expires_at * 1000).toLocaleDateString();
   else el.textContent = `Free tier: ${d.remaining_free} of ${d.free_limit} actions left. Then $1/mo LCAI.`;
-  updateUsage({ subscribed: d.subscribed, remaining_free: d.remaining_free });
+  updateUsage(d);
 }
 
 async function subscribe() {
@@ -832,8 +840,20 @@ function esc(s) {
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
+async function loadAppConfig() {
+  try {
+    const r = await fetch(API + '/api/health');
+    const d = await r.json();
+    if (d.test_mode) {
+      updateUsage({ testing: true });
+      const el = document.getElementById('subStatus');
+      if (el) el.textContent = 'Beta testing — unlimited AI actions. Billing disabled.';
+    }
+  } catch (_) {}
+}
 initOnboarding();
 updateHero();
+loadAppConfig();
 if (wallet) {
   const wp = wallet.slice(0,6) + '…' + wallet.slice(-4);
   document.getElementById('walletPill').textContent = wp;
