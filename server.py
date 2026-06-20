@@ -70,7 +70,29 @@ LONG-TERM MEMORIES:
 
 RECENT CHAT (last few turns):
 {recent_chat}
+
+PERSONALITY:
+{personality}
 """
+
+PERSONALITIES = {
+    "warm": (
+        "Warm & caring (default Binai). Friendly, encouraging, personable. "
+        "A 💜 now and then is fine. Make the user feel remembered and welcomed."
+    ),
+    "direct": (
+        "Direct & concise. Short answers, no filler, no fluff. "
+        "Skip pleasantries unless the moment calls for empathy. Get to the point."
+    ),
+    "playful": (
+        "Playful & casual. Light humor, relaxed energy, conversational. "
+        "Still accurate and helpful — fun, not silly."
+    ),
+    "professional": (
+        "Professional & polished. Calm, structured, executive-assistant tone. "
+        "Clear and respectful. Minimal emoji."
+    ),
+}
 
 CRISIS_REPLY = (
     "I'm really glad you reached out, and I'm sorry you're going through this. "
@@ -470,6 +492,9 @@ def log_chat(wallet, role, content):
 def build_prompt(wallet, user_message):
     prof = get_profile(wallet) or {}
     prefs = json.loads(prof.get("preferences") or "{}")
+    personality_key = prefs.get("personality") or "warm"
+    if personality_key not in PERSONALITIES:
+        personality_key = "warm"
     profile_text = json.dumps(
         {
             "name": prof.get("display_name") or "unknown",
@@ -488,6 +513,7 @@ def build_prompt(wallet, user_message):
         profile=profile_text,
         memories=mem_text,
         recent_chat=get_recent_chat(wallet),
+        personality=PERSONALITIES[personality_key],
     )
     return f"{system}\n\nUSER: {user_message}\n\nBINAI:"
 
@@ -650,6 +676,11 @@ def api_profile(wallet):
         return jsonify(prof or {})
     data = request.json or {}
     now = int(time.time())
+    prefs_json = None
+    if "preferences" in data and isinstance(data["preferences"], dict):
+        existing = json.loads((get_profile(w) or {}).get("preferences") or "{}")
+        existing.update(data["preferences"])
+        prefs_json = json.dumps(existing)
     conn = get_db()
     conn.execute(
         """UPDATE profiles SET display_name = COALESCE(?, display_name),
@@ -659,7 +690,7 @@ def api_profile(wallet):
         (
             data.get("display_name"),
             data.get("language"),
-            json.dumps(data["preferences"]) if "preferences" in data else None,
+            prefs_json,
             now,
             w,
         ),

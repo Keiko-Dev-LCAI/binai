@@ -402,6 +402,11 @@ body::before {
       <button class="btn btn-ghost" onclick="saveProfile()">Save</button>
     </div>
     <div class="card">
+      <div class="card-title">Binai's personality</div>
+      <div class="card-sub" style="margin-bottom:12px">How Binai talks to you — same brain, different vibe.</div>
+      <div class="lang-grid" id="personalityGrid"></div>
+    </div>
+    <div class="card">
       <div class="card-title">Legal</div>
       <div class="card-sub">Terms, disclaimers, privacy summary, and no-refund policy.</div>
       <button class="btn btn-ghost" style="margin-top:12px;width:100%" onclick="showTerms('view')">📋 Terms &amp; Disclosures</button>
@@ -549,6 +554,13 @@ const LANGS = [
   {id:'pt',label:'🇧🇷 Portuguese'},{id:'de',label:'🇩🇪 German'},{id:'ja',label:'🇯🇵 Japanese'},
   {id:'zh',label:'🇨🇳 Chinese'}
 ];
+const PERSONALITIES = [
+  {id:'warm',label:'💜 Warm',desc:'Friendly & caring'},
+  {id:'direct',label:'⚡ Direct',desc:'Short & to the point'},
+  {id:'playful',label:'😄 Playful',desc:'Casual & fun'},
+  {id:'professional',label:'💼 Pro',desc:'Polished & calm'},
+];
+let selectedPersonality = localStorage.getItem('binai_personality') || 'warm';
 
 let wallet = localStorage.getItem('binai_wallet') || '';
 let provider = null;
@@ -690,6 +702,7 @@ async function connectWallet() {
     if (wps) wps.textContent = wp;
     updateHero();
     await saveProfile();
+    await loadProfile();
     await refreshSub();
     await loadMemories();
     addBotMsg(wallet ? `Welcome back! I'm Binai 💜 Wallet connected. What can I help with?` :
@@ -711,7 +724,7 @@ function switchTab(name) {
   if (name === 'notes') loadNotes();
   if (name === 'reminders') loadReminders();
   if (name === 'memory') loadMemories();
-  if (name === 'settings') refreshSub();
+  if (name === 'settings') { refreshSub(); initPersonalityPicker(); loadProfile(); }
   if (name === 'briefing') loadBriefing(false);
 }
 
@@ -963,6 +976,45 @@ async function addMemory() {
 }
 
 // ── Profile / Subscribe ──────────────────────────────────────────────────────
+function initPersonalityPicker() {
+  const grid = document.getElementById('personalityGrid');
+  if (!grid || grid.dataset.ready) return;
+  grid.dataset.ready = '1';
+  grid.innerHTML = '';
+  PERSONALITIES.forEach(p => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'lang-btn' + (p.id === selectedPersonality ? ' active' : '');
+    b.innerHTML = `<div style="font-weight:700">${p.label}</div><div style="font-size:12px;color:var(--text2);margin-top:4px">${p.desc}</div>`;
+    b.onclick = () => selectPersonality(p.id);
+    grid.appendChild(b);
+  });
+}
+function selectPersonality(id) {
+  selectedPersonality = id;
+  localStorage.setItem('binai_personality', id);
+  document.querySelectorAll('#personalityGrid .lang-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', PERSONALITIES[i].id === id);
+  });
+  saveProfile();
+}
+async function loadProfile() {
+  if (!wallet) return;
+  try {
+    const r = await fetch(API + '/api/profile/' + wallet);
+    const prof = await r.json();
+    if (prof.display_name) document.getElementById('nameInput').value = prof.display_name;
+    const prefs = prof.preferences ? JSON.parse(prof.preferences) : {};
+    if (prefs.personality) {
+      selectedPersonality = prefs.personality;
+      localStorage.setItem('binai_personality', prefs.personality);
+      initPersonalityPicker();
+      document.querySelectorAll('#personalityGrid .lang-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', PERSONALITIES[i].id === selectedPersonality);
+      });
+    }
+  } catch (_) {}
+}
 async function saveProfile() {
   if (!wallet) return;
   const name = document.getElementById('nameInput').value.trim() ||
@@ -972,6 +1024,7 @@ async function saveProfile() {
     body: JSON.stringify({
       display_name: name,
       language: localStorage.getItem('binai_lang') || 'en',
+      preferences: { personality: selectedPersonality },
     }),
   });
   if (name) localStorage.setItem('binai_name', name);
@@ -1034,12 +1087,14 @@ async function loadAppConfig() {
 }
 function startApp() {
   initOnboarding();
+  initPersonalityPicker();
   updateHero();
   if (wallet) {
     const wp = wallet.slice(0,6) + '…' + wallet.slice(-4);
     document.getElementById('walletPill').textContent = wp;
     const wps = document.getElementById('walletPillSide');
     if (wps) wps.textContent = wp;
+    loadProfile();
     refreshSub();
     loadMemories();
   }
