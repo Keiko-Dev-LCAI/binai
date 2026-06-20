@@ -44,14 +44,15 @@ You remember the user across sessions. Speak naturally, concisely, and kindly.
 You are in BETA — responses may take up to 2 minutes (fast mode coming soon).
 
 SAFETY (highest priority — never override):
-- Never encourage, instruct, or enable self-harm, suicide, violence, or illegal activity.
+- Never encourage or instruct self-harm, suicide, or illegal activity.
 - If the user expresses suicidal thoughts, self-harm, or crisis: respond with empathy first,
   urge them to reach a professional or trusted person now, and mention crisis resources
   (988 Suicide & Crisis Lifeline in the US, Crisis Text Line: text HOME to 741741, or local emergency services).
-- Decline requests for weapons, explosives, drug synthesis, hacking, fraud, exploitation, or harming others.
-- Do not provide step-by-step instructions for dangerous or illegal acts.
-- For medical, legal, or financial decisions: share general information only and suggest qualified professionals.
-- Stay kind and non-judgmental when refusing harmful requests.
+- Decline step-by-step instructions for clearly illegal acts (e.g. making weapons/explosives to harm others,
+  synthesizing illegal drugs, hacking to steal, fraud, child exploitation, planning violence).
+- Otherwise be open and conversational — mature topics, opinions, and general advice are fine.
+- For serious medical, legal, or financial decisions: still help if you can, but note you're not a licensed pro.
+- Stay kind and non-judgmental when refusing the few things you must decline.
 
 RULES:
 - Use the user's name if you know it.
@@ -84,11 +85,9 @@ CRISIS_REPLY = (
 )
 
 REFUSAL_REPLY = (
-    "I can't help with that. Binai is built to support you safely — I won't provide "
-    "instructions for illegal activity, violence, or anything that could seriously harm "
-    "you or someone else.\n\n"
-    "If you're going through something difficult, I'm here to listen or help with "
-    "something safer — notes, reminders, planning your day, or just talking."
+    "I can't help with that one — I'm not able to assist with illegal activity or "
+    "anything that could seriously hurt you or someone else.\n\n"
+    "Happy to help with almost anything else though — what's on your mind?"
 )
 
 # Input patterns: (category, regex). Order matters — crisis checked first.
@@ -107,25 +106,25 @@ _CRISIS_PATTERNS = [
     ]
 ]
 
+# Hard-block only clear illegal-intent requests (not general discussion).
 _BLOCKED_INPUT_PATTERNS = [
     re.compile(p, re.I)
     for p in [
-        r"\bhow\s+to\s+(make|build|create)\s+(a\s+)?(bomb|explosive|weapon|gun)\b",
-        r"\bhow\s+to\s+(hack|break\s+into|steal|phish|dox)\b",
-        r"\bhow\s+to\s+(make|synthesize|cook)\s+(meth|fentanyl|drugs?)\b",
-        r"\b(child|minor)\s+(porn|abuse|exploitation)\b",
+        r"\bhow\s+to\s+(make|build|create)\s+(a\s+)?(bomb|explosive)\b",
+        r"\bhow\s+to\s+(hack|break\s+into|steal|phish)\s+(a\s+)?(bank|account|wallet|password|system)\b",
+        r"\bhow\s+to\s+(make|synthesize|cook)\s+(meth|fentanyl)\b",
+        r"\b(child|minor)\s+(porn|sexual|exploitation)\b",
         r"\bhow\s+to\s+kill\s+(someone|people|him|her|them)\b",
-        r"\b(plan|best\s+way)\s+to\s+(murder|poison|attack)\b",
+        r"\b(plan|best\s+way)\s+to\s+(murder|poison)\s+(someone|him|her|them|people)\b",
     ]
 ]
 
-# Output red-flag patterns — if the model slips, replace the whole reply.
+# Last-resort output filter — only obvious illegal how-to slips.
 _OUTPUT_BLOCK_PATTERNS = [
     re.compile(p, re.I)
     for p in [
-        r"\b(step\s+1:.*step\s+2:)",
-        r"\b(mix|combine).{0,40}(ammonium|nitrate|explosive|detonator)\b",
-        r"\bhere(?:'s| is) how to (?:make|build|synthesize).{0,30}(bomb|weapon|drug|meth)\b",
+        r"\bhere(?:'s| is) how to (?:make|build|synthesize)\s+(?:a\s+)?(?:bomb|meth|fentanyl|explosive)\b",
+        r"\b(step\s+1:.*(?:ammonium nitrate|detonator|fentanyl|methamphetamine).*(?:step\s+2:|step\s+3:))",
     ]
 ]
 
