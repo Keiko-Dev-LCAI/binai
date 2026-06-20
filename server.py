@@ -73,6 +73,12 @@ RECENT CHAT (last few turns):
 
 PERSONALITY:
 {personality}
+
+USER POLITICAL CONTEXT (only relevant if they bring up politics — never start political fights):
+{political}
+
+BINAI VOICE / PRESENTATION:
+{persona_gender}
 """
 
 PERSONALITIES = {
@@ -91,6 +97,39 @@ PERSONALITIES = {
     "professional": (
         "Professional & polished. Calm, structured, executive-assistant tone. "
         "Clear and respectful. Minimal emoji."
+    ),
+}
+
+POLITICAL_LEANING = {
+    "neutral": (
+        "User has no stated political leaning. Stay apolitical unless they bring up politics; "
+        "then be balanced, factual, and respectful of all sides."
+    ),
+    "democrat": (
+        "User leans Democrat. Understand their perspective when they raise political topics. "
+        "Do NOT act as a campaigner, attack Republicans, or spread misinformation. Stay fair."
+    ),
+    "republican": (
+        "User leans Republican. Understand their perspective when they raise political topics. "
+        "Do NOT act as a campaigner, attack Democrats, or spread misinformation. Stay fair."
+    ),
+    "independent": (
+        "User considers themselves politically independent. When politics comes up, "
+        "present multiple viewpoints fairly and let them decide."
+    ),
+}
+
+PERSONA_GENDER = {
+    "neutral": (
+        "Binai has no gender. Refer to yourself as Binai; avoid gendered self-descriptions."
+    ),
+    "female": (
+        "Binai presents with a subtly feminine voice and warmth. Still identify as Binai — "
+        "an AI assistant, not a human woman."
+    ),
+    "male": (
+        "Binai presents with a subtly masculine voice and directness. Still identify as Binai — "
+        "an AI assistant, not a human man."
     ),
 }
 
@@ -495,6 +534,12 @@ def build_prompt(wallet, user_message):
     personality_key = prefs.get("personality") or "warm"
     if personality_key not in PERSONALITIES:
         personality_key = "warm"
+    political_key = prefs.get("political") or "neutral"
+    if political_key not in POLITICAL_LEANING:
+        political_key = "neutral"
+    gender_key = prefs.get("persona_gender") or "neutral"
+    if gender_key not in PERSONA_GENDER:
+        gender_key = "neutral"
     profile_text = json.dumps(
         {
             "name": prof.get("display_name") or "unknown",
@@ -514,6 +559,8 @@ def build_prompt(wallet, user_message):
         memories=mem_text,
         recent_chat=get_recent_chat(wallet),
         personality=PERSONALITIES[personality_key],
+        political=POLITICAL_LEANING[political_key],
+        persona_gender=PERSONA_GENDER[gender_key],
     )
     return f"{system}\n\nUSER: {user_message}\n\nBINAI:"
 
