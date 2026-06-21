@@ -222,6 +222,13 @@ body::before {
   font-size: 14px; font-weight: 600; color: var(--gold); flex-shrink: 0;
 }
 .beta-banner.visible { display: block; }
+.update-banner {
+  display: none; background: linear-gradient(90deg, rgba(155,127,232,0.35), rgba(124,95,201,0.25));
+  border-bottom: 1px solid rgba(155,127,232,0.45); padding: 12px 16px; text-align: center;
+  font-size: 15px; font-weight: 700; color: #fff; flex-shrink: 0; cursor: pointer;
+}
+.update-banner.visible { display: block; }
+.update-banner:active { opacity: 0.85; }
 .terms-modal { max-width: 520px; padding: 0; overflow: hidden; display: flex; flex-direction: column; max-height: 92vh; }
 .terms-modal-head { padding: 22px 24px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .terms-modal-head h2 { margin: 0; font-size: 22px; }
@@ -332,6 +339,9 @@ body::before {
 
 <div class="workspace">
 <div class="top-disclaimer" id="topDisclaimer"><span id="topDisclaimerText">Disclaimer: Binai is beta software provided as-is. AI responses are not professional advice. The service may go offline or be discontinued at any time. No refunds.</span><button class="top-disclaimer-close" onclick="dismissTopDisclaimer()" aria-label="Close">✕</button></div>
+<div class="update-banner" id="updateBanner" onclick="applyBinaiUpdate()" role="button" tabindex="0" aria-live="polite">
+  <span id="updateBannerText">✨ Binai updated — tap here to refresh</span>
+</div>
 <div class="beta-banner" id="betaBanner">🧪 Community beta — everyone gets unlimited AI for testing</div>
 <div class="header mobile-only">
   <div class="header-row">
@@ -388,6 +398,11 @@ body::before {
       </div>
     </div>
     <div class="chat-footer">
+      <div class="chat-quick-actions" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="btn btn-ghost" id="catchUpBtn" type="button" onclick="loadCatchUp(true)" style="font-size:15px">☀️ Catch Me Up</button>
+        <button class="btn btn-ghost" id="lightchatBtn" type="button" onclick="openLightChat()" style="font-size:15px">💬 Messages</button>
+        <button class="btn btn-ghost" id="kuaishouBtn" type="button" onclick="openKuaishou()" style="font-size:15px">📱 快手</button>
+      </div>
       <div class="input-row">
         <button class="btn btn-mic btn-ghost" id="micBtn" onclick="toggleMic()" title="Voice input">🎤</button>
         <button class="btn btn-mic btn-ghost" id="voiceMuteBtn" onclick="toggleVoiceMute()" title="Mute Binai voice" type="button">🔊</button>
@@ -458,6 +473,19 @@ body::before {
       <button class="btn btn-ghost" id="settingsSaveBtn" onclick="saveProfile()">Save</button>
     </div>
     <div class="card">
+      <div class="card-title" id="settingsAssistantTitle">Assistant name</div>
+      <div class="card-sub" id="settingsAssistantSub" style="margin-bottom:12px">What to call your AI — default Binai. The app stays Binai 💜</div>
+      <input class="field" id="assistantNameInput" placeholder="Binai" maxlength="20">
+      <label class="setup-check" style="margin-top:12px">
+        <input type="checkbox" id="friendModeToggle" onchange="if(wallet)saveProfile()">
+        <span id="friendModeLabel">Friend mode — casual opinions like a close friend</span>
+      </label>
+      <label class="setup-check">
+        <input type="checkbox" id="gentleSuggestionsToggle" checked onchange="if(wallet)saveProfile()">
+        <span id="gentleSuggestionsLabel">Gentle suggestion when I open the app</span>
+      </label>
+    </div>
+    <div class="card">
       <div class="card-title" id="settingsLangTitle">Language</div>
       <div class="card-sub" id="settingsLangSub" style="margin-bottom:12px">Binai replies and voice in this language. Change anytime — saved to your account.</div>
       <div class="lang-grid" id="settingsLangGrid"></div>
@@ -481,6 +509,31 @@ body::before {
       <div class="card-title" id="settingsGenderTitle">How Binai presents</div>
       <div class="card-sub" id="settingsGenderSub" style="margin-bottom:12px">Male, female, or neutral. Neutral is the default — just Binai 💜</div>
       <div class="lang-grid" id="genderGrid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="settingsConnectedTitle">Connected apps</div>
+      <div class="card-sub" id="settingsConnectedSub" style="margin-bottom:12px">Binai can read LightChat and open 快手 — same wallet everywhere.</div>
+      <label class="setup-check">
+        <input type="checkbox" id="lightchatEnabledToggle" checked onchange="if(wallet)saveProfile()">
+        <span id="lightchatEnabledLabel">LightChat — show messages &amp; memories in Catch Me Up</span>
+      </label>
+      <label class="setup-check">
+        <input type="checkbox" id="lightchatMemoriesToggle" checked onchange="if(wallet)saveProfile()">
+        <span id="lightchatMemoriesLabel">Show friend Memories feed</span>
+      </label>
+      <div style="margin-top:10px">
+        <div class="card-sub" id="lightchatHandleLabel" style="margin-bottom:6px">Primary contact @handle (e.g. spouse)</div>
+        <input class="field" id="lightchatHandleInput" placeholder="@bin1977" maxlength="22" onchange="if(wallet)saveProfile()">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn btn-ghost" type="button" id="settingsLcOpenBtn" onclick="openLightChat()" style="flex:1;min-width:120px">💬 Open LightChat</button>
+        <button class="btn btn-ghost" type="button" id="settingsLcCallBtn" onclick="openLightChatCall()" style="flex:1;min-width:120px">📹 Video call</button>
+      </div>
+      <label class="setup-check" style="margin-top:14px">
+        <input type="checkbox" id="kuaishouEnabledToggle" checked onchange="if(wallet)saveProfile()">
+        <span id="kuaishouEnabledLabel">快手 — open app &amp; remember shared links</span>
+      </label>
+      <button class="btn btn-ghost" type="button" id="settingsKsOpenBtn" onclick="openKuaishou()" style="margin-top:10px;width:100%">📱 Open Kuaishou</button>
     </div>
     <div class="card">
       <div class="card-title" id="settingsDataTitle">Your data</div>
@@ -507,6 +560,7 @@ body::before {
     <div class="card">
       <div class="card-title" id="settingsAboutTitle">About Binai</div>
       <div class="card-sub" id="settingsAboutSub">Personal AI on Lightchain AIVM. Remembers you. Community beta for Discord family. Fast mode when REST API ships.</div>
+      <p id="settingsUpdateHelp" style="margin-top:10px;font-size:14px;color:var(--text2);line-height:1.5"></p>
       <p style="margin-top:10px"><a class="footer-link" href="https://x.com/KeikoDevLCAI" target="_blank">@KeikoDevLCAI on X</a></p>
     </div>
   </div>
@@ -525,6 +579,12 @@ body::before {
     <h3 id="insightQuickTitle">Quick action</h3>
     <button class="btn btn-primary" id="insightMorningBtn" style="width:100%;margin-bottom:8px" onclick="switchTab('briefing');loadBriefing(true)">🌅 Morning briefing</button>
     <button class="btn btn-ghost" id="insightMsgBtn" style="width:100%" onclick="document.getElementById('chatInput').focus();switchTab('chat')">💬 New message</button>
+    <button class="btn btn-ghost" id="insightLcBtn" style="width:100%;margin-top:8px" onclick="openLightChat()">💬 LightChat</button>
+    <button class="btn btn-ghost" id="insightKsBtn" style="width:100%;margin-top:8px" onclick="openKuaishou()">📱 快手</button>
+  </div>
+  <div class="insight-card" id="insightLightchatCard">
+    <h3 id="insightLightchatTitle">LightChat</h3>
+    <div id="insightLightchat" style="font-size:15px;color:var(--text2);line-height:1.5">Connect wallet to see messages.</div>
   </div>
   <div class="insight-card">
     <h3 id="insightMemoryTitle">Memory preview</h3>
@@ -725,6 +785,17 @@ body::before {
     <div class="lang-grid" id="setupPoliticalGrid"></div>
     <div class="setup-section-label" id="setupGenderTitle">How Binai presents</div>
     <div class="lang-grid" id="setupGenderGrid"></div>
+    <div class="setup-section-label" id="setupAssistantTitle">Assistant name</div>
+    <p class="setup-section-sub" id="setupAssistantSub">Leave as Binai or pick your own — change anytime.</p>
+    <input class="field" id="setupAssistantName" placeholder="Binai" maxlength="20">
+    <label class="setup-check">
+      <input type="checkbox" id="setupFriendMode">
+      <span id="setupFriendModeLabel">Friend mode — like texting a close friend</span>
+    </label>
+    <label class="setup-check">
+      <input type="checkbox" id="setupGentleSuggestions" checked>
+      <span id="setupGentleSuggestionsLabel">Gentle suggestion when I open the app</span>
+    </label>
     <div class="setup-section-label" id="setupNotifTitle">Reminders &amp; briefings</div>
     <label class="setup-check">
       <input type="checkbox" id="setupDailyBriefing">
@@ -743,9 +814,13 @@ body::before {
   </div>
 </div>
 
-<script src="i18n-ui.js"></script>
+<script>window.BINAI_BUILD = '20260621-1';</script>
+<script src="i18n-ui.js?v=20260621-1"></script>
 <script>
+/* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
+let swRegistration = null;
+let updateReady = false;
 const API = window.BINAI_API || (
   (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
     ? 'http://localhost:8190'
@@ -958,14 +1033,29 @@ function initPrefsSetupPickers() {
     syncPreferenceGrid('genderGrid', localizedPrefs(GENDER_OPTIONS, 'gender'), id);
   });
 }
+function getAssistantName() {
+  const el = document.getElementById('assistantNameInput') || document.getElementById('setupAssistantName');
+  const v = (el && el.value.trim()) || localStorage.getItem('binai_assistant_name') || 'Binai';
+  return v.slice(0, 20) || 'Binai';
+}
+function updateChatPlaceholder() {
+  const inp = document.getElementById('chatInput');
+  if (inp) inp.placeholder = t('chat_placeholder', { name: getAssistantName() });
+}
 function openPrefsSetupModal() {
   initPrefsSetupPickers();
   const d = document.getElementById('setupDailyBriefing');
   const n = document.getElementById('setupNotif');
   const v = document.getElementById('setupVoiceMute');
+  const asn = document.getElementById('setupAssistantName');
+  const fm = document.getElementById('setupFriendMode');
+  const gs = document.getElementById('setupGentleSuggestions');
   if (d) d.checked = localStorage.getItem('binai_daily_briefing') === '1';
   if (n) n.checked = localStorage.getItem('binai_notif') === '1';
   if (v) v.checked = isVoiceMuted();
+  if (asn) asn.value = localStorage.getItem('binai_assistant_name') || 'Binai';
+  if (fm) fm.checked = localStorage.getItem('binai_friend_mode') === '1';
+  if (gs) gs.checked = localStorage.getItem('binai_gentle_suggestions') !== '0';
   document.getElementById('prefsSetupOverlay').classList.remove('hidden');
 }
 async function finishPrefsSetup() {
@@ -1257,6 +1347,7 @@ async function restoreSession() {
   await loadProfile();
   await refreshSub();
   await loadMemories();
+  await refreshLightchatPanel();
   const hadHistory = await loadChatHistory();
   if (!hadHistory) await showWelcomeBack();
 }
@@ -1393,11 +1484,16 @@ function updateLangHint() {
 async function showWelcomeBack() {
   if (!wallet) return;
   try {
-    const r = await fetch(API + '/api/welcome/' + wallet);
+    const hour = new Date().getHours();
+    const r = await fetch(API + '/api/welcome/' + wallet + '?hour=' + hour);
     const d = await r.json();
     const name = d.name || localStorage.getItem('binai_name') || '';
     let msg = name ? t('welcome_back_named', { name }) : t('welcome_back_plain');
     const bits = [];
+    if (d.lightchat && d.lightchat.unread_count) {
+      const u = d.lightchat.unread[0];
+      bits.push(t('welcome_lightchat', { handle: u.handle || '?', preview: u.preview || '' }));
+    }
     if (d.memories && d.memories.length)
       bits.push(t('welcome_remember', { items: d.memories.slice(0, 3).join('; ') }));
     if (d.reminders && d.reminders.length)
@@ -1405,10 +1501,96 @@ async function showWelcomeBack() {
     if (d.notes_count) bits.push(t('welcome_notes', { count: d.notes_count }));
     if (bits.length) msg += '\n\n' + bits.join('\n');
     else msg += '\n\n' + t('welcome_again');
+    if (d.open_suggestion) msg += '\n\n' + d.open_suggestion;
     addBotMsg(msg);
+    refreshLightchatInsight(d.lightchat);
   } catch (_) {
     addBotMsg(t('welcome_back'));
   }
+}
+async function loadCatchUp(speakIt) {
+  if (!wallet) { connectWallet(); return; }
+  try {
+    const r = await fetch(API + '/api/catch-up/' + wallet + '?lang=' + encodeURIComponent(currentLang()));
+    const d = await r.json();
+    addBotMsg(d.catch_up);
+    if (speakIt && typeof speak === 'function') speak(d.catch_up);
+    refreshLightchatInsight(d.lightchat);
+  } catch (_) {
+    addBotMsg(t('catch_up_err'));
+  }
+}
+const LIGHTCHAT_URL = 'https://lightchat.chat';
+const KUAISHOU_URL = 'https://www.kuaishou.com';
+const KUAISHOU_LINK_RE = /https?:\/\/(?:www\.)?(?:kuaishou\.com|kwai\.com|v\.kuaishou\.com|gifshow\.com)\S*/i;
+function primaryLightchatHandle() {
+  const raw = (document.getElementById('lightchatHandleInput')?.value
+    || localStorage.getItem('binai_lightchat_handle')
+    || '@bin1977').trim();
+  return raw.startsWith('@') ? raw : ('@' + raw);
+}
+function openLightChat(handle) {
+  const h = (handle || primaryLightchatHandle()).replace(/^@/, '');
+  window.open(LIGHTCHAT_URL + '?chat=' + encodeURIComponent(h), '_blank', 'noopener');
+}
+function openLightChatCall(handle) {
+  const h = (handle || primaryLightchatHandle()).replace(/^@/, '');
+  window.open(LIGHTCHAT_URL + '?call=' + encodeURIComponent(h), '_blank', 'noopener');
+}
+function openKuaishou() {
+  window.open(KUAISHOU_URL, '_blank', 'noopener');
+}
+function matchConnectorCommand(msg) {
+  const m = (msg || '').trim().toLowerCase();
+  if (/^(open\s+)?light\s*chat|打开\s*lightchat|打开\s*聊天/.test(m)) return 'lightchat';
+  if (/call.+light\s*chat|light\s*chat.+call|视频.+lightchat|用\s*lightchat\s*打|打电话给/.test(m)) return 'lightchat_call';
+  if (/^(open\s+)?kuaishou|打开\s*快手|打开快手/.test(m)) return 'kuaishou';
+  if (/did\s+.+\s+message|message\s+me\s+on\s+lightchat|lightchat\s+message/.test(m)) return 'lightchat_check';
+  if (/发消息|谁给我发|lightchat.*消息/.test(msg)) return 'lightchat_check';
+  return null;
+}
+async function runConnectorCommand(kind) {
+  if (kind === 'lightchat') { openLightChat(); addBotMsg(t('connector_open_lightchat')); return; }
+  if (kind === 'lightchat_call') { openLightChatCall(); addBotMsg(t('connector_call_lightchat', { handle: primaryLightchatHandle() })); return; }
+  if (kind === 'kuaishou') { openKuaishou(); addBotMsg(t('connector_open_kuaishou')); return; }
+  if (kind === 'lightchat_check') {
+    if (!wallet) { connectWallet(); return; }
+    try {
+      const r = await fetch(API + '/api/lightchat/' + wallet);
+      const d = await r.json();
+      refreshLightchatInsight(d);
+      if (d.unread_count) {
+        const items = d.unread.slice(0, 3).map(u => (u.handle || '?') + ': ' + (u.preview || '')).join('; ');
+        addBotMsg(t('connector_lc_unread', { items }));
+      } else if (d.recent_memories && d.recent_memories.length) {
+        const items = d.recent_memories.slice(0, 2).map(m => (m.handle || '?') + ': ' + (m.caption || '')).join('; ');
+        addBotMsg(t('connector_lc_memories', { items }));
+      } else {
+        addBotMsg(t('connector_lc_clear'));
+      }
+    } catch (_) { addBotMsg(t('catch_up_err')); }
+  }
+}
+function refreshLightchatInsight(lc) {
+  const el = document.getElementById('insightLightchat');
+  if (!el) return;
+  if (!wallet) { el.textContent = t('insight_lc_connect'); return; }
+  if (!lc) { el.textContent = t('insight_lc_loading'); return; }
+  if (!lc.enabled) { el.textContent = t('insight_lc_off'); return; }
+  const parts = [];
+  if (lc.unread_count) parts.push(t('insight_lc_unread', { n: lc.unread_count }));
+  if (lc.recent_memories && lc.recent_memories.length) {
+    const m = lc.recent_memories[0];
+    parts.push((m.handle || '?') + ': ' + (m.caption || '').slice(0, 60));
+  }
+  el.textContent = parts.length ? parts.join(' · ') : t('insight_lc_clear');
+}
+async function refreshLightchatPanel() {
+  if (!wallet) return;
+  try {
+    const r = await fetch(API + '/api/lightchat/' + wallet);
+    refreshLightchatInsight(await r.json());
+  } catch (_) {}
 }
 async function rememberFromMsg(el) {
   const text = el.querySelector('.msg-body')?.textContent?.trim();
@@ -1435,9 +1617,19 @@ async function sendChat() {
   const input = document.getElementById('chatInput');
   const msg = input.value.trim();
   if (!msg) return;
+  const cmd = matchConnectorCommand(msg);
+  if (cmd) {
+    input.value = '';
+    addUserMsg(msg);
+    await runConnectorCommand(cmd);
+    return;
+  }
   input.value = '';
   lastUserMsg = msg;
   addUserMsg(msg);
+  if (KUAISHOU_LINK_RE.test(msg) && localStorage.getItem('binai_kuaishou_enabled') !== '0') {
+    setTimeout(() => addBotMsg(t('connector_kuaishou_saved')), 400);
+  }
   const think = addBotMsg(t('thinking'), { actions: false });
   think.classList.add('thinking');
   const t0 = Date.now();
@@ -1849,15 +2041,68 @@ async function loadProfile() {
       selectedReplyDepth = prefs.reply_depth;
       localStorage.setItem('binai_reply_depth', prefs.reply_depth);
     }
+    if (prefs.assistant_name) {
+      localStorage.setItem('binai_assistant_name', prefs.assistant_name);
+      const ai = document.getElementById('assistantNameInput');
+      if (ai) ai.value = prefs.assistant_name;
+    }
+    if (prefs.friend_mode) localStorage.setItem('binai_friend_mode', '1');
+    if (prefs.gentle_suggestions === false) localStorage.setItem('binai_gentle_suggestions', '0');
+    if (prefs.lightchat_enabled === false) localStorage.setItem('binai_lightchat_enabled', '0');
+    else localStorage.setItem('binai_lightchat_enabled', '1');
+    if (prefs.lightchat_show_memories === false) localStorage.setItem('binai_lightchat_memories', '0');
+    else localStorage.setItem('binai_lightchat_memories', '1');
+    if (prefs.lightchat_primary_handle) {
+      localStorage.setItem('binai_lightchat_handle', prefs.lightchat_primary_handle);
+      const hi = document.getElementById('lightchatHandleInput');
+      if (hi) hi.value = prefs.lightchat_primary_handle;
+    }
+    if (prefs.kuaishou_enabled === false) localStorage.setItem('binai_kuaishou_enabled', '0');
+    else localStorage.setItem('binai_kuaishou_enabled', '1');
     initLanguagePickers();
     initPreferencePickers();
+    initSettingsToggles();
     applyI18n();
+    updateChatPlaceholder();
   } catch (_) {}
+}
+function readPersonalizePrefs() {
+  const assistant = (document.getElementById('assistantNameInput')?.value.trim()
+    || document.getElementById('setupAssistantName')?.value.trim()
+    || localStorage.getItem('binai_assistant_name') || 'Binai').slice(0, 20) || 'Binai';
+  localStorage.setItem('binai_assistant_name', assistant);
+  const friendMode = !!(document.getElementById('friendModeToggle')?.checked
+    || document.getElementById('setupFriendMode')?.checked);
+  localStorage.setItem('binai_friend_mode', friendMode ? '1' : '0');
+  const gentle = document.getElementById('gentleSuggestionsToggle')?.checked
+    ?? document.getElementById('setupGentleSuggestions')?.checked
+    ?? localStorage.getItem('binai_gentle_suggestions') !== '0';
+  localStorage.setItem('binai_gentle_suggestions', gentle ? '1' : '0');
+  const lcEn = document.getElementById('lightchatEnabledToggle')?.checked !== false;
+  const lcMem = document.getElementById('lightchatMemoriesToggle')?.checked !== false;
+  const lcHandle = (document.getElementById('lightchatHandleInput')?.value || '@bin1977').trim();
+  const ksEn = document.getElementById('kuaishouEnabledToggle')?.checked !== false;
+  localStorage.setItem('binai_lightchat_enabled', lcEn ? '1' : '0');
+  localStorage.setItem('binai_lightchat_memories', lcMem ? '1' : '0');
+  localStorage.setItem('binai_lightchat_handle', lcHandle);
+  localStorage.setItem('binai_kuaishou_enabled', ksEn ? '1' : '0');
+  return {
+    assistant_name: assistant,
+    friend_mode: friendMode,
+    gentle_suggestions: gentle,
+    lightchat_enabled: lcEn,
+    lightchat_show_memories: lcMem,
+    lightchat_primary_handle: lcHandle,
+    kuaishou_enabled: ksEn,
+    kuaishou_remember_links: ksEn,
+  };
 }
 async function saveProfile() {
   const name = document.getElementById('nameInput').value.trim() ||
     localStorage.getItem('binai_name') || '';
   if (name) localStorage.setItem('binai_name', name);
+  const personal = readPersonalizePrefs();
+  updateChatPlaceholder();
   if (!wallet) return;
   await fetch(API + '/api/profile/' + wallet, {
     method: 'POST', headers: {'Content-Type':'application/json'},
@@ -1869,6 +2114,14 @@ async function saveProfile() {
         political: selectedPolitical,
         persona_gender: selectedGender,
         reply_depth: selectedReplyDepth,
+        assistant_name: personal.assistant_name,
+        friend_mode: personal.friend_mode,
+        gentle_suggestions: personal.gentle_suggestions,
+        lightchat_enabled: personal.lightchat_enabled,
+        lightchat_show_memories: personal.lightchat_show_memories,
+        lightchat_primary_handle: personal.lightchat_primary_handle,
+        kuaishou_enabled: personal.kuaishou_enabled,
+        kuaishou_remember_links: personal.kuaishou_remember_links,
       },
     }),
   });
@@ -2070,8 +2323,22 @@ function scheduleDailyBriefing() {
 function initSettingsToggles() {
   const n = document.getElementById('notifToggle');
   const d = document.getElementById('dailyBriefingToggle');
+  const ai = document.getElementById('assistantNameInput');
+  const fm = document.getElementById('friendModeToggle');
+  const gs = document.getElementById('gentleSuggestionsToggle');
+  const lce = document.getElementById('lightchatEnabledToggle');
+  const lcm = document.getElementById('lightchatMemoriesToggle');
+  const lch = document.getElementById('lightchatHandleInput');
+  const kse = document.getElementById('kuaishouEnabledToggle');
   if (n) n.checked = localStorage.getItem('binai_notif') === '1';
   if (d) d.checked = localStorage.getItem('binai_daily_briefing') === '1';
+  if (ai) ai.value = localStorage.getItem('binai_assistant_name') || 'Binai';
+  if (fm) fm.checked = localStorage.getItem('binai_friend_mode') === '1';
+  if (gs) gs.checked = localStorage.getItem('binai_gentle_suggestions') !== '0';
+  if (lce) lce.checked = localStorage.getItem('binai_lightchat_enabled') !== '0';
+  if (lcm) lcm.checked = localStorage.getItem('binai_lightchat_memories') !== '0';
+  if (lch) lch.value = localStorage.getItem('binai_lightchat_handle') || '@bin1977';
+  if (kse) kse.checked = localStorage.getItem('binai_kuaishou_enabled') !== '0';
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
@@ -2090,6 +2357,45 @@ function refreshInsightMemoryText() {
   if (!el || el.querySelector('span[style]')) return;
   if (!wallet) el.textContent = t('insight_connect_mem');
 }
+function isLocalDev() {
+  return location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+}
+function showUpdateBanner() {
+  if (updateReady) return;
+  updateReady = true;
+  const el = document.getElementById('updateBanner');
+  if (el) el.classList.add('visible');
+}
+function applyBinaiUpdate() {
+  const waiting = swRegistration && swRegistration.waiting;
+  if (waiting) waiting.postMessage({ type: 'SKIP_WAITING' });
+  else location.reload();
+}
+async function initServiceWorker() {
+  if (isLocalDev() || !('serviceWorker' in navigator)) return;
+  try {
+    swRegistration = await navigator.serviceWorker.register('./sw.js');
+    swRegistration.addEventListener('updatefound', function () {
+      const nw = swRegistration.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', function () {
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          showUpdateBanner();
+        }
+      });
+    });
+    if (swRegistration.waiting && navigator.serviceWorker.controller) showUpdateBanner();
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible' && swRegistration) swRegistration.update();
+    });
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (window._binaiReloading) return;
+      window._binaiReloading = true;
+      location.reload();
+    });
+    await swRegistration.update();
+  } catch (_) {}
+}
 function startApp() {
   initOnboarding();
   initLanguagePickers();
@@ -2103,6 +2409,7 @@ function startApp() {
   scheduleDailyBriefing();
 }
 async function boot() {
+  initServiceWorker();
   migrateLegacyPin();
   await loadAppConfig();
   if (!checkTermsGate()) return;

@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "apps": [
+    {
+      "id": "lightchat",
+      "name": "LightChat",
+      "name_zh": "LightChat",
+      "url": "https://lightchat.chat",
+      "icon": "💬",
+      "enabled_by_default": true,
+      "actions": [
+        {
+          "id": "open",
+          "label": "Open LightChat",
+          "label_zh": "打开 LightChat",
+          "deep_link": "https://lightchat.chat"
+        },
+        {
+          "id": "chat",
+          "label": "Message contact",
+          "label_zh": "发消息",
+          "deep_link": "https://lightchat.chat?chat={handle}"
+        },
+        {
+          "id": "call",
+          "label": "Video call",
+          "label_zh": "视频通话",
+          "deep_link": "https://lightchat.chat?call={handle}"
+        }
+      ]
+    },
+    {
+      "id": "kuaishou",
+      "name": "Kuaishou",
+      "name_zh": "快手",
+      "url": "https://www.kuaishou.com",
+      "icon": "📱",
+      "enabled_by_default": true,
+      "actions": [
+        {
+          "id": "open",
+          "label": "Open Kuaishou",
+          "label_zh": "打开快手",
+          "deep_link": "https://www.kuaishou.com"
+        }
+      ]
+    }
+  ]
+}
