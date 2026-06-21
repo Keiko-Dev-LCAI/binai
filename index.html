@@ -674,6 +674,18 @@ const LANGS = [
   {id:'pt',label:'🇧🇷 Portuguese'},{id:'de',label:'🇩🇪 German'},{id:'ja',label:'🇯🇵 Japanese'},
   {id:'zh',label:'🇨🇳 Chinese'}
 ];
+const SPEECH_LANG = {
+  en:'en-US', es:'es-ES', fr:'fr-FR', pt:'pt-BR', de:'de-DE', ja:'ja-JP', zh:'zh-CN'
+};
+const LANG_AI_HINTS = {
+  en:'Binai replies in English.',
+  es:'Binai responderá en español.',
+  fr:'Binai répondra en français.',
+  pt:'O Binai responderá em português.',
+  de:'Binai antwortet auf Deutsch.',
+  ja:'Binaiは日本語で返信します。',
+  zh:'Binai 将用简体中文回复。'
+};
 const PERSONALITIES = [
   {id:'warm',label:'💜 Warm',desc:'Friendly & caring'},
   {id:'direct',label:'⚡ Direct',desc:'Short & to the point'},
@@ -802,8 +814,10 @@ function buildLanguageGrid(gridId, onSelect) {
   });
 }
 function initLanguagePickers() {
-  buildLanguageGrid('langGrid', () => { applyI18n(); if (wallet) saveProfile(); });
-  buildLanguageGrid('settingsLangGrid', () => { applyI18n(); saveProfile(); });
+  const onPick = () => { applyI18n(); updateLangHint(); if (wallet) saveProfile(); };
+  buildLanguageGrid('langGrid', onPick);
+  buildLanguageGrid('settingsLangGrid', onPick);
+  updateLangHint();
 }
 
 // ── Onboarding ─────────────────────────────────────────────────────────────
@@ -1201,6 +1215,13 @@ async function loadChatHistory() {
 function currentLang() {
   return localStorage.getItem('binai_lang') || 'en';
 }
+function speechLang() {
+  return SPEECH_LANG[currentLang()] || 'en-US';
+}
+function updateLangHint() {
+  const el = document.getElementById('settingsLangSub');
+  if (el) el.textContent = LANG_AI_HINTS[currentLang()] || LANG_AI_HINTS.en;
+}
 async function showWelcomeBack() {
   if (!wallet) return;
   try {
@@ -1342,7 +1363,7 @@ function toggleMic() {
     return;
   }
   recognition = new SR();
-  recognition.lang = localStorage.getItem('binai_lang') || 'en-US';
+  recognition.lang = speechLang();
   recognition.interimResults = false;
   recognition.onstart = () => {
     listening = true;
@@ -1367,7 +1388,7 @@ function toggleMic() {
 function speak(text) {
   if (!window.speechSynthesis) return;
   const u = new SpeechSynthesisUtterance(text.slice(0, 800));
-  u.lang = (localStorage.getItem('binai_lang') || 'en').replace('zh','zh-CN').replace('ja','ja-JP');
+  u.lang = speechLang();
   u.rate = 1;
   speechSynthesis.cancel();
   speechSynthesis.speak(u);
