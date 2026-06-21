@@ -4,22 +4,17 @@
       <stop offset="0%" stop-color="#12122a"/>
       <stop offset="100%" stop-color="#0d0d1a"/>
     </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="48%" r="52%">
-      <stop offset="0%" stop-color="#9b7fe8" stop-opacity="0.5"/>
+    <radialGradient id="glow" cx="50%" cy="42%" r="52%">
+      <stop offset="0%" stop-color="#9b7fe8" stop-opacity="0.45"/>
       <stop offset="100%" stop-color="#9b7fe8" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="heart" x1="256" y1="150" x2="256" y2="390" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#d2beff"/>
-      <stop offset="45%" stop-color="#9b7fe8"/>
+    <linearGradient id="letter" x1="180" y1="120" x2="340" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#e8deff"/>
+      <stop offset="50%" stop-color="#9b7fe8"/>
       <stop offset="100%" stop-color="#6c4ec6"/>
-    </linearGradient>
-    <linearGradient id="shine" x1="220" y1="170" x2="300" y2="250" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="108" fill="url(#bg)"/>
   <rect width="512" height="512" rx="108" fill="url(#glow)"/>
-  <path fill="url(#heart)" d="M256 392c-72-48-120-88-120-148 0-44 32-76 76-76 28 0 44 14 56 28 12-14 28-28 56-28 44 0 76 32 76 76 0 60-48 100-120 148z"/>
-  <path fill="url(#shine)" d="M256 392c-72-48-120-88-120-148 0-44 32-76 76-76 28 0 44 14 56 28 12-14 28-28 56-28 44 0 76 32 76 76 0 60-48 100-120 148z" opacity="0.45"/>
+  <text x="256" y="330" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="280" font-weight="700" fill="url(#letter)">B</text>
 </svg>
