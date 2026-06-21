@@ -700,6 +700,42 @@ The goal: Binai should feel like it already knows your day, your people, your ha
 | **Location hints** (#5 full) | ❌ | Opt-in geolocation + disclosure |
 | **"When I get home"** (#7) | ❌ | Location or manual home time memory |
 
+### Casual friend conversations — BRAINSTORM (Keiko direction)
+
+**Use case:** Wife snaps a photo, asks her AI *"what do you think?"* or *"do I look fat in this dress?"* — like texting a trusted friend, not a corporate bot.
+
+| Piece | Today | Target |
+|-------|-------|--------|
+| **Casual text chat** | ✅ Warm / Playful personality + Chatty reply depth | Add optional **Friend mode** tone in Settings |
+| **Knows her** | ✅ About Me + memories — can reference style, occasions, what she likes | Stronger with Smart UX welcome-back |
+| **Photo + opinion** | ❌ No camera yet | 📷 Vision (Phase 3) + **friend-style photo prompts** |
+| **Chinese (Sherry)** | ✅ AI replies in Chinese | Same friend energy in zh — not stiff translation |
+
+**How Binai should answer appearance questions (locked direction):**
+
+- **Sound like a kind friend** — supportive, honest about *fit, color, style, occasion* — not a fashion critic or a yes-man
+- **Never body-shame** — don't say "you look fat." Address the real worry: *"That cut is flattering — the color works on you. How do you feel in it?"*
+- **Compliment specifically** — "the neckline balances the look" beats generic "you look great"
+- **Ask one follow-up** — "Going out or staying in?" / "Want honest or just hype?" *(Playful personality)*
+- **If vision can't tell** — say so kindly; still be encouraging about what they shared
+- **Not a doctor or therapist** — if body image sounds distressed, gentle + suggest someone they trust
+
+**Friend mode (optional Settings toggle or personality variant):**
+
+- More *"girl talk"* / *"buddy talk"* — contractions, reactions ("oh I love that color on you"), light emoji
+- Still remembers facts; still private
+- Works with **custom assistant name** — "Luna" giving dress advice hits different than "Binai" corporate voice
+
+**Build tie-in:**
+
+1. **Now (text only):** strengthen `playful` + `warm` prompts for opinion/advice chat — "respond like a close friend when user asks what you think"
+2. **With camera:** photo → vision describes outfit → friend-tone reply; buttons: **Remember this look** / **Save to Archives**
+3. **With Smart UX:** *"You loved that blue dress last time — trying something new?"*
+
+*Keiko: "That would make it way more personal"* — this is the same instinct: Binai as someone who knows you, not a search box.
+
+---
+
 ### Phase 1c — Smart UX (web) — BRAINSTORM build order
 
 *After phone testing passes; before camera if Keiko wants the "wow" on memory first.*
