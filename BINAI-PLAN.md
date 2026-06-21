@@ -1,6 +1,6 @@
 # Binai 💜 — Full Project Plan
-**Last updated:** 2026-06-20 (session 132 — Grok)  
-**Status:** Phase 1 community beta — **BUILDING NOW** (aaaba AIVM; swap to REST API when it lands)  
+**Last updated:** 2026-06-20 (session 133 — Grok)  
+**Status:** Phase 1 community beta — **V1 COMPLETE ✅** (web shippable; `binai.win` registered, DNS pending)  
 **Owner:** Keiko (Keiko-Dev-LCAI)  
 **Repo:** `~/Desktop/binai/` (local; push to `Keiko-Dev-LCAI/binai` when ready)
 
@@ -25,7 +25,8 @@
 
 **Local dev:** `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && PORT=8190 .venv/bin/python server.py` → open `index.html` with backend at localhost:8190.
 
-**Railway:** Project `binai` — **LIVE** at https://binai-production.up.railway.app · volume `binai-volume` at `/app/data` · repo `Keiko-Dev-LCAI/binai`
+**Railway:** Project `binai` — **LIVE** at https://binai-production.up.railway.app · volume `binai-volume` at `/app/data` · repo `Keiko-Dev-LCAI/binai` · commit `54b491b`  
+**Domain:** `binai.win` registered on Cloudflare (2026-06-20) — **DNS → Railway pending** (Claude task)
 
 **Android:** `android/` folder scaffolded — build APK with Android Studio: `npx cap open android`
 

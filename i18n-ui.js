@@ -43,6 +43,7 @@ window.BINAI_I18N = {
     daily_briefing_toggle: 'Daily morning briefing reminder', notif_toggle: 'Reminder notifications',
     legal_title: 'Legal', legal_sub: 'Terms, disclaimers, privacy summary, and no-refund policy.',
     terms_btn: '📋 Terms & Disclosures', privacy_btn: '🔐 Privacy Policy',
+    privacy_title: '🔐 Privacy Policy', terms_title: '📋 Terms & Disclosures',
     about_title: 'About Binai', about_sub: 'Personal AI on Lightchain AIVM. Remembers you. Community beta for Discord family. Fast mode when REST API ships.',
     wc_title: '🔗 Connect wallet', wc_welcome_back: 'Welcome back — tap Connect to continue with your saved wallet.',
     wc_setup: 'One-time setup — then Binai remembers your wallet. After that, your PIN opens the app.',
@@ -130,6 +131,7 @@ window.BINAI_I18N = {
     daily_briefing_toggle: '每日晨间简报提醒', notif_toggle: '提醒通知',
     legal_title: '法律', legal_sub: '条款、免责声明、隐私摘要、不退款政策。',
     terms_btn: '📋 条款与声明', privacy_btn: '🔐 隐私政策',
+    privacy_title: '🔐 隐私政策', terms_title: '📋 条款与声明',
     about_title: '关于 Binai', about_sub: 'Lightchain AIVM 私人 AI。记住你。Discord 社区测试版。REST API 上线后提速。',
     wc_title: '🔗 连接钱包', wc_welcome_back: '欢迎回来 — 点「连接」继续使用已保存的钱包。',
     wc_setup: '只需设置一次 — 之后 Binai 会记住你的钱包。以后用 PIN 打开应用。',
@@ -253,6 +255,8 @@ window.applyI18n = function() {
   set('settingsLegalSub', 'legal_sub');
   set('settingsTermsBtn', 'terms_btn');
   set('settingsPrivacyBtn', 'privacy_btn');
+  set('privacyModalTitle', 'privacy_title');
+  set('termsModalTitle', 'terms_title');
   set('settingsAboutTitle', 'about_title');
   set('settingsAboutSub', 'about_sub');
   set('wcTitle', 'wc_title');
