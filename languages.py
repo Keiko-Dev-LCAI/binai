@@ -51,6 +51,10 @@ LANG_PACKS = {
             "anything that could seriously hurt you or someone else.\n\n"
             "Happy to help with almost anything else though — what's on your mind?"
         ),
+        "aivm_busy": (
+            "Binai is busy on Lightchain right now — too many testers at once. "
+            "Please wait 30 seconds and try again."
+        ),
     },
     "es": {
         "native": "Spanish (Español)",
@@ -92,6 +96,10 @@ LANG_PACKS = {
             "No puedo ayudar con eso — no puedo asistir con actividad ilegal ni "
             "algo que pueda hacerte daño a ti o a otros.\n\n"
             "Pero con casi todo lo demás sí puedo ayudar — ¿qué tienes en mente?"
+        ),
+        "aivm_busy": (
+            "Binai está ocupado en Lightchain ahora — muchos testers a la vez. "
+            "Espera 30 segundos e inténtalo de nuevo."
         ),
     },
     "fr": {
@@ -135,6 +143,10 @@ LANG_PACKS = {
             "ou quelque chose qui pourrait te blesser ou blesser quelqu'un d'autre.\n\n"
             "Mais pour presque tout le reste, je suis là — qu'as-tu en tête ?"
         ),
+        "aivm_busy": (
+            "Binai est occupé sur Lightchain — trop de testeurs en même temps. "
+            "Attends 30 secondes et réessaie."
+        ),
     },
     "pt": {
         "native": "Portuguese (Português)",
@@ -176,6 +188,10 @@ LANG_PACKS = {
             "Não posso ajudar com isso — não posso auxiliar atividade ilegal nem "
             "algo que possa machucar você ou outra pessoa.\n\n"
             "Mas com quase tudo mais posso ajudar — o que você tem em mente?"
+        ),
+        "aivm_busy": (
+            "O Binai está ocupado na Lightchain agora — muitos testadores ao mesmo tempo. "
+            "Aguarde 30 segundos e tente novamente."
         ),
     },
     "de": {
@@ -219,6 +235,10 @@ LANG_PACKS = {
             "oder etwas, das dir oder anderen ernsthaft schaden könnte.\n\n"
             "Bei fast allem anderen helfe ich gern — was beschäftigt dich?"
         ),
+        "aivm_busy": (
+            "Binai ist gerade auf Lightchain ausgelastet — zu viele Tester gleichzeitig. "
+            "Bitte 30 Sekunden warten und erneut versuchen."
+        ),
     },
     "ja": {
         "native": "Japanese (日本語)",
@@ -259,6 +279,10 @@ LANG_PACKS = {
             "それについてはお手伝いできません — 違法行為や、あなたや他人に "
             "深刻な危害を与える可能性があることはサポートできません。\n\n"
             "それ以外のことならほとんど何でもお手伝いします — 何かありますか？"
+        ),
+        "aivm_busy": (
+            "Binai は Lightchain で混雑しています — テスターが多すぎます。"
+            "30秒待ってからもう一度お試しください。"
         ),
     },
     "zh": {
@@ -301,8 +325,36 @@ LANG_PACKS = {
             "这个我无法帮助 — 我不能协助违法活动，或可能严重伤害你或他人的事情。\n\n"
             "但几乎所有其他事情我都可以帮忙 — 你想聊什么？"
         ),
+        "aivm_busy": (
+            "Binai 在 Lightchain 上太忙了 — 测试用户太多。"
+            "请等 30 秒后再试。"
+        ),
     },
 }
+
+
+def aivm_busy_message(lang):
+    return lang_pack(lang).get("aivm_busy", LANG_PACKS["en"]["aivm_busy"])
+
+
+_AIVM_INFRA_PATTERNS = (
+    "temporarily unavailable",
+    "network or aivm issue",
+    "replacement transaction underpriced",
+    "-32000",
+    "aivm timed out",
+    "aivm job failed",
+    "createSession reverted",
+    "submitJob reverted",
+    "no response from aivm",
+)
+
+
+def is_aivm_infra_failure(text):
+    body = (text or "").strip().lower()
+    if not body:
+        return True
+    return any(p in body for p in _AIVM_INFRA_PATTERNS)
 
 LANG_MARKERS = {
     "en": re.compile(
