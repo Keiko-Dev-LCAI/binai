@@ -134,6 +134,19 @@ body::before {
 .setup-section-sub { font-size: 13px; color: var(--text2); margin: -2px 0 8px; line-height: 1.45; }
 .setup-check { display: flex; align-items: flex-start; gap: 10px; margin-top: 10px; font-size: 15px; cursor: pointer; line-height: 1.45; }
 .setup-check input { margin-top: 3px; flex-shrink: 0; }
+.about-privacy {
+  background: rgba(155,127,232,0.10); border: 1px solid rgba(155,127,232,0.28);
+  border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; font-size: 14px;
+  line-height: 1.55; color: var(--text2);
+}
+.about-privacy strong { color: var(--text); display: block; margin-bottom: 6px; }
+.bio-input {
+  width: 100%; min-height: 320px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 16px; color: var(--text); font-size: 16px;
+  line-height: 1.55; font-family: inherit; resize: vertical; outline: none; margin-bottom: 10px;
+}
+.bio-input:focus { border-color: var(--purple); }
+.bio-meta { font-size: 13px; color: var(--text2); margin-bottom: 12px; }
 .hidden { display: none !important; }
 .overlay.hidden { display: none; }
 .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 18px;
@@ -308,6 +321,7 @@ body::before {
     <div class="side-nav-item" data-tab="notes" onclick="switchTab('notes')">📝 Notes</div>
     <div class="side-nav-item" data-tab="reminders" onclick="switchTab('reminders')">⏰ Reminders</div>
     <div class="side-nav-item" data-tab="memory" onclick="switchTab('memory')">🧠 Memory</div>
+    <div class="side-nav-item" data-tab="aboutme" onclick="switchTab('aboutme')">👤 About Me</div>
     <div class="side-nav-item" data-tab="settings" onclick="switchTab('settings')">⚙️ Settings</div>
   </nav>
   <div class="sidebar-foot">
@@ -333,6 +347,7 @@ body::before {
   <div class="tab" data-tab="notes" onclick="switchTab('notes')">📝 Notes</div>
   <div class="tab" data-tab="reminders" onclick="switchTab('reminders')">⏰ Remind</div>
   <div class="tab" data-tab="memory" onclick="switchTab('memory')">🧠 Memory</div>
+  <div class="tab" data-tab="aboutme" onclick="switchTab('aboutme')">👤 Me</div>
   <div class="tab" data-tab="settings" onclick="switchTab('settings')">⚙️</div>
 </div>
 
@@ -408,8 +423,21 @@ body::before {
     <div id="remindersList"></div>
   </div>
 
+  <div class="panel" id="panel-aboutme">
+    <div class="about-privacy">
+      <strong id="aboutPrivacyTitle">🔒 Private to you</strong>
+      <span id="aboutPrivacyText">Only your wallet can see this. Used to personalize Binai when you chat. Never put seed phrases, passwords, or payment cards here.</span>
+    </div>
+    <p id="aboutIntro" style="color:var(--text2);margin-bottom:12px;line-height:1.5">Your life story — age, work, family, friends, favorites. Paste everything once. Binai reads it privately; it is not saved as chat.</p>
+    <textarea class="bio-input" id="bioInput" placeholder="Tell Binai about yourself…" oninput="updateBioMeta()"></textarea>
+    <div class="bio-meta" id="bioMeta"></div>
+    <button class="btn btn-primary" id="aboutSaveBtn" style="width:100%" onclick="saveAboutMe()">Save About Me</button>
+    <div class="err" id="aboutErr" style="margin-top:8px"></div>
+    <p id="aboutSaved" style="display:none;color:var(--green);font-size:14px;margin-top:8px"></p>
+  </div>
+
   <div class="panel" id="panel-memory">
-    <p id="memoryIntro" style="color:var(--text2);margin-bottom:12px;line-height:1.5">What Binai remembers about you. Add manually or say "remember …" in chat.</p>
+    <p id="memoryIntro" style="color:var(--text2);margin-bottom:12px;line-height:1.5">What Binai remembers about you. Add manually or say "remember …" in chat. For your full story, use <a class="footer-link" href="#" onclick="switchTab('aboutme');return false">About Me</a>.</p>
     <div class="input-row" style="margin-bottom:12px">
       <input class="field" style="margin:0" id="memInput" placeholder="Remember that…">
       <button class="btn btn-primary" onclick="addMemory()">+</button>
@@ -566,7 +594,7 @@ body::before {
         <p>Your wallet address is your Binai account ID. An optional PIN locks the app on your device only — stored locally, keyed to your wallet address, not on our server.</p></div>
       <div class="terms-divider"></div>
       <div class="terms-section"><h3>What we store</h3>
-        <p>Display name, language, preferences, memories, notes, reminders, chat history, subscription/usage records. Stored on Railway cloud infrastructure.</p></div>
+        <p>Display name, language, preferences, About Me (private bio), memories, notes, reminders, chat history, subscription/usage records. Stored on Railway cloud infrastructure. About Me is only visible to your wallet — never shown to other users.</p></div>
       <div class="terms-divider"></div>
       <div class="terms-section"><h3>What we don't do</h3>
         <p>We do not sell your data. We do not read your mic until you tap the mic button. Voice is converted to text by your browser/device where supported.</p></div>
@@ -1296,6 +1324,7 @@ function switchTab(name) {
   if (name === 'notes') loadNotes();
   if (name === 'reminders') loadReminders();
   if (name === 'memory') loadMemories();
+  if (name === 'aboutme') loadAboutMe();
   if (name === 'settings') { refreshSub(); initPreferencePickers(); initSettingsToggles(); loadProfile(); }
   if (name === 'briefing') loadBriefing(false);
 }
@@ -1666,6 +1695,55 @@ async function addReminder() {
 async function deleteRem(id) {
   await fetch(API + '/api/reminders/' + wallet + '/' + id, { method: 'DELETE' });
   loadReminders();
+}
+
+let aboutMeMaxChars = 12000;
+function updateBioMeta() {
+  const el = document.getElementById('bioMeta');
+  const ta = document.getElementById('bioInput');
+  if (!el || !ta) return;
+  const n = ta.value.length;
+  el.textContent = t('about_chars', { n, max: aboutMeMaxChars });
+}
+async function loadAboutMe() {
+  if (!wallet) {
+    document.getElementById('aboutErr').textContent = t('about_connect');
+    return;
+  }
+  document.getElementById('aboutErr').textContent = '';
+  document.getElementById('aboutSaved').style.display = 'none';
+  try {
+    const r = await fetch(API + '/api/about-me/' + wallet);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'load failed');
+    aboutMeMaxChars = d.max_chars || 12000;
+    document.getElementById('bioInput').value = d.bio || '';
+    updateBioMeta();
+  } catch (e) {
+    document.getElementById('aboutErr').textContent = e.message || t('err_generic');
+  }
+}
+async function saveAboutMe() {
+  if (!wallet) { connectWallet(); return; }
+  const bio = document.getElementById('bioInput').value;
+  const err = document.getElementById('aboutErr');
+  const ok = document.getElementById('aboutSaved');
+  err.textContent = '';
+  ok.style.display = 'none';
+  try {
+    const r = await fetch(API + '/api/about-me/' + wallet, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bio }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || t('err_generic'));
+    ok.textContent = t('about_saved');
+    ok.style.display = 'block';
+    updateBioMeta();
+  } catch (e) {
+    err.textContent = e.message || t('err_generic');
+  }
 }
 
 async function loadMemories() {
