@@ -475,36 +475,63 @@ _BRIEF_SKIP_PATTERNS = [
     re.compile(r"\b(plan|explain|help\s+me|tell\s+me\s+about|write|draft|list)\b", re.I),
 ]
 
+REPLY_DEPTHS = ("short", "balanced", "chatty")
+
 _BRIEF_INTENT_INSTRUCTIONS = {
-    "en": (
-        "THIS MESSAGE IS SHORT/CASUAL. Reply in 1–2 sentences max. "
-        "No follow-up questions. No paragraphs."
-    ),
-    "es": (
-        "MENSAJE CORTO/INFORMAL. Responde en 1–2 frases máximo. "
-        "Sin preguntas de seguimiento. Sin párrafos."
-    ),
-    "fr": (
-        "MESSAGE COURT/DÉCONTRACTÉ. Réponds en 1–2 phrases max. "
-        "Pas de questions de suivi. Pas de paragraphes."
-    ),
-    "pt": (
-        "MENSAGEM CURTA/INFORMAL. Responda em 1–2 frases no máximo. "
-        "Sem perguntas de follow-up. Sem parágrafos."
-    ),
-    "de": (
-        "KURZE/LOCKERE NACHRICHT. Antworte in max. 1–2 Sätzen. "
-        "Keine Folgefragen. Keine Absätze."
-    ),
-    "ja": (
-        "短い/カジュアルなメッセージです。1〜2文以内で答えてください。"
-        "追い質問や長文は不要です。"
-    ),
-    "zh": (
-        "这是简短/随意的消息。最多 1–2 句话回复。"
-        "不要追问，不要长篇大论。"
-    ),
+    "short": {
+        "en": (
+            "THIS MESSAGE IS SHORT/CASUAL. Reply in 1–2 sentences max. "
+            "No follow-up questions. No paragraphs."
+        ),
+        "zh": "这是简短消息。最多 1–2 句话。不要追问。",
+    },
+    "balanced": {
+        "en": (
+            "THIS MESSAGE IS SHORT/CASUAL. Keep it to 2–3 sentences. "
+            "One brief warm line is fine; avoid long paragraphs."
+        ),
+        "zh": "这是简短消息。2–3 句话即可。可以温暖，但不要长篇。",
+    },
+    "chatty": {
+        "en": (
+            "THIS MESSAGE IS SHORT but the user likes conversation. "
+            "You may ask one natural follow-up question. Stay under 5 sentences."
+        ),
+        "zh": "消息较短，但用户喜欢聊天。可以问一个自然的追问。不超过 5 句。",
+    },
 }
+
+_REPLY_DEPTH_INSTRUCTIONS = {
+    "short": {
+        "en": (
+            "USER REPLY LENGTH: SHORT. Default 1–2 sentences. "
+            "Greetings (GM, hi): one line back — no follow-up questions. "
+            "Simple facts: one direct answer."
+        ),
+        "zh": "回复长度：简短。默认 1–2 句。问候一句带过，不要追问。",
+    },
+    "balanced": {
+        "en": (
+            "USER REPLY LENGTH: BALANCED (default). Usually 2–4 sentences. "
+            "Greetings: warm but brief. Follow-ups OK when the topic invites it. "
+            "Go longer only when they ask for plans, advice, or detail."
+        ),
+        "zh": "回复长度：均衡。通常 2–4 句。问候温暖但简短。需要时可追问。",
+    },
+    "chatty": {
+        "en": (
+            "USER REPLY LENGTH: CHATTY. Be conversational — questions welcome. "
+            "Engage naturally; up to ~5 sentences on casual chat. "
+            "Still skip essays on simple GM/hi unless they clearly want to talk."
+        ),
+        "zh": "回复长度：健谈。可以对话、可以追问。自然聊天，约 5 句以内。",
+    },
+}
+
+_OPEN_SHORT_PAT = re.compile(
+    r"\b(bored|lonely|sad|upset|anxious|stressed|depressed|help|why|feel|thinking|miss)\b",
+    re.I,
+)
 
 _QUICK_GREETINGS = {
     "en": {
@@ -564,6 +591,24 @@ _HOLIDAY_PHRASES = {
 }
 
 
+def resolve_reply_depth(prefs):
+    prefs = prefs or {}
+    depth = prefs.get("reply_depth")
+    if depth in REPLY_DEPTHS:
+        return depth
+    personality = prefs.get("personality") or "warm"
+    if personality in ("direct", "professional"):
+        return "short"
+    if personality == "playful":
+        return "chatty"
+    return "balanced"
+
+
+def reply_depth_instruction(depth, lang):
+    pack = _REPLY_DEPTH_INSTRUCTIONS.get(depth, _REPLY_DEPTH_INSTRUCTIONS["balanced"])
+    return pack.get(lang, pack["en"])
+
+
 def is_brief_intent(message):
     msg = (message or "").strip()
     if not msg or len(msg) > 140:
@@ -576,6 +621,8 @@ def is_brief_intent(message):
         return True
     words = msg.split()
     if len(words) <= 4 and "?" not in msg:
+        if _OPEN_SHORT_PAT.search(msg):
+            return False
         return True
     if "?" in msg and len(words) <= 10:
         low = msg.lower()
@@ -584,8 +631,9 @@ def is_brief_intent(message):
     return False
 
 
-def brief_intent_instruction(lang):
-    return _BRIEF_INTENT_INSTRUCTIONS.get(lang, _BRIEF_INTENT_INSTRUCTIONS["en"])
+def brief_intent_instruction(lang, depth="balanced"):
+    pack = _BRIEF_INTENT_INSTRUCTIONS.get(depth, _BRIEF_INTENT_INSTRUCTIONS["balanced"])
+    return pack.get(lang, pack["en"])
 
 
 def _name_suffix(name, lang):
@@ -633,12 +681,14 @@ def quick_time_reply(lang):
     return templates.get(lang, templates["en"])
 
 
-def quick_chat_reply(message, lang, name=""):
+def quick_chat_reply(message, lang, name="", depth="balanced"):
     msg = (message or "").strip()
     if not msg:
         return None
     if any(p.search(msg) for p in _TIME_PATTERNS):
         return quick_time_reply(lang)
+    if depth != "short":
+        return None
     if not is_brief_intent(msg):
         return None
     kind = _greeting_kind(msg)
@@ -668,13 +718,15 @@ def _split_sentences(text):
     return [p.strip() for p in parts if p.strip()]
 
 
-def enforce_brief_reply(reply, message):
-    if not is_brief_intent(message):
+def enforce_brief_reply(reply, message, depth="balanced"):
+    if depth == "chatty" or not is_brief_intent(message):
         return (reply or "").strip()
+    limits = {"short": 2, "balanced": 4, "chatty": 99}
+    max_sents = limits.get(depth, 4)
     sents = _split_sentences(reply)
-    if len(sents) <= 3:
+    if len(sents) <= max_sents:
         return (reply or "").strip()
-    return " ".join(sents[:2]).strip()
+    return " ".join(sents[:max_sents]).strip()
 
 
 LANG_MARKERS = {

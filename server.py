@@ -70,8 +70,10 @@ def _run_chat_job(job_id, wallet, message, lang, reason, safe, safety_category, 
             log_chat(wallet, "assistant", reply)
         else:
             prof = get_profile(wallet) or {}
+            prefs = json.loads(prof.get("preferences") or "{}")
+            depth = languages.resolve_reply_depth(prefs)
             display_name = (prof.get("display_name") or "").strip()
-            quick = languages.quick_chat_reply(message, lang, display_name)
+            quick = languages.quick_chat_reply(message, lang, display_name, depth)
             if quick:
                 reply = quick
             else:
@@ -83,7 +85,7 @@ def _run_chat_job(job_id, wallet, message, lang, reason, safe, safety_category, 
                         and languages.reply_is_wrong_language(reply, lang)
                     ):
                         reply = run_aivm_chat(languages.retry_prompt(lang, message), lang)
-                    reply = languages.enforce_brief_reply(reply, message)
+                    reply = languages.enforce_brief_reply(reply, message, depth)
                 except Exception as e:
                     err = str(e).lower()
                     if any(
@@ -106,11 +108,10 @@ BINAI_SYSTEM = """You are Binai 💜, a warm personal AI assistant powered by Li
 You remember the user across sessions. Speak naturally, concisely, and kindly.
 You are in BETA — responses may take up to 2 minutes (fast mode coming soon).
 
-BREVITY (very important — most users want short replies):
-- Default: 1–2 sentences. Hard max 3 unless the user asks for detail, a plan, or step-by-step help.
-- Greetings (GM, good morning, hi, happy X day): mirror briefly — one warm line. Do NOT ask follow-up questions.
-- Simple facts (time, date, yes/no): one direct answer. No preamble, no "I'd be happy to help".
-- Only write paragraphs when the user clearly wants depth (advice, planning, explanation, "tell me more").
+REPLY LENGTH:
+- Follow the REPLY DEPTH block below — each user picks Short, Balanced, or Chatty.
+- Match their preference; do not give everyone the same length.
+- Only write long paragraphs when they clearly want depth (advice, planning, "tell me more").
 
 SAFETY (highest priority — never override):
 - Never encourage or instruct self-harm, suicide, or illegal activity.
@@ -148,6 +149,9 @@ RECENT CHAT (last few turns):
 LANGUAGE:
 {language_instruction}
 
+REPLY DEPTH:
+{reply_depth_instruction}
+
 PERSONALITY:
 {personality}
 
@@ -160,8 +164,8 @@ BINAI VOICE / PRESENTATION:
 
 PERSONALITIES = {
     "warm": (
-        "Warm & caring (default Binai). Friendly and personable but BRIEF — "
-        "warmth is not word count. A 💜 is fine. One or two sentences unless they ask for more."
+        "Warm & caring (default Binai). Friendly, encouraging, personable. "
+        "A 💜 now and then is fine. Length follows the user's Reply Depth setting."
     ),
     "direct": (
         "Direct & concise. Short answers, no filler, no fluff. "
@@ -706,14 +710,16 @@ def build_prompt(wallet, user_message, language_override=None):
         if mems
         else "(no memories yet — encourage user to share)"
     )
+    depth = languages.resolve_reply_depth(prefs)
     language_instruction = languages.language_instruction_for(lang)
     if languages.is_brief_intent(user_message):
-        language_instruction += "\n\n" + languages.brief_intent_instruction(lang)
+        language_instruction += "\n\n" + languages.brief_intent_instruction(lang, depth)
     system = BINAI_SYSTEM.format(
         profile=profile_text,
         memories=mem_text,
         recent_chat=get_recent_chat(wallet),
         language_instruction=language_instruction,
+        reply_depth_instruction=languages.reply_depth_instruction(depth, lang),
         personality=PERSONALITIES[personality_key],
         political=POLITICAL_LEANING[political_key],
         persona_gender=PERSONA_GENDER[gender_key],
