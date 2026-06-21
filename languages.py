@@ -856,3 +856,141 @@ def reply_is_wrong_language(text, lang):
     if target_score >= 3:
         return False
     return en_score >= 5
+
+
+# ── Assistant name, friend mode, Smart UX strings ─────────────────────────────
+
+def resolve_assistant_name(prefs):
+    prefs = prefs or {}
+    name = (prefs.get("assistant_name") or "Binai").strip()
+    return (name[:20] if name else "Binai")
+
+
+_CATCH_UP = {
+    "en": {
+        "greeting": "Hey {name} — here's what you might have missed 💜",
+        "reminders": "📌 Reminders: {items}",
+        "notes": "📝 Notes: {n} saved",
+        "memories": "🧠 I remember: {items}",
+        "price": "💰 LCAI ≈ ${price:.4f} USD",
+        "all_clear": "You're all caught up — nothing urgent. I'm here if you want to chat.",
+        "default_name": "friend",
+    },
+    "zh": {
+        "greeting": "嘿 {name} — 帮你捋一下你可能错过的 💜",
+        "reminders": "📌 提醒：{items}",
+        "notes": "📝 笔记：{n} 条",
+        "memories": "🧠 我记得：{items}",
+        "price": "💰 LCAI ≈ ${price:.4f} 美元",
+        "all_clear": "都还好，没有紧急的事。想聊随时找我。",
+        "default_name": "朋友",
+    },
+}
+
+
+def catch_up_strings(lang):
+    return _CATCH_UP.get(lang, _CATCH_UP["en"])
+
+
+_FRIEND_MODE = {
+    "en": (
+        "FRIEND MODE (on): Talk like a close, trusted friend — not a corporate assistant. "
+        "Use natural reactions (oh, hmm, honestly…). Contractions welcome. "
+        "When they ask your opinion (outfit, message tone, life stuff): be warm, specific, and kind. "
+        "Never body-shame. For appearance questions, comment on fit, color, style, occasion — "
+        "address how they feel, not cruel 'truth.' "
+        "If they want hype vs honesty, read the room or ask once."
+    ),
+    "zh": (
+        "朋友模式（开）：像亲密好友说话，不要客服腔。自然、有温度。 "
+        "意见类问题（穿搭、好不好看、消息措辞）：具体、友善，不人身攻击。 "
+        "不说伤人的话；多聊版型、颜色、场合和自信。"
+    ),
+}
+
+
+def friend_mode_instruction(lang, enabled):
+    if not enabled:
+        return ""
+    return _FRIEND_MODE.get(lang, _FRIEND_MODE["en"])
+
+
+_APPEARANCE_OPINION = {
+    "en": (
+        "They may want a friend's opinion (outfit, photo, how they look). "
+        "Be supportive and specific. Never say they look fat. "
+        "Focus on what works; ask how they feel in it. Photos not supported yet — "
+        "still help with words and confidence if they describe the outfit."
+    ),
+    "zh": (
+        "用户可能在征求朋友式意见（穿搭、照片、好不好看）。 "
+        "友善、具体，不说伤人的话。照片功能尚未接入 — 仍可根据描述给建议。"
+    ),
+}
+
+_OPINION_PAT = re.compile(
+    r"(what do you think|do i look|how do i look|does this (look|sound)|"
+    r"outfit|dress|fat|too (big|small|much)|flattering|"
+    r"你觉得|好看吗|胖|这件|穿搭|裙子|衣服)",
+    re.I,
+)
+
+
+def is_opinion_or_appearance(message):
+    return bool(_OPINION_PAT.search(message or ""))
+
+
+def appearance_opinion_instruction(lang):
+    return _APPEARANCE_OPINION.get(lang, _APPEARANCE_OPINION["en"])
+
+
+_REMEMBER_PAT = re.compile(
+    r"\b(remember|don't forget|note that|记住|记得)\b", re.I
+)
+
+
+def is_remember_intent(message):
+    return bool(_REMEMBER_PAT.search(message or ""))
+
+
+_MEMORY_CONFIRM = {
+    "en": "They may be teaching you a new fact. After answering, briefly confirm one key detail you will remember (one short line).",
+    "zh": "用户可能在教你新事实。回答后可简短确认你会记住的关键一点（一句）。",
+}
+
+
+def memory_confirm_instruction(lang):
+    return _MEMORY_CONFIRM.get(lang, _MEMORY_CONFIRM["en"])
+
+
+_GENTLE_SUGGESTION = {
+    "en": {
+        "reminder": "{name}, you have a reminder coming up: {item} — want me to keep it on your radar?",
+        "memory": "{name}, I still remember: {item}. Anything you want to do about that today?",
+        "morning": "Good morning{name}! ☀️ Tap Catch Me Up if you want a quick rundown.",
+        "evening": "Hey{name} — long day? I'm here if you want to vent or plan tomorrow.",
+        "default_name": "friend",
+    },
+    "zh": {
+        "reminder": "{name}，你有提醒：{item} — 需要我再帮你记着吗？",
+        "memory": "{name}，我还记得：{item}。今天想聊聊这个吗？",
+        "morning": "早上好{name}！☀️ 点「帮我捋一下」可以快速汇总。",
+        "evening": "嘿{name} — 累了吗？想聊聊或安排明天都行。",
+        "default_name": "朋友",
+    },
+}
+
+
+def gentle_open_suggestion(lang, kind, name="", item=""):
+    pack = _GENTLE_SUGGESTION.get(lang, _GENTLE_SUGGESTION["en"])
+    template = pack.get(kind, "")
+    if not template:
+        return ""
+    display = (name or "").strip()
+    if kind in ("morning", "evening"):
+        suffix = f", {display}" if display else ""
+        return template.format(name=suffix)
+    who = display or pack.get("default_name", "friend")
+    if lang == "zh" and not display:
+        who = "朋友"
+    return template.format(name=who, item=(item or "")[:120])

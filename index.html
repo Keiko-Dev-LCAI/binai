@@ -388,6 +388,9 @@ body::before {
       </div>
     </div>
     <div class="chat-footer">
+      <div class="chat-quick-actions" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="btn btn-ghost" id="catchUpBtn" type="button" onclick="loadCatchUp(true)" style="font-size:15px">☀️ Catch Me Up</button>
+      </div>
       <div class="input-row">
         <button class="btn btn-mic btn-ghost" id="micBtn" onclick="toggleMic()" title="Voice input">🎤</button>
         <button class="btn btn-mic btn-ghost" id="voiceMuteBtn" onclick="toggleVoiceMute()" title="Mute Binai voice" type="button">🔊</button>
@@ -456,6 +459,19 @@ body::before {
       <div class="card-title" id="settingsNameTitle">Your name</div>
       <input class="field" id="nameInput" placeholder="What should Binai call you?">
       <button class="btn btn-ghost" id="settingsSaveBtn" onclick="saveProfile()">Save</button>
+    </div>
+    <div class="card">
+      <div class="card-title" id="settingsAssistantTitle">Assistant name</div>
+      <div class="card-sub" id="settingsAssistantSub" style="margin-bottom:12px">What to call your AI — default Binai. The app stays Binai 💜</div>
+      <input class="field" id="assistantNameInput" placeholder="Binai" maxlength="20">
+      <label class="setup-check" style="margin-top:12px">
+        <input type="checkbox" id="friendModeToggle" onchange="if(wallet)saveProfile()">
+        <span id="friendModeLabel">Friend mode — casual opinions like a close friend</span>
+      </label>
+      <label class="setup-check">
+        <input type="checkbox" id="gentleSuggestionsToggle" checked onchange="if(wallet)saveProfile()">
+        <span id="gentleSuggestionsLabel">Gentle suggestion when I open the app</span>
+      </label>
     </div>
     <div class="card">
       <div class="card-title" id="settingsLangTitle">Language</div>
@@ -725,6 +741,17 @@ body::before {
     <div class="lang-grid" id="setupPoliticalGrid"></div>
     <div class="setup-section-label" id="setupGenderTitle">How Binai presents</div>
     <div class="lang-grid" id="setupGenderGrid"></div>
+    <div class="setup-section-label" id="setupAssistantTitle">Assistant name</div>
+    <p class="setup-section-sub" id="setupAssistantSub">Leave as Binai or pick your own — change anytime.</p>
+    <input class="field" id="setupAssistantName" placeholder="Binai" maxlength="20">
+    <label class="setup-check">
+      <input type="checkbox" id="setupFriendMode">
+      <span id="setupFriendModeLabel">Friend mode — like texting a close friend</span>
+    </label>
+    <label class="setup-check">
+      <input type="checkbox" id="setupGentleSuggestions" checked>
+      <span id="setupGentleSuggestionsLabel">Gentle suggestion when I open the app</span>
+    </label>
     <div class="setup-section-label" id="setupNotifTitle">Reminders &amp; briefings</div>
     <label class="setup-check">
       <input type="checkbox" id="setupDailyBriefing">
@@ -958,14 +985,29 @@ function initPrefsSetupPickers() {
     syncPreferenceGrid('genderGrid', localizedPrefs(GENDER_OPTIONS, 'gender'), id);
   });
 }
+function getAssistantName() {
+  const el = document.getElementById('assistantNameInput') || document.getElementById('setupAssistantName');
+  const v = (el && el.value.trim()) || localStorage.getItem('binai_assistant_name') || 'Binai';
+  return v.slice(0, 20) || 'Binai';
+}
+function updateChatPlaceholder() {
+  const inp = document.getElementById('chatInput');
+  if (inp) inp.placeholder = t('chat_placeholder', { name: getAssistantName() });
+}
 function openPrefsSetupModal() {
   initPrefsSetupPickers();
   const d = document.getElementById('setupDailyBriefing');
   const n = document.getElementById('setupNotif');
   const v = document.getElementById('setupVoiceMute');
+  const asn = document.getElementById('setupAssistantName');
+  const fm = document.getElementById('setupFriendMode');
+  const gs = document.getElementById('setupGentleSuggestions');
   if (d) d.checked = localStorage.getItem('binai_daily_briefing') === '1';
   if (n) n.checked = localStorage.getItem('binai_notif') === '1';
   if (v) v.checked = isVoiceMuted();
+  if (asn) asn.value = localStorage.getItem('binai_assistant_name') || 'Binai';
+  if (fm) fm.checked = localStorage.getItem('binai_friend_mode') === '1';
+  if (gs) gs.checked = localStorage.getItem('binai_gentle_suggestions') !== '0';
   document.getElementById('prefsSetupOverlay').classList.remove('hidden');
 }
 async function finishPrefsSetup() {
@@ -1393,7 +1435,8 @@ function updateLangHint() {
 async function showWelcomeBack() {
   if (!wallet) return;
   try {
-    const r = await fetch(API + '/api/welcome/' + wallet);
+    const hour = new Date().getHours();
+    const r = await fetch(API + '/api/welcome/' + wallet + '?hour=' + hour);
     const d = await r.json();
     const name = d.name || localStorage.getItem('binai_name') || '';
     let msg = name ? t('welcome_back_named', { name }) : t('welcome_back_plain');
@@ -1405,9 +1448,21 @@ async function showWelcomeBack() {
     if (d.notes_count) bits.push(t('welcome_notes', { count: d.notes_count }));
     if (bits.length) msg += '\n\n' + bits.join('\n');
     else msg += '\n\n' + t('welcome_again');
+    if (d.open_suggestion) msg += '\n\n' + d.open_suggestion;
     addBotMsg(msg);
   } catch (_) {
     addBotMsg(t('welcome_back'));
+  }
+}
+async function loadCatchUp(speakIt) {
+  if (!wallet) { connectWallet(); return; }
+  try {
+    const r = await fetch(API + '/api/catch-up/' + wallet + '?lang=' + encodeURIComponent(currentLang()));
+    const d = await r.json();
+    addBotMsg(d.catch_up);
+    if (speakIt && typeof speak === 'function') speak(d.catch_up);
+  } catch (_) {
+    addBotMsg(t('catch_up_err'));
   }
 }
 async function rememberFromMsg(el) {
@@ -1849,15 +1904,44 @@ async function loadProfile() {
       selectedReplyDepth = prefs.reply_depth;
       localStorage.setItem('binai_reply_depth', prefs.reply_depth);
     }
+    if (prefs.assistant_name) {
+      localStorage.setItem('binai_assistant_name', prefs.assistant_name);
+      const ai = document.getElementById('assistantNameInput');
+      if (ai) ai.value = prefs.assistant_name;
+    }
+    if (prefs.friend_mode) localStorage.setItem('binai_friend_mode', '1');
+    if (prefs.gentle_suggestions === false) localStorage.setItem('binai_gentle_suggestions', '0');
     initLanguagePickers();
     initPreferencePickers();
+    initSettingsToggles();
     applyI18n();
+    updateChatPlaceholder();
   } catch (_) {}
+}
+function readPersonalizePrefs() {
+  const assistant = (document.getElementById('assistantNameInput')?.value.trim()
+    || document.getElementById('setupAssistantName')?.value.trim()
+    || localStorage.getItem('binai_assistant_name') || 'Binai').slice(0, 20) || 'Binai';
+  localStorage.setItem('binai_assistant_name', assistant);
+  const friendMode = !!(document.getElementById('friendModeToggle')?.checked
+    || document.getElementById('setupFriendMode')?.checked);
+  localStorage.setItem('binai_friend_mode', friendMode ? '1' : '0');
+  const gentle = document.getElementById('gentleSuggestionsToggle')?.checked
+    ?? document.getElementById('setupGentleSuggestions')?.checked
+    ?? localStorage.getItem('binai_gentle_suggestions') !== '0';
+  localStorage.setItem('binai_gentle_suggestions', gentle ? '1' : '0');
+  return {
+    assistant_name: assistant,
+    friend_mode: friendMode,
+    gentle_suggestions: gentle,
+  };
 }
 async function saveProfile() {
   const name = document.getElementById('nameInput').value.trim() ||
     localStorage.getItem('binai_name') || '';
   if (name) localStorage.setItem('binai_name', name);
+  const personal = readPersonalizePrefs();
+  updateChatPlaceholder();
   if (!wallet) return;
   await fetch(API + '/api/profile/' + wallet, {
     method: 'POST', headers: {'Content-Type':'application/json'},
@@ -1869,6 +1953,9 @@ async function saveProfile() {
         political: selectedPolitical,
         persona_gender: selectedGender,
         reply_depth: selectedReplyDepth,
+        assistant_name: personal.assistant_name,
+        friend_mode: personal.friend_mode,
+        gentle_suggestions: personal.gentle_suggestions,
       },
     }),
   });
@@ -2070,8 +2157,14 @@ function scheduleDailyBriefing() {
 function initSettingsToggles() {
   const n = document.getElementById('notifToggle');
   const d = document.getElementById('dailyBriefingToggle');
+  const ai = document.getElementById('assistantNameInput');
+  const fm = document.getElementById('friendModeToggle');
+  const gs = document.getElementById('gentleSuggestionsToggle');
   if (n) n.checked = localStorage.getItem('binai_notif') === '1';
   if (d) d.checked = localStorage.getItem('binai_daily_briefing') === '1';
+  if (ai) ai.value = localStorage.getItem('binai_assistant_name') || 'Binai';
+  if (fm) fm.checked = localStorage.getItem('binai_friend_mode') === '1';
+  if (gs) gs.checked = localStorage.getItem('binai_gentle_suggestions') !== '0';
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────────

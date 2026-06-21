@@ -17,7 +17,17 @@ window.BINAI_I18N = {
     prompt2_title: 'Recall memories', prompt2_desc: 'See what Binai already knows about you',
     prompt3_title: 'Morning briefing', prompt3_desc: 'Weather, reminders, and LCAI in one tap',
     prompt4_title: 'Plan my day', prompt4_desc: 'Get a friendly start-of-day nudge',
-    chat_placeholder: 'Talk to Binai…', send: 'Send',
+    chat_placeholder: 'Talk to {name}…', send: 'Send',
+    catch_up_btn: '☀️ Catch Me Up', catch_up_err: 'Could not load catch-up.',
+    assistant_name_title: 'Assistant name',
+    assistant_name_sub: 'What to call your AI — default Binai. The app stays Binai 💜',
+    assistant_name_ph: 'Binai',
+    friend_mode_label: 'Friend mode — casual opinions like a close friend',
+    gentle_suggestions_label: 'Gentle suggestion when I open the app',
+    setup_assistant_title: 'Assistant name',
+    setup_assistant_sub: 'Leave as Binai or pick your own — change anytime.',
+    setup_friend_mode: 'Friend mode — like texting a close friend',
+    setup_gentle_suggestions: 'Gentle suggestion when I open the app',
     voice_mute: 'Mute Binai voice', voice_unmute: 'Unmute Binai voice',
     chat_hint: 'Beta: answers take 1–2 min. Say "remember …" to save facts.',
     briefing_intro: 'One-tap morning catch-up — weather, reminders, memories, LCAI price.',
@@ -140,7 +150,17 @@ window.BINAI_I18N = {
     prompt2_title: '回忆记忆', prompt2_desc: '看看 Binai 已经了解你什么',
     prompt3_title: '晨间简报', prompt3_desc: '天气、提醒和 LCAI 一键查看',
     prompt4_title: '规划今天', prompt4_desc: '友好的一天开始建议',
-    chat_placeholder: '和 Binai 聊天…', send: '发送',
+    chat_placeholder: '和 {name} 聊天…', send: '发送',
+    catch_up_btn: '☀️ 帮我捋一下', catch_up_err: '无法加载汇总。',
+    assistant_name_title: '助手名字',
+    assistant_name_sub: '怎么称呼你的 AI — 默认 Binai。应用名仍是 Binai 💜',
+    assistant_name_ph: 'Binai',
+    friend_mode_label: '朋友模式 — 像好友一样聊天、给意见',
+    gentle_suggestions_label: '打开应用时轻轻提醒一句',
+    setup_assistant_title: '助手名字',
+    setup_assistant_sub: '保持 Binai 或自定义 — 随时可改。',
+    setup_friend_mode: '朋友模式 — 像和好友发消息',
+    setup_gentle_suggestions: '打开应用时轻轻提醒一句',
     voice_mute: '关闭 Binai 语音', voice_unmute: '开启 Binai 语音',
     chat_hint: '测试版：回复需 1–2 分钟。说「记住…」可保存信息。',
     briefing_intro: '一键晨间汇总 — 天气、提醒、记忆、LCAI 价格。',
@@ -286,8 +306,10 @@ window.applyI18n = function() {
   set('topDisclaimerText', 'disclaimer');
   set('betaBanner', 'beta_banner');
   set('waitBanner', 'wait_banner');
-  setPh('chatInput', 'chat_placeholder');
+  if (typeof updateChatPlaceholder === 'function') updateChatPlaceholder();
+  else setPh('chatInput', 'chat_placeholder');
   set('sendBtn', 'send');
+  set('catchUpBtn', 'catch_up_btn');
   if (typeof updateVoiceMuteBtn === 'function') updateVoiceMuteBtn();
   set('chatHint', 'chat_hint');
   set('briefingIntro', 'briefing_intro');
@@ -317,6 +339,11 @@ window.applyI18n = function() {
   set('settingsNameTitle', 'name_title');
   setPh('nameInput', 'name_ph');
   set('settingsSaveBtn', 'save');
+  set('settingsAssistantTitle', 'assistant_name_title');
+  set('settingsAssistantSub', 'assistant_name_sub');
+  setPh('assistantNameInput', 'assistant_name_ph');
+  set('friendModeLabel', 'friend_mode_label');
+  set('gentleSuggestionsLabel', 'gentle_suggestions_label');
   set('settingsLangTitle', 'lang_title');
   set('settingsLangSub', 'lang_sub');
   set('settingsReplyDepthTitle', 'reply_depth_title');
@@ -378,6 +405,11 @@ window.applyI18n = function() {
   set('setupPoliticalTitle', 'political_title');
   set('setupPoliticalSub', 'setup_political_sub');
   set('setupGenderTitle', 'gender_title');
+  set('setupAssistantTitle', 'setup_assistant_title');
+  set('setupAssistantSub', 'setup_assistant_sub');
+  setPh('setupAssistantName', 'assistant_name_ph');
+  set('setupFriendModeLabel', 'setup_friend_mode');
+  set('setupGentleSuggestionsLabel', 'setup_gentle_suggestions');
   set('setupNotifTitle', 'setup_notif_title');
   set('setupDailyBriefingLabel', 'daily_briefing');
   set('setupNotifLabel', 'notif_label');
