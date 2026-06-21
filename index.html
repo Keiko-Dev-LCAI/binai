@@ -1192,21 +1192,24 @@ async function loadChatHistory() {
     return true;
   } catch (_) { return false; }
 }
+function currentLang() {
+  return localStorage.getItem('binai_lang') || 'en';
+}
 async function showWelcomeBack() {
   if (!wallet) return;
   try {
     const r = await fetch(API + '/api/welcome/' + wallet);
     const d = await r.json();
     const name = d.name || localStorage.getItem('binai_name') || '';
-    let msg = name ? `Hey ${name} — welcome back 💜` : 'Welcome back 💜';
+    let msg = name ? t('welcome_back_named', { name }) : t('welcome_back_plain');
     const bits = [];
     if (d.memories && d.memories.length)
-      bits.push(`I remember: ${d.memories.slice(0, 3).join('; ')}`);
+      bits.push(t('welcome_remember', { items: d.memories.slice(0, 3).join('; ') }));
     if (d.reminders && d.reminders.length)
-      bits.push(`Open reminders: ${d.reminders.slice(0, 3).map(x => x.content).join('; ')}`);
-    if (d.notes_count) bits.push(`You have ${d.notes_count} saved note(s).`);
+      bits.push(t('welcome_reminders', { items: d.reminders.slice(0, 3).map(x => x.content).join('; ') }));
+    if (d.notes_count) bits.push(t('welcome_notes', { count: d.notes_count }));
     if (bits.length) msg += '\n\n' + bits.join('\n');
-    else msg += '\n\nGood to see you again. What can I help with?';
+    else msg += '\n\n' + t('welcome_again');
     addBotMsg(msg);
   } catch (_) {
     addBotMsg(t('welcome_back'));
@@ -1255,7 +1258,7 @@ async function sendChat() {
     const r = await fetch(API + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet, message: msg }),
+      body: JSON.stringify({ wallet, message: msg, language: currentLang() }),
     });
     const d = await r.json();
     think.remove();
@@ -1368,7 +1371,7 @@ function speak(text) {
 async function loadBriefing(speakIt) {
   if (!wallet) { connectWallet(); return; }
   try {
-    const r = await fetch(API + '/api/briefing/' + wallet);
+    const r = await fetch(API + '/api/briefing/' + wallet + '?lang=' + encodeURIComponent(currentLang()));
     const d = await r.json();
     lastBriefing = d.briefing;
     const box = document.getElementById('briefingBox');
@@ -1377,7 +1380,7 @@ async function loadBriefing(speakIt) {
     document.getElementById('speakBriefingBtn').style.display = 'block';
     if (speakIt) speak(d.briefing);
   } catch (e) {
-    document.getElementById('briefingBox').textContent = 'Could not load briefing.';
+    document.getElementById('briefingBox').textContent = t('briefing_err');
   }
 }
 function speakBriefing() { if (lastBriefing) speak(lastBriefing); }
@@ -1628,7 +1631,7 @@ async function deleteMyData() {
   if (!confirm('Delete ALL your Binai data (memories, notes, reminders, chat)? This cannot be undone.')) return;
   await fetch(API + '/api/data/' + wallet, { method: 'DELETE' });
   clearChat();
-  addBotMsg('All your data has been deleted from Binai. Your wallet connection remains.');
+  addBotMsg(t('data_deleted'));
   loadMemories();
   loadNotes();
   loadReminders();
@@ -1683,7 +1686,7 @@ function scheduleDailyBriefing() {
   if (h >= 8 && h < 11 && wallet && localStorage.getItem('binai_daily_briefing') === '1') {
     localStorage.setItem('binai_briefing_last', String(now));
     if (Notification.permission === 'granted')
-      new Notification('Binai 🌅', { body: 'Your morning briefing is ready — open Binai to read it.' });
+      new Notification('Binai 🌅', { body: t('notif_briefing') });
   }
 }
 function initSettingsToggles() {
