@@ -836,8 +836,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260621-7';</script>
-<script src="i18n-ui.js?v=20260621-7"></script>
+<script>window.BINAI_BUILD = '20260621-8';</script>
+<script src="i18n-ui.js?v=20260621-8"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -1076,7 +1076,7 @@ function openPrefsSetupModal() {
   if (n) n.checked = localStorage.getItem('binai_notif') === '1';
   if (v) v.checked = isVoiceMuted();
   if (asn) asn.value = localStorage.getItem('binai_assistant_name') || 'Binai';
-  if (fm) fm.checked = localStorage.getItem('binai_friend_mode') === '1';
+  if (fm) fm.checked = localStorage.getItem('binai_friend_mode') !== '0';
   if (gs) gs.checked = localStorage.getItem('binai_gentle_suggestions') !== '0';
   document.getElementById('prefsSetupOverlay').classList.remove('hidden');
 }
@@ -1587,6 +1587,83 @@ function appendPlaceSuggestion(el, data) {
   if (msgActions) el.insertBefore(wrap, msgActions);
   else el.appendChild(wrap);
 }
+function appendAdviceExtras(botEl, meta) {
+  if (!botEl || !meta || !meta.ok || botEl.querySelector('.msg-advice-extras')) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-advice-extras';
+  wrap.style.marginTop = '10px';
+  if (meta.remember_offer && meta.remember_offer.prompt) {
+    const offer = document.createElement('div');
+    offer.className = 'msg-visual-note';
+    offer.style.marginBottom = '6px';
+    offer.textContent = meta.remember_offer.prompt;
+    wrap.appendChild(offer);
+    const rememberRow = document.createElement('div');
+    rememberRow.className = 'msg-actions';
+    rememberRow.style.marginTop = '4px';
+    const yesBtn = document.createElement('button');
+    yesBtn.type = 'button';
+    yesBtn.className = 'msg-action-btn';
+    yesBtn.textContent = t('advice_remember_yes');
+    yesBtn.onclick = async () => {
+      yesBtn.disabled = true;
+      try {
+        await fetch(API + '/api/memories/' + wallet, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: meta.remember_offer.memory }),
+        });
+        loadMemories();
+        offer.textContent = t('advice_remember_saved');
+        rememberRow.remove();
+      } catch (_) {
+        yesBtn.disabled = false;
+      }
+    };
+    const noBtn = document.createElement('button');
+    noBtn.type = 'button';
+    noBtn.className = 'msg-action-btn';
+    noBtn.textContent = t('advice_remember_no');
+    noBtn.onclick = () => rememberRow.remove();
+    rememberRow.append(yesBtn, noBtn);
+    wrap.appendChild(rememberRow);
+  }
+  if (meta.chips && meta.chips.length) {
+    const chipRow = document.createElement('div');
+    chipRow.className = 'msg-actions';
+    chipRow.style.marginTop = '6px';
+    for (const chip of meta.chips) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'msg-action-btn';
+      btn.textContent = t(chip.label_key);
+      btn.onclick = () => {
+        const input = document.getElementById('chatInput');
+        if (input) {
+          input.value = chip.message;
+          sendChat();
+        }
+      };
+      chipRow.appendChild(btn);
+    }
+    wrap.appendChild(chipRow);
+  }
+  const msgActions = botEl.querySelector('.msg-actions');
+  if (msgActions) botEl.insertBefore(wrap, msgActions);
+  else botEl.appendChild(wrap);
+}
+async function maybeAttachAdviceExtras(userMsg, botEl, adviceMeta) {
+  if (!wallet || !userMsg) return;
+  try {
+    let meta = adviceMeta;
+    if (!meta || !meta.ok) {
+      const params = new URLSearchParams({ message: userMsg, lang: currentLang() });
+      const r = await fetch(API + '/api/advice-meta?' + params);
+      meta = await r.json();
+    }
+    if (meta.ok) appendAdviceExtras(botEl, meta);
+  } catch (_) {}
+}
 async function maybeSuggestSavePlace(userMsg, botEl) {
   if (!wallet || !userMsg || isSavePlaceQuery(userMsg)) return;
   try {
@@ -2004,7 +2081,10 @@ async function sendChat() {
     const r = await fetch(API + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet, message: msg, language: currentLang() }),
+      body: JSON.stringify({
+        wallet, message: msg, language: currentLang(),
+        local_hour: new Date().getHours(),
+      }),
     });
     const d = await r.json();
     if (!r.ok) {
@@ -2033,6 +2113,7 @@ async function sendChat() {
           const replyEl = addBotMsg(result.reply);
           maybeAttachLookups(msg, replyEl);
           maybeSuggestSavePlace(msg, replyEl);
+          maybeAttachAdviceExtras(msg, replyEl, result.advice_meta);
           speak(result.reply);
           updateUsage(result);
           loadMemories();
@@ -2042,6 +2123,7 @@ async function sendChat() {
         const replyEl = addBotMsg(d.reply);
         maybeAttachLookups(msg, replyEl);
         maybeSuggestSavePlace(msg, replyEl);
+        maybeAttachAdviceExtras(msg, replyEl, d.advice_meta);
         speak(d.reply);
         updateUsage(d);
         loadMemories();
@@ -2704,7 +2786,7 @@ function initSettingsToggles() {
   if (n) n.checked = localStorage.getItem('binai_notif') === '1';
   if (d) d.checked = localStorage.getItem('binai_daily_briefing') === '1';
   if (ai) ai.value = localStorage.getItem('binai_assistant_name') || 'Binai';
-  if (fm) fm.checked = localStorage.getItem('binai_friend_mode') === '1';
+  if (fm) fm.checked = localStorage.getItem('binai_friend_mode') !== '0';
   if (gs) gs.checked = localStorage.getItem('binai_gentle_suggestions') !== '0';
   if (lce) lce.checked = localStorage.getItem('binai_lightchat_enabled') !== '0';
   if (lcm) lcm.checked = localStorage.getItem('binai_lightchat_memories') !== '0';
