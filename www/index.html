@@ -771,8 +771,10 @@ function applyTestModeUI() {
   if (banner) banner.classList.add('visible');
   const subBtn = document.getElementById('subscribeBtn');
   if (subBtn) subBtn.style.display = 'none';
+  const subTitle = document.getElementById('settingsSubTitle');
+  if (subTitle) subTitle.textContent = t('sub_beta_title');
   const subStatus = document.getElementById('subStatus');
-  if (subStatus && !wallet) subStatus.textContent = t('sub_beta');
+  if (subStatus) subStatus.textContent = t('sub_beta');
 }
 
 function hidePrompts() {
