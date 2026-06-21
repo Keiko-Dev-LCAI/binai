@@ -40,7 +40,7 @@ Whoever worked on Binai last (Grok or Claude) **must** before closing:
 |------|--------|
 | **Live URL** | https://binai.win · Railway `binai-production` |
 | **Repo** | `Keiko-Dev-LCAI/binai` · local `~/Desktop/binai/` |
-| **Latest commit** | `0041e45` (plan docs) · code through `18e5a03` |
+| **Latest commit** | `ea6314d` (LightChat/快手 connectors + PWA auto-update) · live Railway deploy ✅ |
 | **Code shipped through** | `18e5a03` (About Me) |
 | **Phase** | 1b — web beta hardening + real-device testing |
 | **Mode** | Brainstorming — camera, retention, app connectors are **planned, not built** |
