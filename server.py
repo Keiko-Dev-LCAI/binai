@@ -1055,6 +1055,9 @@ def api_chat():
     if not safe:
         reply = safety_reply
         log_chat(wallet, "assistant", f"[safety:{safety_category}] {reply[:200]}")
+    elif languages.is_booking_request(message):
+        reply = languages.booking_reply(lang)
+        log_chat(wallet, "assistant", reply)
     else:
         prompt = build_prompt(wallet, message, language_override=lang)
         try:
@@ -1062,14 +1065,14 @@ def api_chat():
             if languages.is_aivm_infra_failure(reply):
                 time.sleep(3)
                 reply = sanitize_output(AIVMProvider.infer(prompt), lang)
-            if languages.is_aivm_infra_failure(reply):
+            if languages.is_aivm_infra_failure(reply) or languages.is_bad_ai_reply(reply):
                 reply = languages.aivm_busy_message(lang)
             elif languages.reply_is_wrong_language(reply, lang):
                 reply = sanitize_output(
                     AIVMProvider.infer(languages.retry_prompt(lang, message)),
                     lang,
                 )
-                if languages.is_aivm_infra_failure(reply):
+                if languages.is_aivm_infra_failure(reply) or languages.is_bad_ai_reply(reply):
                     reply = languages.aivm_busy_message(lang)
         except Exception as e:
             err = str(e).lower()
