@@ -35,7 +35,7 @@ _test_flag = os.environ.get("TEST_MODE", "true").lower()
 TEST_MODE = _test_flag not in ("0", "false", "no", "off")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
-BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260621-3")
+BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260621-4")
 LIGHTCHAT_API = os.environ.get(
     "LIGHTCHAT_API", "https://web-production-bc64f.up.railway.app"
 ).rstrip("/")
@@ -1805,6 +1805,105 @@ def api_video_lookup():
     if not message:
         return jsonify({"ok": False, "error": "message required"}), 400
     return jsonify(build_video_lookup(message, lang))
+
+
+_everyday_cache = {}
+
+
+def _ddg_instant_answer(query):
+    api = (
+        "https://api.duckduckgo.com/?"
+        f"q={url_quote(query)}&format=json&no_html=1&skip_disambig=1"
+    )
+    try:
+        r = requests.get(api, timeout=6, headers={"User-Agent": "Binai/1.0 (binai.win)"})
+        r.raise_for_status()
+        data = r.json()
+        text = (data.get("AbstractText") or "").strip()
+        url = (data.get("AbstractURL") or "").strip()
+        if text and len(text) >= 12:
+            return {"hint": text[:280], "hint_url": url or None}
+    except Exception:
+        pass
+    return {}
+
+
+def build_everyday_lookup(message, lang="en"):
+    query = languages.extract_everyday_query(message)
+    if not query:
+        return {"ok": False, "reason": "not_everyday"}
+    lang = lang if lang in languages.LANG_NAMES else "en"
+    search_q = languages.everyday_search_query(query, message)
+    zip_m = languages._ZIP_PAT.search(message or "")
+    if zip_m and zip_m.group(1) not in search_q:
+        search_q = f"{search_q} {zip_m.group(1)}"
+    cache_key = f"everyday:{lang}:{search_q.lower()}"
+    cached = _video_cache_get(cache_key)
+    if cached:
+        return cached
+
+    encoded = url_quote(search_q)
+    maps_q = url_quote(query)
+    links = []
+    low_q = (query + " " + message).lower()
+
+    if lang == "zh":
+        links.append(
+            {
+                "kind": "maps",
+                "label_key": "everyday_maps",
+                "url": f"https://map.baidu.com/search/{maps_q}",
+            }
+        )
+        links.append(
+            {
+                "kind": "web",
+                "label_key": "everyday_search",
+                "url": f"https://www.baidu.com/s?wd={encoded}",
+            }
+        )
+    else:
+        links.append(
+            {
+                "kind": "maps",
+                "label_key": "everyday_maps",
+                "url": f"https://www.google.com/maps/search/{encoded}",
+            }
+        )
+        links.append(
+            {
+                "kind": "web",
+                "label_key": "everyday_search",
+                "url": f"https://duckduckgo.com/?q={encoded}",
+            }
+        )
+        if re.search(r"\bpost\s+office|usps\b", low_q):
+            links.append(
+                {
+                    "kind": "official",
+                    "label_key": "everyday_usps",
+                    "url": "https://tools.usps.com/find-location.htm",
+                }
+            )
+
+    payload = {
+        "ok": True,
+        "query": query,
+        "search_query": search_q,
+        "links": links,
+    }
+    payload.update(_ddg_instant_answer(search_q))
+    _video_cache_set(cache_key, payload)
+    return payload
+
+
+@app.route("/api/everyday-lookup")
+def api_everyday_lookup():
+    message = (request.args.get("message") or request.args.get("q") or "").strip()
+    lang = (request.args.get("lang") or "en").strip().lower()
+    if not message:
+        return jsonify({"ok": False, "error": "message required"}), 400
+    return jsonify(build_everyday_lookup(message, lang))
 
 
 @app.route("/api/weather")
