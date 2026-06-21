@@ -3,7 +3,24 @@
 **Status:** Phase 1 community beta — **web live at binai.win** · **brainstorming only** — camera, retention, and UX below are planned, not built yet  
 **Owner:** Keiko (Keiko-Dev-LCAI)  
 **Repo:** `~/Desktop/binai/` (local; push to `Keiko-Dev-LCAI/binai` when ready)  
-**Latest commit:** `2cbb2a0` (plan doc) · shipped code through `18e5a03` (About Me)
+**Latest commit:** `ed9ba46` (plan) · shipped code through `18e5a03` (About Me)
+
+---
+
+## 📁 Document map — Grok & Claude
+
+| File | Purpose |
+|------|---------|
+| **`BINAI-BRIEFING.md`** | **Start here** — live status, priorities, who does what, session log, Claude paste block |
+| **`BINAI-PLAN.md`** (this file) | Full product plan — features, brainstorm, phases, architecture, open questions |
+
+**Rule:** End of every Binai session → update `BINAI-BRIEFING.md` (always) + sections here if plan changed → commit → push.
+
+| Role | Typical work |
+|------|----------------|
+| **Grok** | Code, deploy, tests in `~/Desktop/binai/` |
+| **Claude** | DNS/infra, copy, coordination; reads both files before advising |
+| **Keiko** | Product decisions, real-device testing, paste briefing into new Claude chats |
 
 ---
 
@@ -656,25 +673,10 @@ The goal: Binai should feel like it *understands your life* and reduces mental l
 
 ---
 
-## Claude Briefing — Paste Block
+## Claude Briefing
 
-Copy-paste to Claude when starting a new session:
-
-```
-## Binai V1 — Status (June 2026)
-
-Live: binai.win · Railway binai-production · Repo Keiko-Dev-LCAI/binai
-Auth: wallet + device PIN · TEST_MODE=true · Keiko pays AIVM, tester wallets = identity only
-Relay: web-production-aaaba.up.railway.app (orcaappbuilder-server)
-
-Shipped: async chat (iPhone), mute voice, setup wizard, reply length, About Me (12k bio), desktop scroll
-Brainstorm only (not built): camera/Lens, retention buttons, OrcaVault Archives, LightTunes connectors
-
-Testing: server ✅ · real phones ⚠️ pending (Sherry ZH iPhone, Keiko EN PC)
-Top priority: hard refresh → chat → language → About Me → Short/GM test
-
-Full plan: ~/Desktop/binai/BINAI-PLAN.md
-```
+**Use `BINAI-BRIEFING.md`** in this folder — it has the current paste block, session log, and status snapshot.  
+Update that file at the end of every session so Claude stays in sync (he has no memory between chats).
 
 ---
 
@@ -692,5 +694,4 @@ Full plan: ~/Desktop/binai/BINAI-PLAN.md
 
 ---
 
-*For Claude: full memory at future_builds/binai.md in memory system*  
-*For Grok: this file is the complete reference — everything is here*
+*Grok + Claude: `BINAI-BRIEFING.md` = status · `BINAI-PLAN.md` = full spec · update both after every session*
