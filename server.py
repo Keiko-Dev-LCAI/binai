@@ -209,11 +209,14 @@ def sanitize_output(reply, lang="en"):
 
 # ── AIVM ADAPTER (swap this module when REST API lands) ──────────────────────
 
+_AIVM_RETRY_DELAYS = (0, 6, 10, 15, 20, 25, 30)
+
+
 class AIVMProvider:
     """Today: aaaba HTTP relay. Tomorrow: REST API — change only this class."""
 
     @staticmethod
-    def infer(prompt: str, timeout: int = 180) -> str:
+    def infer(prompt: str, timeout: int = 240) -> str:
         start = requests.post(
             f"{AIVM_RELAY}/api/chat",
             json={"message": prompt, "mode": "chat"},
@@ -241,6 +244,39 @@ class AIVMProvider:
             if pd.get("status") == "error":
                 raise RuntimeError(pd.get("error") or "AIVM job failed")
         raise RuntimeError("AIVM timed out — try again.")
+
+
+def run_aivm_chat(prompt: str, lang: str) -> str:
+    """Auto-retry AIVM while testers queue — don't make users tap send again."""
+    last_err = None
+    for delay in _AIVM_RETRY_DELAYS:
+        if delay:
+            time.sleep(delay)
+        try:
+            reply = sanitize_output(AIVMProvider.infer(prompt), lang)
+            if languages.is_aivm_infra_failure(reply) or languages.is_bad_ai_reply(reply):
+                continue
+            return reply
+        except Exception as e:
+            last_err = e
+            err = str(e).lower()
+            if not any(
+                tok in err
+                for tok in (
+                    "aivm",
+                    "underpriced",
+                    "32000",
+                    "timeout",
+                    "503",
+                    "502",
+                    "reverted",
+                    "unavailable",
+                )
+            ):
+                raise
+    if last_err:
+        print(f"[AIVM] all retries failed: {last_err}")
+    return languages.aivm_busy_message(lang)
 
 
 # ── DATABASE ─────────────────────────────────────────────────────────────────
@@ -1061,22 +1097,15 @@ def api_chat():
     else:
         prompt = build_prompt(wallet, message, language_override=lang)
         try:
-            reply = sanitize_output(AIVMProvider.infer(prompt), lang)
-            if languages.is_aivm_infra_failure(reply):
-                time.sleep(3)
-                reply = sanitize_output(AIVMProvider.infer(prompt), lang)
-            if languages.is_aivm_infra_failure(reply) or languages.is_bad_ai_reply(reply):
-                reply = languages.aivm_busy_message(lang)
-            elif languages.reply_is_wrong_language(reply, lang):
-                reply = sanitize_output(
-                    AIVMProvider.infer(languages.retry_prompt(lang, message)),
-                    lang,
-                )
-                if languages.is_aivm_infra_failure(reply) or languages.is_bad_ai_reply(reply):
-                    reply = languages.aivm_busy_message(lang)
+            reply = run_aivm_chat(prompt, lang)
+            if (
+                not languages.is_aivm_infra_failure(reply)
+                and languages.reply_is_wrong_language(reply, lang)
+            ):
+                reply = run_aivm_chat(languages.retry_prompt(lang, message), lang)
         except Exception as e:
             err = str(e).lower()
-            if "underpriced" in err or "-32000" in err or "aivm" in err:
+            if any(tok in err for tok in ("underpriced", "-32000", "aivm", "reverted", "503", "502")):
                 return jsonify({"reply": languages.aivm_busy_message(lang)}), 200
             return jsonify({"error": str(e)[:300]}), 503
         log_chat(wallet, "assistant", reply)
