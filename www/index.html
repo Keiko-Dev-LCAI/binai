@@ -666,8 +666,11 @@ body::before {
 <script src="i18n-ui.js"></script>
 <script>
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
-const API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-  ? 'http://localhost:8190' : (window.BINAI_API || 'https://binai-production.up.railway.app');
+const API = window.BINAI_API || (
+  (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:8190'
+    : location.origin
+);
 
 const LANGS = [
   {id:'en',label:'🇺🇸 English'},{id:'es',label:'🇪🇸 Spanish'},{id:'fr',label:'🇫🇷 French'},
@@ -1290,19 +1293,49 @@ async function sendChat() {
       body: JSON.stringify({ wallet, message: msg, language: currentLang() }),
     });
     const d = await r.json();
-    think.remove();
     if (!r.ok) {
+      think.remove();
       addBotMsg(d.error || t('err_generic'));
       if (d.code === 'limit_reached') switchTab('settings');
     } else {
-      addBotMsg(d.reply);
-      speak(d.reply);
-      updateUsage(d);
-      loadMemories();
+      let result = d;
+      if (d.job_id) {
+        const deadline = Date.now() + 180000;
+        while (Date.now() < deadline) {
+          await new Promise(res => setTimeout(res, 4000));
+          const pr = await fetch(
+            API + '/api/chat/status/' + d.job_id + '?wallet=' + encodeURIComponent(wallet)
+          );
+          const pd = await pr.json();
+          if (!pr.ok) throw new Error(pd.error || t('err_generic'));
+          if (pd.status === 'done') { result = pd; break; }
+          if (pd.status === 'error') throw new Error(pd.error || t('err_generic'));
+        }
+        if (!result.reply) {
+          think.remove();
+          addBotMsg(t('err_timeout'));
+        } else {
+          think.remove();
+          addBotMsg(result.reply);
+          speak(result.reply);
+          updateUsage(result);
+          loadMemories();
+        }
+      } else if (d.reply) {
+        think.remove();
+        addBotMsg(d.reply);
+        speak(d.reply);
+        updateUsage(d);
+        loadMemories();
+      } else {
+        think.remove();
+        addBotMsg(t('err_generic'));
+      }
     }
   } catch (e) {
     think.remove();
-    addBotMsg(t('err_connection') + ' ' + e.message);
+    const hint = (e.message === 'Load failed') ? t('err_load_failed') : e.message;
+    addBotMsg(t('err_connection') + ' ' + hint);
   }
   clearInterval(thinkTimer);
   document.getElementById('waitBanner').classList.remove('visible');

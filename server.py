@@ -5,6 +5,7 @@ import os
 import re
 import time
 import json
+import uuid
 import sqlite3
 import threading
 import urllib.request as urllib_req
@@ -43,6 +44,56 @@ DB_PATH = os.path.join(_data_dir, "binai.db")
 
 _jobs = {}
 _jobs_lock = threading.Lock()
+_JOB_TTL = 3600
+
+
+def _cleanup_old_jobs():
+    cutoff = time.time() - _JOB_TTL
+    with _jobs_lock:
+        for job_id in [k for k, v in _jobs.items() if v.get("created_at", 0) < cutoff]:
+            del _jobs[job_id]
+
+
+def _set_job(job_id, **fields):
+    with _jobs_lock:
+        if job_id in _jobs:
+            _jobs[job_id].update(fields)
+
+
+def _run_chat_job(job_id, wallet, message, lang, reason, safe, safety_category, safety_reply):
+    try:
+        if not safe:
+            reply = safety_reply
+            log_chat(wallet, "assistant", f"[safety:{safety_category}] {reply[:200]}")
+        elif languages.is_booking_request(message):
+            reply = languages.booking_reply(lang)
+            log_chat(wallet, "assistant", reply)
+        else:
+            prompt = build_prompt(wallet, message, language_override=lang)
+            try:
+                reply = run_aivm_chat(prompt, lang)
+                if (
+                    not languages.is_aivm_infra_failure(reply)
+                    and languages.reply_is_wrong_language(reply, lang)
+                ):
+                    reply = run_aivm_chat(languages.retry_prompt(lang, message), lang)
+            except Exception as e:
+                err = str(e).lower()
+                if any(
+                    tok in err
+                    for tok in ("underpriced", "-32000", "aivm", "reverted", "503", "502")
+                ):
+                    reply = languages.aivm_busy_message(lang)
+                else:
+                    _set_job(job_id, status="error", error=str(e)[:300])
+                    return
+            log_chat(wallet, "assistant", reply)
+        increment_usage(wallet)
+        payload = usage_payload(wallet)
+        payload.update({"reply": reply, "tier": reason, "status": "done"})
+        _set_job(job_id, **payload)
+    except Exception as e:
+        _set_job(job_id, status="error", error=str(e)[:300])
 
 BINAI_SYSTEM = """You are Binai 💜, a warm personal AI assistant powered by Lightchain AIVM.
 You remember the user across sessions. Speak naturally, concisely, and kindly.
@@ -1088,30 +1139,36 @@ def api_chat():
     safe, safety_category, safety_reply = check_input_safety(message, lang)
     maybe_extract_memory(wallet, message)
     log_chat(wallet, "user", message)
-    if not safe:
-        reply = safety_reply
-        log_chat(wallet, "assistant", f"[safety:{safety_category}] {reply[:200]}")
-    elif languages.is_booking_request(message):
-        reply = languages.booking_reply(lang)
-        log_chat(wallet, "assistant", reply)
-    else:
-        prompt = build_prompt(wallet, message, language_override=lang)
-        try:
-            reply = run_aivm_chat(prompt, lang)
-            if (
-                not languages.is_aivm_infra_failure(reply)
-                and languages.reply_is_wrong_language(reply, lang)
-            ):
-                reply = run_aivm_chat(languages.retry_prompt(lang, message), lang)
-        except Exception as e:
-            err = str(e).lower()
-            if any(tok in err for tok in ("underpriced", "-32000", "aivm", "reverted", "503", "502")):
-                return jsonify({"reply": languages.aivm_busy_message(lang)}), 200
-            return jsonify({"error": str(e)[:300]}), 503
-        log_chat(wallet, "assistant", reply)
-    increment_usage(wallet)
-    payload = usage_payload(wallet)
-    payload.update({"reply": reply, "tier": reason})
+    _cleanup_old_jobs()
+    job_id = uuid.uuid4().hex
+    with _jobs_lock:
+        _jobs[job_id] = {
+            "status": "pending",
+            "wallet": wallet,
+            "created_at": time.time(),
+        }
+    threading.Thread(
+        target=_run_chat_job,
+        args=(job_id, wallet, message, lang, reason, safe, safety_category, safety_reply),
+        daemon=True,
+    ).start()
+    return jsonify({"job_id": job_id, "status": "pending"}), 202
+
+
+@app.route("/api/chat/status/<job_id>")
+def api_chat_status(job_id):
+    wallet = norm_wallet(request.args.get("wallet"))
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+    if not job:
+        return jsonify({"error": "job not found", "code": "not_found"}), 404
+    if wallet and job.get("wallet") != wallet:
+        return jsonify({"error": "forbidden", "code": "forbidden"}), 403
+    if job.get("status") == "pending":
+        return jsonify({"status": "pending"})
+    if job.get("status") == "error":
+        return jsonify({"status": "error", "error": job.get("error") or "Chat failed"}), 200
+    payload = {k: v for k, v in job.items() if k not in ("wallet", "created_at")}
     return jsonify(payload)
 
 
