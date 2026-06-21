@@ -802,7 +802,7 @@ function buildLanguageGrid(gridId, onSelect) {
   });
 }
 function initLanguagePickers() {
-  buildLanguageGrid('langGrid', () => applyI18n());
+  buildLanguageGrid('langGrid', () => { applyI18n(); if (wallet) saveProfile(); });
   buildLanguageGrid('settingsLangGrid', () => { applyI18n(); saveProfile(); });
 }
 
@@ -1538,7 +1538,12 @@ async function loadProfile() {
     const r = await fetch(API + '/api/profile/' + wallet);
     const prof = await r.json();
     if (prof.display_name) document.getElementById('nameInput').value = prof.display_name;
-    if (prof.language) localStorage.setItem('binai_lang', prof.language);
+    const localLang = localStorage.getItem('binai_lang');
+    if (prof.language && !localLang) {
+      localStorage.setItem('binai_lang', prof.language);
+    } else if (localLang && localLang !== prof.language) {
+      await saveProfile();
+    }
     const prefs = prof.preferences ? JSON.parse(prof.preferences) : {};
     if (prefs.personality) {
       selectedPersonality = prefs.personality;
