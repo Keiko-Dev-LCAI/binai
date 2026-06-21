@@ -473,6 +473,11 @@ _TIME_PATTERNS = [
 _BRIEF_SKIP_PATTERNS = [
     re.compile(r"\bremember\b", re.I),
     re.compile(r"\b(plan|explain|help\s+me|tell\s+me\s+about|write|draft|list)\b", re.I),
+    re.compile(
+        r"(?:should\s+i|do\s+you\s+think|what\s+should\s+i|what\s+would\s+you\s+do|"
+        r"worth\s+it|advice|怎么办|该不该|你觉得|我该)",
+        re.I,
+    ),
 ]
 
 REPLY_DEPTHS = ("short", "balanced", "chatty")
@@ -719,6 +724,8 @@ def _split_sentences(text):
 
 
 def enforce_brief_reply(reply, message, depth="balanced"):
+    if is_life_advice_query(message):
+        return (reply or "").strip()
     if depth == "chatty" or not is_brief_intent(message):
         return (reply or "").strip()
     limits = {"short": 2, "balanced": 4, "chatty": 99}
@@ -933,19 +940,282 @@ _APPEARANCE_OPINION = {
 }
 
 _OPINION_PAT = re.compile(
-    r"(what do you think|do i look|how do i look|does this (look|sound)|"
+    r"(what do you think|do you think i|do i look|how do i look|does this (look|sound)|"
     r"outfit|dress|fat|too (big|small|much)|flattering|"
     r"你觉得|好看吗|胖|这件|穿搭|裙子|衣服)",
     re.I,
 )
+
+_LIFE_ADVICE_PAT = re.compile(
+    r"(?:"
+    r"should\s+i|do\s+you\s+think(?:\s+i|\s+we)?|what\s+should\s+i|what\s+would\s+you\s+do|"
+    r"worth\s+it|need\s+(?:your\s+)?advice|any\s+advice|"
+    r"don'?t\s+(?:like|know\s+what)|hate\s+my\s+job|quit\s+my\s+job|leave\s+my\s+job|"
+    r"call\s+(?:him|her|them)\s+back|wait\s+for\s+(?:him|her|them)|text\s+(?:him|her|them)|"
+    r"lonely|stressed\s+about|anxious\s+about|"
+    r"怎么办|该不该|你觉得我|我该|要不要|给点意见|怎么办|吃什么|做什么菜|晚饭|午餐"
+    r")",
+    re.I,
+)
+
+_DINNER_PAT = re.compile(
+    r"(?:"
+    r"what\s+should\s+i\s+(?:make|cook|eat|have)|"
+    r"(?:dinner|lunch|breakfast)\s+(?:tonight|today|ideas)|"
+    r"make\s+for\s+dinner|cook\s+tonight|"
+    r"吃什么|晚饭|午餐|早餐|做什么菜|今晚吃"
+    r")",
+    re.I,
+)
+
+_VENT_MEMORY_PAT = re.compile(
+    r"(?:"
+    r"job|work|boss|career|quit|fired|layoff|commute|"
+    r"boyfriend|girlfriend|partner|husband|wife|dating|breakup|divorce|"
+    r"lonely|depressed|anxious|stressed|"
+    r"工作|老板|公司|辞职|男朋友|女朋友|老公|老婆|分手|焦虑|压力"
+    r")",
+    re.I,
+)
+
+_ADVICE_TOPIC_KEYS = {
+    "job": (
+        "job", "work", "boss", "career", "office", "coworker", "commute",
+        "quit", "fired", "layoff", "工作", "老板", "公司", "辞职", "上班",
+    ),
+    "food": (
+        "dinner", "lunch", "breakfast", "cook", "eat", "food", "recipe",
+        "meal", "hungry", "vegetarian", "vegan", "晚餐", "午饭", "早餐", "吃", "菜", "做饭",
+    ),
+    "relationship": (
+        "boyfriend", "girlfriend", "partner", "husband", "wife", "dating",
+        "text", "call", "him", "her", "ex", "date", "relationship",
+        "男朋友", "女朋友", "老公", "老婆", "分手", "恋爱", "他", "她", "对象",
+    ),
+}
+
+_LIFE_ADVICE = {
+    "en": (
+        "LIFE ADVICE MODE: They want a close friend's take — not a consultant essay. "
+        "Be warm, specific, and honest. Take a gentle position (\"honestly I'd start looking\" "
+        "beats endless pros/cons). Ask ONE natural follow-up when context is thin. "
+        "Use PRIVATE ABOUT ME and memories — name people, recall what they told you. "
+        "Give one concrete next step they could do today. "
+        "For relationships: be supportive, not manipulative; never tell them to stalk or harass. "
+        "If they sound distressed about body or mental health, be caring and suggest someone they trust — "
+        "you are a friend, not a therapist."
+    ),
+    "zh": (
+        "生活建议模式：像亲密好友给意见，不要客服腔或论文式分析。 "
+        "温暖、具体、诚实；可以温和地表态（「我会开始看看机会」比罗列优缺点更好）。 "
+        "信息不够时问一个自然的追问。结合「关于我」和记忆 — 叫出名字、提起他们说过的事。 "
+        "给一个今天就能做的小步骤。感情问题：支持但不操控；不说骚扰或跟踪的话。 "
+        "若涉及身心困扰，温柔关心并建议找信任的人 — 你是朋友，不是治疗师。"
+    ),
+}
+
+_DINNER_HINT = {
+    "en": {
+        "morning": "Meal context: morning — breakfast or lunch planning; keep it realistic for a weekday.",
+        "afternoon": "Meal context: afternoon — lunch soon or early dinner prep.",
+        "evening": "Meal context: evening — dinner tonight; favor practical ideas (30 min or less unless they love cooking).",
+        "late": "Meal context: late night — light snack or tomorrow's plan; don't assume a big cook session.",
+    },
+    "zh": {
+        "morning": "用餐场景：早上 — 早餐或午餐；工作日要现实。",
+        "afternoon": "用餐场景：下午 — 午饭或晚饭准备。",
+        "evening": "用餐场景：晚上 — 今晚晚饭；优先简单快手（除非他们爱做饭）。",
+        "late": "用餐场景：深夜 — 轻食或明天再说；别假设做大餐。",
+    },
+}
+
+_ADVICE_DEPTH_OVERRIDE = {
+    "en": (
+        "ADVICE REPLY LENGTH: This is a life-advice question — you may use 4–6 sentences "
+        "and one follow-up question even if the user prefers Short replies elsewhere."
+    ),
+    "zh": "建议类问题：可用 4–6 句话并问一个追问，即使用户平时喜欢简短回复。",
+}
+
+_ADVICE_CHIP_MESSAGES = {
+    "en": {
+        "more": "Tell me more — I want to talk this through.",
+        "would_do": "What would you do if you were me?",
+        "devil": "Play devil's advocate — what's the other side?",
+    },
+    "zh": {
+        "more": "再多说说 — 我想聊聊这个。",
+        "would_do": "要是你是我，你会怎么做？",
+        "devil": "唱唱反调 — 另一面是什么？",
+    },
+}
 
 
 def is_opinion_or_appearance(message):
     return bool(_OPINION_PAT.search(message or ""))
 
 
+def is_life_advice_query(message):
+    msg = (message or "").strip()
+    if not msg or len(msg) > 320:
+        return False
+    if is_weather_query(msg) or is_directions_query(msg) or is_save_place_query(msg):
+        return False
+    if is_opinion_or_appearance(msg):
+        return True
+    return bool(_LIFE_ADVICE_PAT.search(msg))
+
+
+def is_dinner_advice_query(message):
+    return bool(_DINNER_PAT.search(message or ""))
+
+
+def life_advice_instruction(lang, enabled=True):
+    if not enabled:
+        return ""
+    return _LIFE_ADVICE.get(lang, _LIFE_ADVICE["en"])
+
+
+def advice_depth_override(lang):
+    pack = _ADVICE_DEPTH_OVERRIDE.get(lang, _ADVICE_DEPTH_OVERRIDE["en"])
+    return pack if isinstance(pack, str) else pack.get("en", "")
+
+
+def dinner_time_hint(lang, hour=None):
+    lang = lang if lang in _DINNER_HINT else "en"
+    pack = _DINNER_HINT[lang]
+    h = 12 if hour is None else int(hour) % 24
+    if 5 <= h < 11:
+        key = "morning"
+    elif 11 <= h < 17:
+        key = "afternoon"
+    elif 17 <= h < 22:
+        key = "evening"
+    else:
+        key = "late"
+    return pack[key]
+
+
 def appearance_opinion_instruction(lang):
     return _APPEARANCE_OPINION.get(lang, _APPEARANCE_OPINION["en"])
+
+
+def _advice_topics(message):
+    low = (message or "").lower()
+    topics = []
+    for topic, keys in _ADVICE_TOPIC_KEYS.items():
+        if any(k in low for k in keys):
+            topics.append(topic)
+    return topics or ["general"]
+
+
+def relevant_memories_for_advice(message, memories, bio=""):
+    topics = _advice_topics(message)
+    topic_set = set(topics)
+    mems = memories or []
+    bio_text = (bio or "").strip()
+    hits = []
+    match_keys = []
+    for topic in topic_set:
+        if topic != "general":
+            match_keys.extend(_ADVICE_TOPIC_KEYS.get(topic, ()))
+    all_keys = (
+        list(_ADVICE_TOPIC_KEYS.get("job", ()))
+        + list(_ADVICE_TOPIC_KEYS.get("food", ()))
+        + list(_ADVICE_TOPIC_KEYS.get("relationship", ()))
+    )
+    for m in mems:
+        content = (m.get("content") if isinstance(m, dict) else str(m)) or ""
+        low = content.lower()
+        if match_keys and any(k in low for k in match_keys):
+            hits.append(content.strip())
+        elif not match_keys and any(k in low for k in all_keys):
+            hits.append(content.strip())
+    if bio_text and topics:
+        bio_low = bio_text.lower()
+        if any(k in bio_low for k in _ADVICE_TOPIC_KEYS.get("job", ()) + _ADVICE_TOPIC_KEYS.get("food", ()) + _ADVICE_TOPIC_KEYS.get("relationship", ())):
+            snippet = bio_text[:400].replace("\n", " ").strip()
+            if snippet:
+                hits.insert(0, f"(from About Me) {snippet}")
+    deduped = []
+    seen = set()
+    for h in hits:
+        key = h.lower()[:80]
+        if key not in seen:
+            seen.add(key)
+            deduped.append(h[:200])
+        if len(deduped) >= 4:
+            break
+    return deduped
+
+
+def format_advice_context_block(lang, message, memories, bio=""):
+    rows = relevant_memories_for_advice(message, memories, bio)
+    if not rows:
+        return ""
+    if lang == "zh":
+        header = "与此问题相关的记忆（优先使用，不要逐条复读）："
+    else:
+        header = "RELEVANT CONTEXT for this advice (use naturally — do not recite as a list):"
+    lines = "\n".join(f"- {r}" for r in rows)
+    return f"{header}\n{lines}"
+
+
+def suggest_vent_memory(message, lang="en"):
+    msg = (message or "").strip()
+    if not msg or not is_life_advice_query(msg):
+        return None
+    low = msg.lower()
+    memory = None
+    if re.search(r"don'?t\s+like\s+my\s+job|hate\s+my\s+job|quit|leave\s+my\s+job", low):
+        memory = "Unhappy at current job — considering a change"
+    elif re.search(r"工作|老板|辞职|不想干", msg):
+        memory = "对现在的工作不满意，在考虑要不要换"
+    elif re.search(r"call\s+(?:him|her)\s+back|wait\s+for\s+(?:him|her)|text\s+(?:him|her)", low):
+        memory = "Deciding whether to reach out or wait in a relationship situation"
+    elif re.search(r"该不该联系|要不要打|等他|找她", msg):
+        memory = "在感情里犹豫要不要主动联系"
+    elif _VENT_MEMORY_PAT.search(msg):
+        memory = (msg[:120] + "…") if len(msg) > 120 else msg
+    if not memory:
+        return None
+    if lang == "zh":
+        prompt = f"要我记住这件事吗：{memory[:100]}？"
+    else:
+        prompt = f"Want me to remember this for later: {memory[:100]}?"
+    return {"memory": memory[:500], "prompt": prompt}
+
+
+def advice_follow_up_chips(lang):
+    lang = lang if lang in _ADVICE_CHIP_MESSAGES else "en"
+    pack = _ADVICE_CHIP_MESSAGES[lang]
+    return [
+        {"id": "more", "label_key": "advice_chip_more", "message": pack["more"]},
+        {"id": "would_do", "label_key": "advice_chip_would_do", "message": pack["would_do"]},
+        {"id": "devil", "label_key": "advice_chip_devil", "message": pack["devil"]},
+    ]
+
+
+def build_advice_meta(message, lang="en"):
+    if not is_life_advice_query(message):
+        return {"ok": False, "reason": "not_advice"}
+    meta = {
+        "ok": True,
+        "is_advice": True,
+        "chips": advice_follow_up_chips(lang),
+    }
+    offer = suggest_vent_memory(message, lang)
+    if offer:
+        meta["remember_offer"] = offer
+    return meta
+
+
+def pick_vent_memory_suggestion(memories):
+    for m in memories or []:
+        content = (m.get("content") if isinstance(m, dict) else str(m)) or ""
+        if _VENT_MEMORY_PAT.search(content):
+            return content.strip()[:120]
+    return ""
 
 
 _REMEMBER_PAT = re.compile(
@@ -972,6 +1242,7 @@ _GENTLE_SUGGESTION = {
         "reminder": "{name}, you have a reminder coming up: {item} — want me to keep it on your radar?",
         "lightchat": "{name}, you have a LightChat message: {item} — tap 💬 Messages to reply.",
         "memory": "{name}, I still remember: {item}. Anything you want to do about that today?",
+        "vent": "{name}, last time you mentioned: {item} — still on your mind? I'm here.",
         "morning": "Good morning{name}! ☀️ Tap Catch Me Up if you want a quick rundown.",
         "evening": "Hey{name} — long day? I'm here if you want to vent or plan tomorrow.",
         "default_name": "friend",
@@ -980,6 +1251,7 @@ _GENTLE_SUGGESTION = {
         "reminder": "{name}，你有提醒：{item} — 需要我再帮你记着吗？",
         "lightchat": "{name}，LightChat 有新消息：{item} — 点 💬 消息去回复。",
         "memory": "{name}，我还记得：{item}。今天想聊聊这个吗？",
+        "vent": "{name}，上次你提过：{item} — 还在想这件事吗？我在这儿。",
         "morning": "早上好{name}！☀️ 点「帮我捋一下」可以快速汇总。",
         "evening": "嘿{name} — 累了吗？想聊聊或安排明天都行。",
         "default_name": "朋友",

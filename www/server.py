@@ -35,7 +35,7 @@ _test_flag = os.environ.get("TEST_MODE", "true").lower()
 TEST_MODE = _test_flag not in ("0", "false", "no", "off")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
-BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260621-7")
+BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260621-8")
 LIGHTCHAT_API = os.environ.get(
     "LIGHTCHAT_API", "https://web-production-bc64f.up.railway.app"
 ).rstrip("/")
@@ -68,7 +68,9 @@ def _set_job(job_id, **fields):
             _jobs[job_id].update(fields)
 
 
-def _run_chat_job(job_id, wallet, message, lang, reason, safe, safety_category, safety_reply):
+def _run_chat_job(
+    job_id, wallet, message, lang, reason, safe, safety_category, safety_reply, local_hour=None
+):
     try:
         if not safe:
             reply = safety_reply
@@ -85,7 +87,9 @@ def _run_chat_job(job_id, wallet, message, lang, reason, safe, safety_category, 
             if quick:
                 reply = quick
             else:
-                prompt = build_prompt(wallet, message, language_override=lang)
+                prompt = build_prompt(
+                    wallet, message, language_override=lang, local_hour=local_hour
+                )
                 try:
                     reply = run_aivm_chat(prompt, lang)
                     if (
@@ -108,6 +112,9 @@ def _run_chat_job(job_id, wallet, message, lang, reason, safe, safety_category, 
         increment_usage(wallet)
         payload = usage_payload(wallet)
         payload.update({"reply": reply, "tier": reason, "status": "done"})
+        advice_meta = languages.build_advice_meta(message, lang)
+        if advice_meta.get("ok"):
+            payload["advice_meta"] = advice_meta
         _set_job(job_id, **payload)
     except Exception as e:
         _set_job(job_id, status="error", error=str(e)[:300])
@@ -119,6 +126,12 @@ You are in BETA — responses may take up to 2 minutes (fast mode coming soon).
 {friend_mode_block}
 
 {appearance_opinion_block}
+
+{life_advice_block}
+
+{advice_context_block}
+
+{dinner_hint_block}
 
 {memory_confirm_block}
 
@@ -715,7 +728,7 @@ def sync_profile_language(wallet, lang):
     conn.close()
 
 
-def build_prompt(wallet, user_message, language_override=None):
+def build_prompt(wallet, user_message, language_override=None, local_hour=None):
     prof = get_profile(wallet) or {}
     prefs = json.loads(prof.get("preferences") or "{}")
     personality_key = prefs.get("personality") or "warm"
@@ -752,25 +765,41 @@ def build_prompt(wallet, user_message, language_override=None):
         language_instruction += "\n\n" + languages.brief_intent_instruction(lang, depth)
     assistant = languages.resolve_assistant_name(prefs)
     friend_on = bool(prefs.get("friend_mode"))
-    friend_block = languages.friend_mode_instruction(lang, friend_on)
+    advice_on = languages.is_life_advice_query(user_message)
+    friend_block = languages.friend_mode_instruction(lang, friend_on or advice_on)
     appearance_block = ""
-    if friend_on or languages.is_opinion_or_appearance(user_message):
+    if friend_on or advice_on or languages.is_opinion_or_appearance(user_message):
         appearance_block = languages.appearance_opinion_instruction(lang)
+    life_advice_block = languages.life_advice_instruction(lang, advice_on)
+    advice_context_block = ""
+    if advice_on:
+        advice_context_block = languages.format_advice_context_block(
+            lang, user_message, mems, bio_raw
+        )
+    dinner_hint_block = ""
+    if advice_on and languages.is_dinner_advice_query(user_message):
+        dinner_hint_block = languages.dinner_time_hint(lang, local_hour)
     memory_block = ""
     if languages.is_remember_intent(user_message):
         memory_block = languages.memory_confirm_instruction(lang)
+    depth_instruction = languages.reply_depth_instruction(depth, lang)
+    if advice_on:
+        depth_instruction += "\n\n" + languages.advice_depth_override(lang)
     persona_gender = PERSONA_GENDER[gender_key].format(assistant_name=assistant)
     system = BINAI_SYSTEM.format(
         assistant_name=assistant,
         friend_mode_block=friend_block,
         appearance_opinion_block=appearance_block,
+        life_advice_block=life_advice_block,
+        advice_context_block=advice_context_block,
+        dinner_hint_block=dinner_hint_block,
         memory_confirm_block=memory_block,
         profile=profile_text,
         about_me=about_me_text,
         memories=mem_text,
         recent_chat=get_recent_chat(wallet),
         language_instruction=language_instruction,
-        reply_depth_instruction=languages.reply_depth_instruction(depth, lang),
+        reply_depth_instruction=depth_instruction,
         personality=PERSONALITIES[personality_key],
         political=POLITICAL_LEANING[political_key],
         persona_gender=persona_gender,
@@ -1526,9 +1555,15 @@ def api_welcome(wallet):
                 lang, "reminder", name, rems[0]["content"]
             )
         elif mems:
-            suggestion = languages.gentle_open_suggestion(
-                lang, "memory", name, mems[0]["content"]
-            )
+            vent_item = languages.pick_vent_memory_suggestion(mems)
+            if vent_item:
+                suggestion = languages.gentle_open_suggestion(
+                    lang, "vent", name, vent_item
+                )
+            else:
+                suggestion = languages.gentle_open_suggestion(
+                    lang, "memory", name, mems[0]["content"]
+                )
         elif 5 <= hour < 12:
             suggestion = languages.gentle_open_suggestion(lang, "morning", name)
         elif 18 <= hour < 23:
@@ -1640,6 +1675,12 @@ def api_chat():
         ), 402
     ensure_profile(wallet)
     req_lang = (data.get("language") or "").strip()
+    local_hour = data.get("local_hour")
+    if local_hour is not None:
+        try:
+            local_hour = int(local_hour) % 24
+        except (TypeError, ValueError):
+            local_hour = None
     lang = resolve_lang(
         wallet,
         req_lang if req_lang in LANG_NAMES else None,
@@ -1664,7 +1705,10 @@ def api_chat():
         }
     threading.Thread(
         target=_run_chat_job,
-        args=(job_id, wallet, message, lang, reason, safe, safety_category, safety_reply),
+        args=(
+            job_id, wallet, message, lang, reason, safe, safety_category, safety_reply,
+            local_hour,
+        ),
         daemon=True,
     ).start()
     return jsonify({"job_id": job_id, "status": "pending"}), 202
@@ -2155,6 +2199,15 @@ def api_save_place():
     if report.get("ok") and wallet:
         save_frequent_place(wallet, report["key"], report["address"])
     return jsonify(report)
+
+
+@app.route("/api/advice-meta")
+def api_advice_meta():
+    message = (request.args.get("message") or "").strip()
+    lang = (request.args.get("lang") or "en").strip().lower()
+    if not message:
+        return jsonify({"ok": False, "error": "message required"}), 400
+    return jsonify(languages.build_advice_meta(message, lang))
 
 
 @app.route("/api/place-suggestion")
