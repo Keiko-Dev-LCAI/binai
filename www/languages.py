@@ -1486,6 +1486,87 @@ def is_save_place_query(message):
     return bool(extract_save_place(message))
 
 
+_ADDR_HINT = re.compile(
+    r"(?:\d+\s+\w+|\b(?:st|street|ave|avenue|rd|road|blvd|drive|ln|lane|way|court|ct|suite|apt|floor)\b)",
+    re.I,
+)
+_ZH_ADDR_HINT = re.compile(r"[\d]+(?:号|路|街|弄|巷|栋|楼|室|单元)")
+
+_MENTION_PLACE_PATTERNS = (
+    (re.compile(
+        r"my\s+(.+?)\s+(?:lives?|moved|stays?|is\s+staying)\s+(?:at|in|near|to)\s+(.+)",
+        re.I,
+    ), 1, 2),
+    (re.compile(
+        r"(?:she|he|they)\s+(?:lives?|moved|stays?)\s+(?:at|in|to)\s+(.+)",
+        re.I,
+    ), None, 1),
+    (re.compile(
+        r"(?:lives?|moved|staying|stays?)\s+(?:at|in|to)\s+(.+)",
+        re.I,
+    ), None, 1),
+    (re.compile(r"(?:located|based)\s+(?:at|in)\s+(.+)", re.I), None, 1),
+    (re.compile(r"我(?:的)?(.+?)(?:住在|搬到了|在)(.+)", re.I), 1, 2),
+    (re.compile(r"(?:住在|搬到了)(.+)", re.I), None, 1),
+)
+
+
+def _clean_place_address(address):
+    address = (address or "").strip().rstrip("?.!")
+    return re.sub(r"^(?:it'?s|its)\s+", "", address, flags=re.I).strip()
+
+
+def _looks_like_address(text):
+    s = (text or "").strip()
+    if len(s) < 6:
+        return False
+    return bool(_ADDR_HINT.search(s) or _ZH_ADDR_HINT.search(s))
+
+
+def _address_already_saved(address, places):
+    norm = _clean_place_address(address).lower()
+    for value in (places or {}).values():
+        if (value or "").strip().lower() == norm:
+            return True
+    return False
+
+
+def extract_place_mention(message, places=None):
+    msg = (message or "").strip()
+    if not msg or len(msg) > 240:
+        return None
+    if is_save_place_query(msg) or is_directions_query(msg) or is_weather_query(msg):
+        return None
+    places = places or {}
+    for pat, label_grp, addr_grp in _MENTION_PLACE_PATTERNS:
+        m = pat.search(msg)
+        if not m:
+            continue
+        label = m.group(label_grp).strip() if label_grp else None
+        address = _clean_place_address(m.group(addr_grp))
+        if not _looks_like_address(address) or len(address) < 6:
+            continue
+        key = normalize_place_key(label) if label else None
+        if not key:
+            key, _ = match_place_from_message(msg, places)
+        if not key:
+            continue
+        if _address_already_saved(address, places):
+            return None
+        existing = (places.get(key) or "").strip().lower()
+        if existing and existing == address.lower():
+            return None
+        return {"key": key, "label": label or key, "address": address[:200]}
+    return None
+
+
+def place_suggestion_prompt(lang, key, address):
+    who = place_display_name(key, lang)
+    if lang == "zh":
+        return f"要把 {address} 保存为{who}常去地点吗？"
+    return f"Save {address} as {who} in Frequent Places?"
+
+
 def save_place_reply(lang, key, address):
     who = place_display_name(key, lang)
     if lang == "zh":
