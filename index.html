@@ -415,6 +415,11 @@ body::before {
       <button class="btn btn-ghost" onclick="saveProfile()">Save</button>
     </div>
     <div class="card">
+      <div class="card-title">Language</div>
+      <div class="card-sub" style="margin-bottom:12px">Binai replies and voice in this language. Change anytime — saved to your account.</div>
+      <div class="lang-grid" id="settingsLangGrid"></div>
+    </div>
+    <div class="card">
       <div class="card-title">Binai's personality</div>
       <div class="card-sub" style="margin-bottom:12px">How Binai talks to you — same brain, different vibe.</div>
       <div class="lang-grid" id="personalityGrid"></div>
@@ -762,9 +767,18 @@ function usePrompt(text) {
   sendChat();
 }
 
-// ── Onboarding ─────────────────────────────────────────────────────────────
-function initOnboarding() {
-  const grid = document.getElementById('langGrid');
+// ── Language ─────────────────────────────────────────────────────────────────
+function syncLanguageGrids(selectedId) {
+  ['langGrid', 'settingsLangGrid'].forEach(gridId => {
+    const grid = document.getElementById(gridId);
+    if (!grid) return;
+    grid.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.id === selectedId);
+    });
+  });
+}
+function buildLanguageGrid(gridId, onSelect) {
+  const grid = document.getElementById(gridId);
   if (!grid) return;
   grid.innerHTML = '';
   const savedLang = localStorage.getItem('binai_lang') || 'en';
@@ -772,14 +786,23 @@ function initOnboarding() {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'lang-btn' + (l.id === savedLang ? ' active' : '');
+    b.dataset.id = l.id;
     b.textContent = l.label;
     b.onclick = () => {
-      document.querySelectorAll('.lang-btn').forEach(x => x.classList.remove('active'));
-      b.classList.add('active');
       localStorage.setItem('binai_lang', l.id);
+      syncLanguageGrids(l.id);
+      if (onSelect) onSelect(l.id);
     };
     grid.appendChild(b);
   });
+}
+function initLanguagePickers() {
+  buildLanguageGrid('langGrid');
+  buildLanguageGrid('settingsLangGrid', () => saveProfile());
+}
+
+// ── Onboarding ─────────────────────────────────────────────────────────────
+function initOnboarding() {
   if (!localStorage.getItem('binai_onboarded')) {
     document.getElementById('onboardOverlay').classList.remove('hidden');
   }
@@ -1501,6 +1524,7 @@ async function loadProfile() {
     const r = await fetch(API + '/api/profile/' + wallet);
     const prof = await r.json();
     if (prof.display_name) document.getElementById('nameInput').value = prof.display_name;
+    if (prof.language) localStorage.setItem('binai_lang', prof.language);
     const prefs = prof.preferences ? JSON.parse(prof.preferences) : {};
     if (prefs.personality) {
       selectedPersonality = prefs.personality;
@@ -1514,6 +1538,7 @@ async function loadProfile() {
       selectedGender = prefs.persona_gender;
       localStorage.setItem('binai_persona_gender', prefs.persona_gender);
     }
+    initLanguagePickers();
     initPreferencePickers();
   } catch (_) {}
 }
@@ -1675,6 +1700,7 @@ async function loadAppConfig() {
 }
 function startApp() {
   initOnboarding();
+  initLanguagePickers();
   initPreferencePickers();
   initSettingsToggles();
   updateHero();
