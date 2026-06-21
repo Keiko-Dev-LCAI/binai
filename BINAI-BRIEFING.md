@@ -64,6 +64,9 @@ Whoever worked on Binai last (Grok or Claude) **must** before closing:
 - **Friend mode** + opinion/appearance prompts (text chat)
 - **Assistant name** (custom, changeable)
 - **☀️ Catch Me Up** + gentle welcome suggestion
+- **LightChat connector v1** — `/api/lightchat`, Catch Me Up + welcome unread, 💬/📹 buttons, `apps-registry.json`, LightChat `?chat=` / `?call=` deep links
+- **快手 v1** — open 快手, auto-remember pasted links, Settings toggles
+- **PWA auto-update** — `sw.js` + purple “tap to refresh” banner (no delete icon needed)
 
 Details + commit table → `BINAI-PLAN.md` § Shipped Web Beta
 
@@ -75,6 +78,8 @@ Details + commit table → `BINAI-PLAN.md` § Shipped Web Beta
 - **User-controlled retention** — 24h default; Remember / Save message / Save photo buttons
 - **OrcaVault / Archives** — "Save to Archives" for photos forever on-chain (Family Album, etc.)
 - **LightTunes** — 🎵 embed, play playlist, voice control
+- ~~**LightChat v1**~~ ✅ shipped — read bridge, Catch Me Up, deep links; Socket toast + voice-send still plan
+- ~~**快手 v1**~~ ✅ shipped — open + link memory; Android share-target still plan
 - **Keiko App Registry** — JSON manifest so Binai connects to more apps easily
 - ~~**Custom assistant name**~~ ✅ shipped
 - ~~**Friend mode / casual chat**~~ ✅ shipped (text); photo opinions need camera
@@ -91,7 +96,7 @@ Full spec → `BINAI-PLAN.md` § User-Controlled Retention, App Connectors, Orca
 2. **⭐ Smart UX (Phase 1c)** — Catch Me Up button + memory confirmation + welcome-back — Keiko priority
 3. **Retention UI** — Remember / Save message + 24h chat roll-off
 4. **Camera v1** — 📷 + vision API
-5. **App connectors v1** — Save to Archives handoff + LightTunes embed
+5. **App connectors v1** — LightChat ✅ · Save to Archives handoff + LightTunes embed
 
 ## From Claude plan — not discussed yet (still in BINAI-PLAN.md)
 

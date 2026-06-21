@@ -31,7 +31,8 @@ When brainstorming a new idea:
 | Custom assistant name (Settings + wizard) | Retention buttons + 24h expiry |
 | ☀️ Catch Me Up button + `/api/catch-up` | OrcaVault Save to Archives |
 | Gentle open suggestion on welcome-back | LightTunes embed |
-| Memory confirm instruction in AI prompt | Full Smart UX #1–3 with calendar/location |
+| **LightChat v1** — read bridge, Catch Me Up, 💬 button, `?chat=` / `?call=` deep links | LightChat Socket toast, send-from-Binai |
+| **快手 v1** — open app, remember shared links, voice commands | Android share-target from 快手 |
 
 | Role | Typical work |
 |------|----------------|
@@ -486,6 +487,104 @@ Dropdown: pick vault — "Family Album", "Travel 2026", or **+ New archive**.
 
 ---
 
+### 💬 LightChat Integration — BRAINSTORM (expanded)
+
+**App:** `lightchat-app/` · live at **lightchat.chat** · Railway backend with Socket.IO  
+**Today:** Wallet + @handle identity · DMs + groups · **Memories** feed (photos/videos, 90-day cloud or on-chain forever) · **1:1 + group video calls** (WebRTC) · voice AI · Watch Together · calendar share · LCAI gifts · push notifications  
+**Handles in prod:** `@keiko326`, `@bin1977` (Bin) on premium whitelist
+
+**Why this pairs with Binai:** Same wallet = same person everywhere. Binai = private AI brain; LightChat = talk to real people (especially Keiko ↔ Bin). Binai should *know* LightChat happened without replacing LightChat.
+
+#### Use cases Keiko asked for
+
+| Idea | What it feels like |
+|------|-------------------|
+| **Message sent alert** | Binai: "Bin just messaged you on LightChat 💜" or Catch Me Up includes unread DMs |
+| **LightChat memories** | Binai sees new posts from contacts' Memories feed — comment, remember, or open in LightChat |
+| **Video call friend** | "Call Bin on LightChat" → opens LightChat with call UI pre-started |
+| **Cross-app memory** | Photo Bin posted to Memories → Binai can reference it in friend-mode chat |
+
+#### Binai integration (planned)
+
+**UI:**
+- **💬 Messages** button in sidebar → LightChat panel (embed iframe) or badge with unread count
+- **📸 Friend memories** strip — latest from contacts (Bin first if linked in About Me)
+- Catch Me Up line: "2 unread LightChat messages from @bin1977"
+
+**Voice / chat examples (EN + ZH):**
+- "Did Bin message me?" / "程斌发消息了吗？"
+- "Open LightChat" / "打开 LightChat"
+- "Call my wife on LightChat" / "用 LightChat 给老婆打电话"
+- "What did Bin post today?" (reads Memories captions)
+- "Reply to Bin: I'll be home at 6" → handoff to LightChat compose (v2)
+
+**Build tiers:**
+
+| Tier | Effort | Flow |
+|------|--------|------|
+| **v1 — Deep link + open** | Low | Registry entry `lightchat` · `lightchat.chat?contact=@bin1977` or `?call=@bin1977` · Binai button opens tab |
+| **v1.5 — Read-only bridge** | Medium | Binai `server.py` polls LightChat API with user's wallet: `/contacts`, `/messages/<wallet>/<contact>`, `/memories/<wallet>` · inject summary into Catch Me Up + welcome-back · **no sending from Binai yet** |
+| **v2 — Notifications** | Medium | Binai frontend opens Socket.IO to LightChat (same wallet auth) · on `notification` event → toast in Binai: "💬 @bin1977: …" · optional Web Push relay |
+| **v2.5 — Send message** | Medium | Voice → Binai drafts → user confirms → `POST` or socket `send_message` via Binai backend proxy (wallet verified) |
+| **v3 — Video call handoff** | Medium | `lightchat.chat?call=<wallet>` deep link · LightChat frontend reads param → auto `call_offer` to contact · Binai shows "Calling Bin…" then hands off |
+| **v4 — Remember from Memories** | Low–Med | Button on memory summary: **Remember this** → Binai memory: "Bin posted a sunset photo today" (caption only, not image, unless user saves) |
+
+**APIs LightChat already exposes (reuse, no fork needed):**
+
+| Endpoint / event | Use in Binai |
+|------------------|--------------|
+| `GET /contacts/<wallet>` | List friends + handles |
+| `GET /messages/<wallet>/<contact_wallet>` | Unread / recent preview |
+| `GET /memories/<wallet>` | Friend Memories feed |
+| `GET /resolve/<handle>` | "Call Bin" → wallet lookup |
+| Socket `notification` | Real-time "message sent" in Binai |
+| Socket `call_offer` / deep link | Video call start |
+
+**Privacy / product rules:**
+- Binai reads LightChat **only for the connected wallet** — same as LightChat itself
+- Default: show preview in Catch Me Up; full thread stays in LightChat
+- **Remember from LightChat** = explicit tap (caption/fact), not auto-ingest all DMs
+- Chinese UI: all connector labels + voice intents in zh for Bin/Sherry
+
+**Settings → Connected apps:** toggle **LightChat** — allow read messages / allow start calls / show Memories in Catch Me Up.
+
+**Keiko + Bin story (emotional hook):** Binai named after Bin; LightChat is how they actually talk. Connector makes Binai feel like it *lives in the relationship*, not a separate bot.
+
+---
+
+### 📱 Kuaishou (快手) — BRAINSTORM
+
+**Context:** Bin loves **Kuaishou** (Chinese short-video, like TikTok). Binai already has **Chinese UI + Chinese AI** for her — connector should feel native, not bolted on.
+
+**Reality check:** Kuaishou has [open.kuaishou.com](https://open.kuaishou.com) APIs, but they target **mini-programs, live commerce, ads, and creator tools** — not "read my For You feed" for third-party assistants. There is **no consumer TikTok-style public API** for browsing someone's watch history or feed. Plan around **open, share, and handoff** — not scraping.
+
+#### What we *can* do (honest tiers)
+
+| Tier | Effort | What Bin gets |
+|------|--------|---------------|
+| **v1 — Open 快手** | Low | Voice: "打开快手" / "open Kuaishou" → launch app or `https://www.kuaishou.com` · Capacitor `App.openUrl()` on Android |
+| **v1.5 — Link memory** | Low | She copies/shares a Kuaishou link into Binai chat → Binai saves title/note in Memory: "Bin liked this cooking video" · optional fetch OG preview if URL public |
+| **v2 — Share-to-Binai** | Medium | Android share sheet: "Ask Binai about this" when sharing from Kuaishou app · Binai gets URL + optional screenshot for opinion (friend mode) |
+| **v2.5 — Watch together alt** | Low | LightChat **Watch Together** for Bilibili/YouTube links she finds on 快手 — "save link, watch with Keiko later" |
+| **v3 — 快手小程序** | High | Official Kuaishou mini-program (needs China dev account / business entity) — far future; only if Keiko wants China distribution |
+
+#### Binai behaviors (no API required)
+
+- **Discuss what she describes:** "我刚才看了一个做饺子的视频" → Binai helps recipe/shopping list (Notes)
+- **Trend companion (zh):** Binai explains slang or meme *if she pastes or describes it* — not live trend scraping
+- **Bridge to Lightchain:** "Save this moment" → post caption + screenshot to **LightChat Memories** or **OrcaVault Family Album** (permanent for family pics)
+- **Remind:** "Remind me to show Keiko that funny dog video tonight"
+
+#### What *not* to promise
+
+- Auto-sync Kuaishou feed into Binai
+- Post to Kuaishou from Binai without official creator OAuth
+- Read private 快手 account data
+
+**Settings:** **Connected apps → 快手** — enable "Open app" + "Remember shared links" (off by default for links).
+
+---
+
 ### 🧹 Phone Cleaner (CCleaner-style)
 All of the following are confirmed achievable on Android:
 - **Duplicate photo/video finder** — find and delete duplicates
@@ -834,7 +933,10 @@ The goal: Binai should feel like it already knows your day, your people, your ha
 | 7 | Booking / action replies | More canned filters vs wait for better AIVM tool use |
 | 8 | Archives handoff vs one-tap | Deep link to OrcaVault (user confirms tx) vs Binai relay upload in background |
 | 9 | LightTunes playlist | postMessage from embed vs new `?playlist=` deep link vs relay API |
-| 10 | Which apps in registry v1 | OrcaVault + LightTunes only vs also LightWeather, TopTen, LightTube |
+| 10 | Which apps in registry v1 | OrcaVault + LightTunes only vs also **LightChat**, LightWeather, TopTen, LightTube |
+| 13 | LightChat read vs send | Catch Me Up read-only first vs voice-send with confirm |
+| 14 | LightChat call deep link | `?call=@handle` param on LightChat vs Binai-only handoff |
+| 15 | Kuaishou scope | Open app + link memory only vs Android share-target |
 | 11 | Assistant name in wizard | Optional skip (default Binai) vs encourage pick on first login |
 | 12 | Assistant name length | 20 chars vs allow longer; emoji in name yes/no |
 
@@ -851,7 +953,7 @@ Update that file at the end of every session so Claude stays in sync (he has no 
 - **OrcaVault / Lightchain Archives** (`orcavault-app/`) — permanent photo/video albums on-chain; **Save to Archives** target
 - **LightTunes** (`lighttunes-app/`) — music + private ♥ playlist; embed + voice control target
 - **OrcaVault relay** (`orcavault-production.up.railway.app`) — shared by LightTube, LightTunes, Archives uploads
-- **LightChat** (lightchat.chat) — voice AI already live; voice layer patterns apply here
+- **LightChat** (lightchat.chat) — messaging, Memories, video calls; **connector brainstorm** § LightChat Integration
 - **OrcaMail** (orcamail.ai) — AIVM Railway server pattern to reuse
 - **LightWeather** (lightweather.win) — Open-Meteo integration to reuse
 - **TopTen** — DexScreener API integration to reuse

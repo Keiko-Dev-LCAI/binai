@@ -8,6 +8,8 @@ window.BINAI_I18N = {
     sidebar_tagline: 'The AI that remembers you — powered by Lightchain AIVM.',
     disclaimer: 'Disclaimer: Binai is beta software provided as-is. AI responses are not professional advice. The service may go offline or be discontinued at any time. No refunds.',
     beta_banner: '🧪 Community beta — everyone gets unlimited AI for testing',
+    update_banner: '✨ Binai updated — tap here to refresh',
+    update_help: 'If something looks old: tap the purple update bar, or fully close Binai and reopen.',
     hero_welcome: 'Welcome back 💜', hero_welcome_new: 'Welcome to Binai 💜',
     hero_sub: 'Your personal assistant on Lightchain. I remember what you tell me — try "remember my favorite coffee is iced latte."',
     hero_sub_connected: 'I remember what you share across sessions. Ask anything — or tap Morning Briefing.',
@@ -17,7 +19,38 @@ window.BINAI_I18N = {
     prompt2_title: 'Recall memories', prompt2_desc: 'See what Binai already knows about you',
     prompt3_title: 'Morning briefing', prompt3_desc: 'Weather, reminders, and LCAI in one tap',
     prompt4_title: 'Plan my day', prompt4_desc: 'Get a friendly start-of-day nudge',
-    chat_placeholder: 'Talk to Binai…', send: 'Send',
+    chat_placeholder: 'Talk to {name}…', send: 'Send',
+    catch_up_btn: '☀️ Catch Me Up', catch_up_err: 'Could not load catch-up.',
+    lightchat_btn: '💬 Messages', kuaishou_btn: '📱 快手',
+    settings_connected_title: 'Connected apps',
+    settings_connected_sub: 'Binai can read LightChat and open 快手 — same wallet everywhere.',
+    lightchat_enabled_label: 'LightChat — show messages & memories in Catch Me Up',
+    lightchat_memories_label: 'Show friend Memories feed',
+    lightchat_handle_label: 'Primary contact @handle (e.g. spouse)',
+    settings_lc_open: '💬 Open LightChat', settings_lc_call: '📹 Video call',
+    kuaishou_enabled_label: '快手 — open app & remember shared links',
+    settings_ks_open: '📱 Open Kuaishou',
+    insight_lc_title: 'LightChat', insight_lc_connect: 'Connect wallet to see messages.',
+    insight_lc_loading: 'Checking LightChat…', insight_lc_off: 'LightChat connector off in Settings.',
+    insight_lc_clear: 'No new LightChat messages.', insight_lc_unread: '{n} new message(s)',
+    insight_lc_btn: '💬 LightChat', insight_ks_btn: '📱 快手',
+    welcome_lightchat: '💬 LightChat from {handle}: {preview}',
+    connector_open_lightchat: 'Opening LightChat 💬 — same wallet as Binai.',
+    connector_call_lightchat: 'Starting video call to {handle} on LightChat 📹',
+    connector_open_kuaishou: 'Opening 快手 in a new tab 📱',
+    connector_lc_unread: 'LightChat messages waiting: {items}',
+    connector_lc_memories: 'Recent friend memories: {items}',
+    connector_lc_clear: 'No new LightChat messages since you last checked.',
+    connector_kuaishou_saved: 'Got it — I saved that 快手 link to your memories 🧠',
+    assistant_name_title: 'Assistant name',
+    assistant_name_sub: 'What to call your AI — default Binai. The app stays Binai 💜',
+    assistant_name_ph: 'Binai',
+    friend_mode_label: 'Friend mode — casual opinions like a close friend',
+    gentle_suggestions_label: 'Gentle suggestion when I open the app',
+    setup_assistant_title: 'Assistant name',
+    setup_assistant_sub: 'Leave as Binai or pick your own — change anytime.',
+    setup_friend_mode: 'Friend mode — like texting a close friend',
+    setup_gentle_suggestions: 'Gentle suggestion when I open the app',
     voice_mute: 'Mute Binai voice', voice_unmute: 'Unmute Binai voice',
     chat_hint: 'Beta: answers take 1–2 min. Say "remember …" to save facts.',
     briefing_intro: 'One-tap morning catch-up — weather, reminders, memories, LCAI price.',
@@ -131,6 +164,8 @@ window.BINAI_I18N = {
     sidebar_tagline: '记住你的 AI 助手 — 由 Lightchain AIVM 驱动。',
     disclaimer: '免责声明：Binai 为测试版软件，按原样提供。AI 回复不构成专业建议。服务可能随时下线或终止。不退款。',
     beta_banner: '🧪 社区测试版 — 测试期间所有人无限使用 AI',
+    update_banner: '✨ Binai 已更新 — 点这里刷新',
+    update_help: '如果界面还是旧的：点紫色更新条，或完全关闭 Binai 再打开。',
     hero_welcome: '欢迎回来 💜', hero_welcome_new: '欢迎使用 Binai 💜',
     hero_sub: '你在 Lightchain 上的私人助手。我会记住你告诉我的事 — 试试「记住我最喜欢的咖啡是冰拿铁」。',
     hero_sub_connected: '我会记住你分享的内容。随便问 — 或点右侧「晨间简报」。',
@@ -140,7 +175,38 @@ window.BINAI_I18N = {
     prompt2_title: '回忆记忆', prompt2_desc: '看看 Binai 已经了解你什么',
     prompt3_title: '晨间简报', prompt3_desc: '天气、提醒和 LCAI 一键查看',
     prompt4_title: '规划今天', prompt4_desc: '友好的一天开始建议',
-    chat_placeholder: '和 Binai 聊天…', send: '发送',
+    chat_placeholder: '和 {name} 聊天…', send: '发送',
+    catch_up_btn: '☀️ 帮我捋一下', catch_up_err: '无法加载汇总。',
+    lightchat_btn: '💬 消息', kuaishou_btn: '📱 快手',
+    settings_connected_title: '已连接应用',
+    settings_connected_sub: 'Binai 可读取 LightChat、打开快手 — 同一钱包。',
+    lightchat_enabled_label: 'LightChat — 在「帮我捋一下」里显示消息和动态',
+    lightchat_memories_label: '显示好友 Memories 动态',
+    lightchat_handle_label: '主要联系人 @昵称（如家人）',
+    settings_lc_open: '💬 打开 LightChat', settings_lc_call: '📹 视频通话',
+    kuaishou_enabled_label: '快手 — 打开应用并记住分享的链接',
+    settings_ks_open: '📱 打开快手',
+    insight_lc_title: 'LightChat', insight_lc_connect: '连接钱包查看消息。',
+    insight_lc_loading: '正在查看 LightChat…', insight_lc_off: '已在设置中关闭 LightChat 连接。',
+    insight_lc_clear: '没有新的 LightChat 消息。', insight_lc_unread: '{n} 条新消息',
+    insight_lc_btn: '💬 LightChat', insight_ks_btn: '📱 快手',
+    welcome_lightchat: '💬 LightChat {handle}：{preview}',
+    connector_open_lightchat: '正在打开 LightChat 💬 — 与 Binai 同一钱包。',
+    connector_call_lightchat: '正在 LightChat 上呼叫 {handle} 📹',
+    connector_open_kuaishou: '正在新标签页打开快手 📱',
+    connector_lc_unread: 'LightChat 待读消息：{items}',
+    connector_lc_memories: '好友最新动态：{items}',
+    connector_lc_clear: '上次查看后没有新的 LightChat 消息。',
+    connector_kuaishou_saved: '好的 — 已把快手链接存入记忆 🧠',
+    assistant_name_title: '助手名字',
+    assistant_name_sub: '怎么称呼你的 AI — 默认 Binai。应用名仍是 Binai 💜',
+    assistant_name_ph: 'Binai',
+    friend_mode_label: '朋友模式 — 像好友一样聊天、给意见',
+    gentle_suggestions_label: '打开应用时轻轻提醒一句',
+    setup_assistant_title: '助手名字',
+    setup_assistant_sub: '保持 Binai 或自定义 — 随时可改。',
+    setup_friend_mode: '朋友模式 — 像和好友发消息',
+    setup_gentle_suggestions: '打开应用时轻轻提醒一句',
     voice_mute: '关闭 Binai 语音', voice_unmute: '开启 Binai 语音',
     chat_hint: '测试版：回复需 1–2 分钟。说「记住…」可保存信息。',
     briefing_intro: '一键晨间汇总 — 天气、提醒、记忆、LCAI 价格。',
@@ -285,9 +351,27 @@ window.applyI18n = function() {
   set('usageSide', 'beta_unlimited');
   set('topDisclaimerText', 'disclaimer');
   set('betaBanner', 'beta_banner');
+  set('updateBannerText', 'update_banner');
+  set('settingsUpdateHelp', 'update_help');
   set('waitBanner', 'wait_banner');
-  setPh('chatInput', 'chat_placeholder');
+  if (typeof updateChatPlaceholder === 'function') updateChatPlaceholder();
+  else setPh('chatInput', 'chat_placeholder');
   set('sendBtn', 'send');
+  set('catchUpBtn', 'catch_up_btn');
+  set('lightchatBtn', 'lightchat_btn');
+  set('kuaishouBtn', 'kuaishou_btn');
+  set('insightLcBtn', 'insight_lc_btn');
+  set('insightKsBtn', 'insight_ks_btn');
+  set('insightLightchatTitle', 'insight_lc_title');
+  set('settingsConnectedTitle', 'settings_connected_title');
+  set('settingsConnectedSub', 'settings_connected_sub');
+  set('lightchatEnabledLabel', 'lightchat_enabled_label');
+  set('lightchatMemoriesLabel', 'lightchat_memories_label');
+  set('lightchatHandleLabel', 'lightchat_handle_label');
+  set('settingsLcOpenBtn', 'settings_lc_open');
+  set('settingsLcCallBtn', 'settings_lc_call');
+  set('kuaishouEnabledLabel', 'kuaishou_enabled_label');
+  set('settingsKsOpenBtn', 'settings_ks_open');
   if (typeof updateVoiceMuteBtn === 'function') updateVoiceMuteBtn();
   set('chatHint', 'chat_hint');
   set('briefingIntro', 'briefing_intro');
@@ -317,6 +401,11 @@ window.applyI18n = function() {
   set('settingsNameTitle', 'name_title');
   setPh('nameInput', 'name_ph');
   set('settingsSaveBtn', 'save');
+  set('settingsAssistantTitle', 'assistant_name_title');
+  set('settingsAssistantSub', 'assistant_name_sub');
+  setPh('assistantNameInput', 'assistant_name_ph');
+  set('friendModeLabel', 'friend_mode_label');
+  set('gentleSuggestionsLabel', 'gentle_suggestions_label');
   set('settingsLangTitle', 'lang_title');
   set('settingsLangSub', 'lang_sub');
   set('settingsReplyDepthTitle', 'reply_depth_title');
@@ -378,6 +467,11 @@ window.applyI18n = function() {
   set('setupPoliticalTitle', 'political_title');
   set('setupPoliticalSub', 'setup_political_sub');
   set('setupGenderTitle', 'gender_title');
+  set('setupAssistantTitle', 'setup_assistant_title');
+  set('setupAssistantSub', 'setup_assistant_sub');
+  setPh('setupAssistantName', 'assistant_name_ph');
+  set('setupFriendModeLabel', 'setup_friend_mode');
+  set('setupGentleSuggestionsLabel', 'setup_gentle_suggestions');
   set('setupNotifTitle', 'setup_notif_title');
   set('setupDailyBriefingLabel', 'daily_briefing');
   set('setupNotifLabel', 'notif_label');

@@ -872,6 +872,8 @@ _CATCH_UP = {
         "reminders": "📌 Reminders: {items}",
         "notes": "📝 Notes: {n} saved",
         "memories": "🧠 I remember: {items}",
+        "lightchat_unread": "💬 LightChat: {items}",
+        "lightchat_memories": "📸 Friend memories: {items}",
         "price": "💰 LCAI ≈ ${price:.4f} USD",
         "all_clear": "You're all caught up — nothing urgent. I'm here if you want to chat.",
         "default_name": "friend",
@@ -881,6 +883,8 @@ _CATCH_UP = {
         "reminders": "📌 提醒：{items}",
         "notes": "📝 笔记：{n} 条",
         "memories": "🧠 我记得：{items}",
+        "lightchat_unread": "💬 LightChat：{items}",
+        "lightchat_memories": "📸 好友动态：{items}",
         "price": "💰 LCAI ≈ ${price:.4f} 美元",
         "all_clear": "都还好，没有紧急的事。想聊随时找我。",
         "default_name": "朋友",
@@ -966,6 +970,7 @@ def memory_confirm_instruction(lang):
 _GENTLE_SUGGESTION = {
     "en": {
         "reminder": "{name}, you have a reminder coming up: {item} — want me to keep it on your radar?",
+        "lightchat": "{name}, you have a LightChat message: {item} — tap 💬 Messages to reply.",
         "memory": "{name}, I still remember: {item}. Anything you want to do about that today?",
         "morning": "Good morning{name}! ☀️ Tap Catch Me Up if you want a quick rundown.",
         "evening": "Hey{name} — long day? I'm here if you want to vent or plan tomorrow.",
@@ -973,6 +978,7 @@ _GENTLE_SUGGESTION = {
     },
     "zh": {
         "reminder": "{name}，你有提醒：{item} — 需要我再帮你记着吗？",
+        "lightchat": "{name}，LightChat 有新消息：{item} — 点 💬 消息去回复。",
         "memory": "{name}，我还记得：{item}。今天想聊聊这个吗？",
         "morning": "早上好{name}！☀️ 点「帮我捋一下」可以快速汇总。",
         "evening": "嘿{name} — 累了吗？想聊聊或安排明天都行。",

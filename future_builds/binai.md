@@ -30,12 +30,16 @@ metadata:
 - Catch Me Up button + API
 - Gentle welcome suggestion
 - About Me, reply length, setup wizard, mute, iPhone async chat
+- **LightChat v1** — read bridge, Catch Me Up lines, 💬/📹 buttons, deep links
+- **快手 v1** — open app, remember shared links
 
 ## Plan only
 
 - Camera / photo opinions
 - Retention buttons + 24h expiry
 - OrcaVault Archives, LightTunes connectors
+- LightChat Socket toast + voice-send
+- 快手 Android share-target
 - Calendar/location Smart UX
 
 ## Next
