@@ -35,7 +35,7 @@ _test_flag = os.environ.get("TEST_MODE", "true").lower()
 TEST_MODE = _test_flag not in ("0", "false", "no", "off")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
-BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260621-6")
+BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260621-7")
 LIGHTCHAT_API = os.environ.get(
     "LIGHTCHAT_API", "https://web-production-bc64f.up.railway.app"
 ).rstrip("/")
@@ -1133,16 +1133,46 @@ def maybe_save_frequent_place(wallet, message):
     return parsed
 
 
-def build_save_place_report(message, lang="en"):
+def build_save_place_report(message, lang="en", key=None, address=None):
+    lang = lang if lang in languages.LANG_NAMES else "en"
+    if key and address:
+        key = (key or "").strip().lower()[:32]
+        address = (address or "").strip()[:200]
+        if not key or len(address) < 4:
+            return {"ok": False, "reason": "invalid_place"}
+        return {
+            "ok": True,
+            "key": key,
+            "address": address,
+            "reply": languages.save_place_reply(lang, key, address),
+        }
     parsed = languages.extract_save_place(message)
     if not parsed:
         return {"ok": False, "reason": "not_save_place"}
-    lang = lang if lang in languages.LANG_NAMES else "en"
     return {
         "ok": True,
         "key": parsed["key"],
         "address": parsed["address"],
         "reply": languages.save_place_reply(lang, parsed["key"], parsed["address"]),
+    }
+
+
+def build_place_suggestion_report(message, prefs=None, lang="en"):
+    lang = lang if lang in languages.LANG_NAMES else "en"
+    if languages.is_save_place_query(message):
+        return {"ok": False, "reason": "explicit_save"}
+    places = languages.frequent_places(prefs)
+    parsed = languages.extract_place_mention(message, places)
+    if not parsed:
+        return {"ok": False, "reason": "no_mention"}
+    key = parsed["key"]
+    address = parsed["address"]
+    return {
+        "ok": True,
+        "key": key,
+        "address": address,
+        "label": languages.place_display_name(key, lang),
+        "prompt": languages.place_suggestion_prompt(lang, key, address),
     }
 
 
@@ -2114,12 +2144,31 @@ def api_save_place():
     message = (request.args.get("message") or "").strip()
     lang = (request.args.get("lang") or "en").strip().lower()
     wallet = norm_wallet(request.args.get("wallet") or "")
-    if not message:
-        return jsonify({"ok": False, "error": "message required"}), 400
-    report = build_save_place_report(message, lang)
+    key = (request.args.get("key") or "").strip()
+    address = (request.args.get("address") or "").strip()
+    if key and address:
+        report = build_save_place_report(message, lang, key=key, address=address)
+    elif message:
+        report = build_save_place_report(message, lang)
+    else:
+        return jsonify({"ok": False, "error": "message or key+address required"}), 400
     if report.get("ok") and wallet:
         save_frequent_place(wallet, report["key"], report["address"])
     return jsonify(report)
+
+
+@app.route("/api/place-suggestion")
+def api_place_suggestion():
+    message = (request.args.get("message") or "").strip()
+    lang = (request.args.get("lang") or "en").strip().lower()
+    wallet = norm_wallet(request.args.get("wallet") or "")
+    if not message:
+        return jsonify({"ok": False, "error": "message required"}), 400
+    prefs = {}
+    if wallet:
+        prof = get_profile(wallet) or {}
+        prefs = json.loads(prof.get("preferences") or "{}")
+    return jsonify(build_place_suggestion_report(message, prefs, lang))
 
 
 @app.route("/api/directions-lookup")

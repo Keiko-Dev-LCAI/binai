@@ -836,8 +836,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260621-6';</script>
-<script src="i18n-ui.js?v=20260621-6"></script>
+<script>window.BINAI_BUILD = '20260621-7';</script>
+<script src="i18n-ui.js?v=20260621-7"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -1537,6 +1537,67 @@ function appendLookupExtras(el, data, disclaimerKey) {
   if (actions) el.insertBefore(wrap, actions);
   else el.appendChild(wrap);
 }
+function appendPlaceSuggestion(el, data) {
+  if (!el || !data || el.querySelector('.msg-place-suggest')) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-place-suggest';
+  wrap.style.marginTop = '10px';
+  const prompt = document.createElement('div');
+  prompt.className = 'msg-visual-note';
+  prompt.textContent = data.prompt || t('place_suggest_prompt', {
+    label: data.label, address: data.address,
+  });
+  wrap.appendChild(prompt);
+  const actions = document.createElement('div');
+  actions.className = 'msg-actions';
+  actions.style.marginTop = '6px';
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.className = 'msg-action-btn';
+  saveBtn.textContent = t('place_suggest_save', { label: data.label });
+  saveBtn.onclick = async () => {
+    saveBtn.disabled = true;
+    try {
+      const params = new URLSearchParams({
+        key: data.key, address: data.address, lang: currentLang(), wallet: wallet || '',
+      });
+      const r = await fetch(API + '/api/save-place?' + params);
+      const d = await r.json();
+      if (d.ok) {
+        window._binaiPlacesCache = window._binaiPlacesCache || {};
+        if (d.key && d.address) window._binaiPlacesCache[d.key] = d.address;
+        populatePlacesUI(window._binaiPlacesCache);
+        prompt.textContent = d.reply || t('place_suggest_saved');
+        actions.remove();
+      } else {
+        saveBtn.disabled = false;
+      }
+    } catch (_) {
+      saveBtn.disabled = false;
+    }
+  };
+  const skipBtn = document.createElement('button');
+  skipBtn.type = 'button';
+  skipBtn.className = 'msg-action-btn';
+  skipBtn.textContent = t('place_suggest_skip');
+  skipBtn.onclick = () => wrap.remove();
+  actions.append(saveBtn, skipBtn);
+  wrap.appendChild(actions);
+  const msgActions = el.querySelector('.msg-actions');
+  if (msgActions) el.insertBefore(wrap, msgActions);
+  else el.appendChild(wrap);
+}
+async function maybeSuggestSavePlace(userMsg, botEl) {
+  if (!wallet || !userMsg || isSavePlaceQuery(userMsg)) return;
+  try {
+    const params = new URLSearchParams({
+      message: userMsg, lang: currentLang(), wallet,
+    });
+    const r = await fetch(API + '/api/place-suggestion?' + params);
+    const d = await r.json();
+    if (d.ok && d.address) appendPlaceSuggestion(botEl, d);
+  } catch (_) {}
+}
 async function maybeAttachLookups(userMsg, botEl) {
   const lang = currentLang();
   const fetches = [];
@@ -1971,6 +2032,7 @@ async function sendChat() {
           think.remove();
           const replyEl = addBotMsg(result.reply);
           maybeAttachLookups(msg, replyEl);
+          maybeSuggestSavePlace(msg, replyEl);
           speak(result.reply);
           updateUsage(result);
           loadMemories();
@@ -1979,6 +2041,7 @@ async function sendChat() {
         think.remove();
         const replyEl = addBotMsg(d.reply);
         maybeAttachLookups(msg, replyEl);
+        maybeSuggestSavePlace(msg, replyEl);
         speak(d.reply);
         updateUsage(d);
         loadMemories();
