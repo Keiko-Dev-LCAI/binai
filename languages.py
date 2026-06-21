@@ -52,8 +52,8 @@ LANG_PACKS = {
             "Happy to help with almost anything else though — what's on your mind?"
         ),
         "aivm_busy": (
-            "Binai is busy on Lightchain right now — too many testers at once. "
-            "Please wait 30 seconds and try again."
+            "Still busy after waiting in line — too many testers right now. "
+            "Try again in a minute. (You were not charged — Keiko pays for beta AI.)"
         ),
     },
     "es": {
@@ -98,8 +98,8 @@ LANG_PACKS = {
             "Pero con casi todo lo demás sí puedo ayudar — ¿qué tienes en mente?"
         ),
         "aivm_busy": (
-            "Binai está ocupado en Lightchain ahora — muchos testers a la vez. "
-            "Espera 30 segundos e inténtalo de nuevo."
+            "Sigue ocupado tras esperar en cola — demasiados testers ahora. "
+            "Inténtalo en un minuto. (No se te cobró — Keiko paga la IA beta.)"
         ),
     },
     "fr": {
@@ -144,8 +144,8 @@ LANG_PACKS = {
             "Mais pour presque tout le reste, je suis là — qu'as-tu en tête ?"
         ),
         "aivm_busy": (
-            "Binai est occupé sur Lightchain — trop de testeurs en même temps. "
-            "Attends 30 secondes et réessaie."
+            "Toujours occupé après attente en file — trop de testeurs. "
+            "Réessaie dans une minute. (Pas de frais — Keiko paie l'IA beta.)"
         ),
     },
     "pt": {
@@ -190,8 +190,8 @@ LANG_PACKS = {
             "Mas com quase tudo mais posso ajudar — o que você tem em mente?"
         ),
         "aivm_busy": (
-            "O Binai está ocupado na Lightchain agora — muitos testadores ao mesmo tempo. "
-            "Aguarde 30 segundos e tente novamente."
+            "Ainda ocupado após esperar na fila — muitos testadores. "
+            "Tente em um minuto. (Você não foi cobrado — Keiko paga a IA beta.)"
         ),
     },
     "de": {
@@ -236,8 +236,8 @@ LANG_PACKS = {
             "Bei fast allem anderen helfe ich gern — was beschäftigt dich?"
         ),
         "aivm_busy": (
-            "Binai ist gerade auf Lightchain ausgelastet — zu viele Tester gleichzeitig. "
-            "Bitte 30 Sekunden warten und erneut versuchen."
+            "Nach Wartezeit immer noch ausgelastet — zu viele Tester. "
+            "Bitte in einer Minute erneut versuchen. (Keine Kosten für dich — Keiko zahlt.)"
         ),
     },
     "ja": {
@@ -281,8 +281,8 @@ LANG_PACKS = {
             "それ以外のことならほとんど何でもお手伝いします — 何かありますか？"
         ),
         "aivm_busy": (
-            "Binai は Lightchain で混雑しています — テスターが多すぎます。"
-            "30秒待ってからもう一度お試しください。"
+            "順番待ちしてもまだ混雑しています。1分後にもう一度お試しください。"
+            "（料金はかかりません — Keiko がベータ AI を支払います）"
         ),
     },
     "zh": {
@@ -326,8 +326,8 @@ LANG_PACKS = {
             "但几乎所有其他事情我都可以帮忙 — 你想聊什么？"
         ),
         "aivm_busy": (
-            "Binai 在 Lightchain 上太忙了 — 测试用户太多。"
-            "请等 30 秒后再试。"
+            "排队等了一阵子还是太忙了 — 测试人数较多。"
+            "请一分钟后再试。（你不会被收费 — Keiko 支付测试版 AI。）"
         ),
     },
 }
