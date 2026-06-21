@@ -46,8 +46,8 @@
 
 **Local dev:** `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && PORT=8190 .venv/bin/python server.py` → open `index.html` with backend at localhost:8190.
 
-**Railway:** Project `binai` — **LIVE** at https://binai-production.up.railway.app · volume `binai-volume` at `/app/data` · repo `Keiko-Dev-LCAI/binai` · commit `54b491b`  
-**Domain:** `binai.win` registered on Cloudflare (2026-06-20) — **DNS → Railway pending** (Claude task)
+**Railway:** Project `binai` — **LIVE** at https://binai-production.up.railway.app · volume `binai-volume` at `/app/data` · repo `Keiko-Dev-LCAI/binai`  
+**Domain:** `binai.win` ✅ live — Cloudflare CNAME → Railway (Claude session 134, 2026-06-20) · `www.binai.win` redirect not added yet (optional)
 
 **Android:** `android/` folder scaffolded — build APK with Android Studio: `npx cap open android`
 
