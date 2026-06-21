@@ -128,6 +128,12 @@ body::before {
   display: flex; align-items: center; justify-content: center; padding: 20px; }
 #termsOverlay { z-index: 600; }
 #onboardOverlay { z-index: 550; }
+#prefsSetupOverlay { z-index: 560; }
+.setup-modal { max-width: 520px; }
+.setup-section-label { font-size: 15px; font-weight: 700; color: var(--text); margin: 14px 0 8px; }
+.setup-section-sub { font-size: 13px; color: var(--text2); margin: -2px 0 8px; line-height: 1.45; }
+.setup-check { display: flex; align-items: flex-start; gap: 10px; margin-top: 10px; font-size: 15px; cursor: pointer; line-height: 1.45; }
+.setup-check input { margin-top: 3px; flex-shrink: 0; }
 .hidden { display: none !important; }
 .overlay.hidden { display: none; }
 .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 18px;
@@ -668,6 +674,39 @@ body::before {
   </div>
 </div>
 
+<!-- First-login preferences (after wallet + PIN) -->
+<div class="overlay hidden" id="prefsSetupOverlay">
+  <div class="modal setup-modal">
+    <h2 id="setupTitle">Set up your Binai</h2>
+    <p id="setupIntro">Choose how Binai talks to you and which reminders you want. Takes 30 seconds.</p>
+    <div class="setup-section-label" id="setupLangTitle">Language</div>
+    <p class="setup-section-sub" id="setupLangSub">Binai replies in this language.</p>
+    <div class="lang-grid" id="setupLangGrid"></div>
+    <div class="setup-section-label" id="setupPersonalityTitle">Binai's personality</div>
+    <div class="lang-grid" id="setupPersonalityGrid"></div>
+    <div class="setup-section-label" id="setupPoliticalTitle">Your political context</div>
+    <p class="setup-section-sub" id="setupPoliticalSub">Optional — helps Binai understand your perspective.</p>
+    <div class="lang-grid" id="setupPoliticalGrid"></div>
+    <div class="setup-section-label" id="setupGenderTitle">How Binai presents</div>
+    <div class="lang-grid" id="setupGenderGrid"></div>
+    <div class="setup-section-label" id="setupNotifTitle">Reminders &amp; briefings</div>
+    <label class="setup-check">
+      <input type="checkbox" id="setupDailyBriefing">
+      <span id="setupDailyBriefingLabel">Daily morning briefing reminder</span>
+    </label>
+    <label class="setup-check">
+      <input type="checkbox" id="setupNotif">
+      <span id="setupNotifLabel">Reminder notifications</span>
+    </label>
+    <label class="setup-check">
+      <input type="checkbox" id="setupVoiceMute">
+      <span id="setupVoiceMuteLabel">Mute spoken replies (🔊 button in chat)</span>
+    </label>
+    <p id="setupSettingsHint" style="font-size:13px;color:var(--text2);margin:16px 0 12px;line-height:1.5">Change anytime in ⚙️ Settings — scroll down for PIN, export, and legal.</p>
+    <button class="btn btn-primary" id="setupSaveBtn" style="width:100%" onclick="finishPrefsSetup()">Save &amp; start chatting</button>
+  </div>
+</div>
+
 <script src="i18n-ui.js"></script>
 <script>
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -724,6 +763,17 @@ let lastBriefing = '';
 let userHasChatted = false;
 let testMode = false;
 const TERMS_VERSION = '1';
+const PREFS_SETUP_VERSION = '1';
+
+function prefsSetupKey(w) {
+  return `binai_prefs_setup_v${PREFS_SETUP_VERSION}_${(w || '').toLowerCase()}`;
+}
+function needsPrefsSetup(w) {
+  return isValidWallet(w) && !localStorage.getItem(prefsSetupKey(w));
+}
+function markPrefsSetupDone(w) {
+  if (isValidWallet(w)) localStorage.setItem(prefsSetupKey(w), '1');
+}
 
 function showTerms(mode) {
   const overlay = document.getElementById('termsOverlay');
@@ -796,7 +846,7 @@ function usePrompt(text) {
 
 // ── Language ─────────────────────────────────────────────────────────────────
 function syncLanguageGrids(selectedId) {
-  ['langGrid', 'settingsLangGrid'].forEach(gridId => {
+  ['langGrid', 'settingsLangGrid', 'setupLangGrid'].forEach(gridId => {
     const grid = document.getElementById(gridId);
     if (!grid) return;
     grid.querySelectorAll('.lang-btn').forEach(btn => {
@@ -827,7 +877,52 @@ function initLanguagePickers() {
   const onPick = () => { applyI18n(); updateLangHint(); if (wallet) saveProfile(); };
   buildLanguageGrid('langGrid', onPick);
   buildLanguageGrid('settingsLangGrid', onPick);
+  buildLanguageGrid('setupLangGrid', onPick);
   updateLangHint();
+}
+
+// ── First-login preferences wizard ───────────────────────────────────────────
+function initPrefsSetupPickers() {
+  buildLanguageGrid('setupLangGrid', () => { applyI18n(); updateLangHint(); });
+  buildPreferenceGrid('setupPersonalityGrid', localizedPrefs(PERSONALITIES, 'personality'), selectedPersonality, id => {
+    selectedPersonality = id;
+    localStorage.setItem('binai_personality', id);
+    syncPreferenceGrid('setupPersonalityGrid', localizedPrefs(PERSONALITIES, 'personality'), id);
+    syncPreferenceGrid('personalityGrid', localizedPrefs(PERSONALITIES, 'personality'), id);
+  });
+  buildPreferenceGrid('setupPoliticalGrid', localizedPrefs(POLITICAL_OPTIONS, 'political'), selectedPolitical, id => {
+    selectedPolitical = id;
+    localStorage.setItem('binai_political', id);
+    syncPreferenceGrid('setupPoliticalGrid', localizedPrefs(POLITICAL_OPTIONS, 'political'), id);
+    syncPreferenceGrid('politicalGrid', localizedPrefs(POLITICAL_OPTIONS, 'political'), id);
+  });
+  buildPreferenceGrid('setupGenderGrid', localizedPrefs(GENDER_OPTIONS, 'gender'), selectedGender, id => {
+    selectedGender = id;
+    localStorage.setItem('binai_persona_gender', id);
+    syncPreferenceGrid('setupGenderGrid', localizedPrefs(GENDER_OPTIONS, 'gender'), id);
+    syncPreferenceGrid('genderGrid', localizedPrefs(GENDER_OPTIONS, 'gender'), id);
+  });
+}
+function openPrefsSetupModal() {
+  initPrefsSetupPickers();
+  const d = document.getElementById('setupDailyBriefing');
+  const n = document.getElementById('setupNotif');
+  const v = document.getElementById('setupVoiceMute');
+  if (d) d.checked = localStorage.getItem('binai_daily_briefing') === '1';
+  if (n) n.checked = localStorage.getItem('binai_notif') === '1';
+  if (v) v.checked = isVoiceMuted();
+  document.getElementById('prefsSetupOverlay').classList.remove('hidden');
+}
+async function finishPrefsSetup() {
+  toggleDailyBriefing(!!document.getElementById('setupDailyBriefing')?.checked);
+  await toggleNotifications(!!document.getElementById('setupNotif')?.checked);
+  localStorage.setItem('binai_voice_muted', document.getElementById('setupVoiceMute')?.checked ? '1' : '0');
+  updateVoiceMuteBtn();
+  initSettingsToggles();
+  await saveProfile();
+  markPrefsSetupDone(wallet);
+  document.getElementById('prefsSetupOverlay').classList.add('hidden');
+  await finishSessionWelcome();
 }
 
 // ── Onboarding ─────────────────────────────────────────────────────────────
@@ -937,6 +1032,13 @@ async function completeWalletSession() {
   setSessionUnlocked(wallet);
   await saveProfile();
   await loadProfile();
+  if (needsPrefsSetup(wallet)) {
+    openPrefsSetupModal();
+    return;
+  }
+  await finishSessionWelcome();
+}
+async function finishSessionWelcome() {
   await refreshSub();
   await loadMemories();
   clearChat();
