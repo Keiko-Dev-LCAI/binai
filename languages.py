@@ -1,6 +1,7 @@
 """Binai multi-language support — AI replies, briefings, safety messages."""
 
 import re
+from datetime import datetime
 
 LANG_NAMES = {
     "en": "English",
@@ -449,6 +450,232 @@ def is_booking_request(message):
 
 def booking_reply(lang):
     return _BOOKING_REPLIES.get(lang, _BOOKING_REPLIES["en"])
+
+
+_BRIEF_GREETING_PATTERNS = [
+    re.compile(
+        r"^(gm|gn|good\s+morning|good\s+night|good\s+evening|good\s+afternoon|"
+        r"hey|hi|hello|yo|sup|what'?s\s+up|morning|afternoon|evening)[\s!.?💜☀️🌅]*$",
+        re.I,
+    ),
+    re.compile(r"^(thanks|thank\s+you|thx|ty|cheers)[\s!.?]*$", re.I),
+    re.compile(r"happy\s+[\w\s]+\s*day", re.I),
+    re.compile(r"^(ok|okay|cool|nice|great|got\s+it|sounds\s+good)[\s!.?]*$", re.I),
+]
+
+_TIME_PATTERNS = [
+    re.compile(r"\bwhat\s+time\b", re.I),
+    re.compile(r"\bwhat'?s\s+the\s+time\b", re.I),
+    re.compile(r"\bcurrent\s+time\b", re.I),
+    re.compile(r"\bwhat\s+time\s+is\s+it\b", re.I),
+]
+
+_BRIEF_SKIP_PATTERNS = [
+    re.compile(r"\bremember\b", re.I),
+    re.compile(r"\b(plan|explain|help\s+me|tell\s+me\s+about|write|draft|list)\b", re.I),
+]
+
+_BRIEF_INTENT_INSTRUCTIONS = {
+    "en": (
+        "THIS MESSAGE IS SHORT/CASUAL. Reply in 1–2 sentences max. "
+        "No follow-up questions. No paragraphs."
+    ),
+    "es": (
+        "MENSAJE CORTO/INFORMAL. Responde en 1–2 frases máximo. "
+        "Sin preguntas de seguimiento. Sin párrafos."
+    ),
+    "fr": (
+        "MESSAGE COURT/DÉCONTRACTÉ. Réponds en 1–2 phrases max. "
+        "Pas de questions de suivi. Pas de paragraphes."
+    ),
+    "pt": (
+        "MENSAGEM CURTA/INFORMAL. Responda em 1–2 frases no máximo. "
+        "Sem perguntas de follow-up. Sem parágrafos."
+    ),
+    "de": (
+        "KURZE/LOCKERE NACHRICHT. Antworte in max. 1–2 Sätzen. "
+        "Keine Folgefragen. Keine Absätze."
+    ),
+    "ja": (
+        "短い/カジュアルなメッセージです。1〜2文以内で答えてください。"
+        "追い質問や長文は不要です。"
+    ),
+    "zh": (
+        "这是简短/随意的消息。最多 1–2 句话回复。"
+        "不要追问，不要长篇大论。"
+    ),
+}
+
+_QUICK_GREETINGS = {
+    "en": {
+        "gm": "Good morning{name}! ☀️",
+        "gn": "Good night{name}. 💜",
+        "default": "Hey{name}! 💜",
+        "holiday": "Happy {holiday}{name}! 💜",
+        "thanks": "You're welcome{name}! 💜",
+    },
+    "zh": {
+        "gm": "早上好{name}！☀️",
+        "gn": "晚安{name}。💜",
+        "default": "你好{name}！💜",
+        "holiday": "{holiday}快乐{name}！💜",
+        "thanks": "不客气{name}！💜",
+    },
+    "es": {
+        "gm": "¡Buenos días{name}! ☀️",
+        "gn": "Buenas noches{name}. 💜",
+        "default": "¡Hola{name}! 💜",
+        "holiday": "¡Feliz {holiday}{name}! 💜",
+        "thanks": "¡De nada{name}! 💜",
+    },
+    "fr": {
+        "gm": "Bonjour{name} ! ☀️",
+        "gn": "Bonne nuit{name}. 💜",
+        "default": "Salut{name} ! 💜",
+        "holiday": "Joyeux/Joyeuse {holiday}{name} ! 💜",
+        "thanks": "Avec plaisir{name} ! 💜",
+    },
+    "pt": {
+        "gm": "Bom dia{name}! ☀️",
+        "gn": "Boa noite{name}. 💜",
+        "default": "Olá{name}! 💜",
+        "holiday": "Feliz {holiday}{name}! 💜",
+        "thanks": "De nada{name}! 💜",
+    },
+    "de": {
+        "gm": "Guten Morgen{name}! ☀️",
+        "gn": "Gute Nacht{name}. 💜",
+        "default": "Hallo{name}! 💜",
+        "holiday": "Frohen/Frohe {holiday}{name}! 💜",
+        "thanks": "Gern geschehen{name}! 💜",
+    },
+    "ja": {
+        "gm": "おはよう{name}！☀️",
+        "gn": "おやすみ{name}。💜",
+        "default": "こんにちは{name}！💜",
+        "holiday": "{holiday}おめでとう{name}！💜",
+        "thanks": "どういたしまして{name}！💜",
+    },
+}
+
+_HOLIDAY_PHRASES = {
+    "en": {"fathers": "Father's Day", "mothers": "Mother's Day", "birthday": "birthday"},
+    "zh": {"fathers": "父亲节", "mothers": "母亲节", "birthday": "生日"},
+}
+
+
+def is_brief_intent(message):
+    msg = (message or "").strip()
+    if not msg or len(msg) > 140:
+        return False
+    if any(p.search(msg) for p in _BRIEF_SKIP_PATTERNS):
+        return False
+    if any(p.search(msg) for p in _TIME_PATTERNS):
+        return True
+    if any(p.search(msg) for p in _BRIEF_GREETING_PATTERNS):
+        return True
+    words = msg.split()
+    if len(words) <= 4 and "?" not in msg:
+        return True
+    if "?" in msg and len(words) <= 10:
+        low = msg.lower()
+        if any(k in low for k in ("time", "date", "weather", "temperature")):
+            return True
+    return False
+
+
+def brief_intent_instruction(lang):
+    return _BRIEF_INTENT_INSTRUCTIONS.get(lang, _BRIEF_INTENT_INSTRUCTIONS["en"])
+
+
+def _name_suffix(name, lang):
+    n = (name or "").strip()
+    if not n:
+        return ""
+    if lang == "zh":
+        return f"，{n}"
+    return f", {n}"
+
+
+def _format_quick(template, lang, name="", **kwargs):
+    pack = _QUICK_GREETINGS.get(lang, _QUICK_GREETINGS["en"])
+    tpl = pack.get(template, pack["default"])
+    return tpl.format(name=_name_suffix(name, lang), **kwargs)
+
+
+def _greeting_kind(message):
+    msg = (message or "").strip().lower()
+    if re.search(r"\b(gm|good\s+morning|morning)\b", msg):
+        return "gm"
+    if re.search(r"\b(gn|good\s+night)\b", msg):
+        return "gn"
+    if re.search(r"\b(thanks|thank\s+you|thx|ty)\b", msg):
+        return "thanks"
+    if re.search(r"happy\s+(\w+)\s*day", msg, re.I):
+        m = re.search(r"happy\s+(\w+)\s*day", msg, re.I)
+        return ("holiday", m.group(1) if m else "day")
+    return "default"
+
+
+def quick_time_reply(lang):
+    now = datetime.now()
+    clock = now.strftime("%-I:%M %p") if hasattr(now, "strftime") else now.strftime("%I:%M %p")
+    clock = clock.lstrip("0")
+    templates = {
+        "en": f"It's {clock} on my end — check your phone for local time.",
+        "zh": f"我这边是 {clock} — 请看手机上的本地时间。",
+        "es": f"Aquí son las {clock} — mira la hora local en tu teléfono.",
+        "fr": f"Il est {clock} ici — vérifie l'heure locale sur ton téléphone.",
+        "pt": f"Aqui são {clock} — confira a hora local no seu celular.",
+        "de": f"Hier ist es {clock} — schau auf deinem Handy nach der lokalen Zeit.",
+        "ja": f"こちらは {clock} です — お使いの端末で現地時間を確認してください。",
+    }
+    return templates.get(lang, templates["en"])
+
+
+def quick_chat_reply(message, lang, name=""):
+    msg = (message or "").strip()
+    if not msg:
+        return None
+    if any(p.search(msg) for p in _TIME_PATTERNS):
+        return quick_time_reply(lang)
+    if not is_brief_intent(msg):
+        return None
+    kind = _greeting_kind(msg)
+    if kind == "thanks":
+        return _format_quick("thanks", lang, name)
+    if isinstance(kind, tuple) and kind[0] == "holiday":
+        holiday_key = kind[1].lower()
+        if "father" in holiday_key:
+            h = _HOLIDAY_PHRASES.get(lang, _HOLIDAY_PHRASES["en"]).get("fathers", "day")
+        elif "mother" in holiday_key:
+            h = _HOLIDAY_PHRASES.get(lang, _HOLIDAY_PHRASES["en"]).get("mothers", "day")
+        else:
+            h = holiday_key
+        return _format_quick("holiday", lang, name, holiday=h)
+    if kind in ("gm", "gn"):
+        return _format_quick(kind, lang, name)
+    if len(msg.split()) <= 6:
+        return _format_quick("default", lang, name)
+    return None
+
+
+def _split_sentences(text):
+    body = (text or "").strip()
+    if not body:
+        return []
+    parts = re.split(r"(?<=[.!?。！？])\s+", body)
+    return [p.strip() for p in parts if p.strip()]
+
+
+def enforce_brief_reply(reply, message):
+    if not is_brief_intent(message):
+        return (reply or "").strip()
+    sents = _split_sentences(reply)
+    if len(sents) <= 3:
+        return (reply or "").strip()
+    return " ".join(sents[:2]).strip()
+
 
 LANG_MARKERS = {
     "en": re.compile(

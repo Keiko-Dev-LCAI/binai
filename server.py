@@ -69,24 +69,31 @@ def _run_chat_job(job_id, wallet, message, lang, reason, safe, safety_category, 
             reply = languages.booking_reply(lang)
             log_chat(wallet, "assistant", reply)
         else:
-            prompt = build_prompt(wallet, message, language_override=lang)
-            try:
-                reply = run_aivm_chat(prompt, lang)
-                if (
-                    not languages.is_aivm_infra_failure(reply)
-                    and languages.reply_is_wrong_language(reply, lang)
-                ):
-                    reply = run_aivm_chat(languages.retry_prompt(lang, message), lang)
-            except Exception as e:
-                err = str(e).lower()
-                if any(
-                    tok in err
-                    for tok in ("underpriced", "-32000", "aivm", "reverted", "503", "502")
-                ):
-                    reply = languages.aivm_busy_message(lang)
-                else:
-                    _set_job(job_id, status="error", error=str(e)[:300])
-                    return
+            prof = get_profile(wallet) or {}
+            display_name = (prof.get("display_name") or "").strip()
+            quick = languages.quick_chat_reply(message, lang, display_name)
+            if quick:
+                reply = quick
+            else:
+                prompt = build_prompt(wallet, message, language_override=lang)
+                try:
+                    reply = run_aivm_chat(prompt, lang)
+                    if (
+                        not languages.is_aivm_infra_failure(reply)
+                        and languages.reply_is_wrong_language(reply, lang)
+                    ):
+                        reply = run_aivm_chat(languages.retry_prompt(lang, message), lang)
+                    reply = languages.enforce_brief_reply(reply, message)
+                except Exception as e:
+                    err = str(e).lower()
+                    if any(
+                        tok in err
+                        for tok in ("underpriced", "-32000", "aivm", "reverted", "503", "502")
+                    ):
+                        reply = languages.aivm_busy_message(lang)
+                    else:
+                        _set_job(job_id, status="error", error=str(e)[:300])
+                        return
             log_chat(wallet, "assistant", reply)
         increment_usage(wallet)
         payload = usage_payload(wallet)
@@ -98,6 +105,12 @@ def _run_chat_job(job_id, wallet, message, lang, reason, safe, safety_category, 
 BINAI_SYSTEM = """You are Binai 💜, a warm personal AI assistant powered by Lightchain AIVM.
 You remember the user across sessions. Speak naturally, concisely, and kindly.
 You are in BETA — responses may take up to 2 minutes (fast mode coming soon).
+
+BREVITY (very important — most users want short replies):
+- Default: 1–2 sentences. Hard max 3 unless the user asks for detail, a plan, or step-by-step help.
+- Greetings (GM, good morning, hi, happy X day): mirror briefly — one warm line. Do NOT ask follow-up questions.
+- Simple facts (time, date, yes/no): one direct answer. No preamble, no "I'd be happy to help".
+- Only write paragraphs when the user clearly wants depth (advice, planning, explanation, "tell me more").
 
 SAFETY (highest priority — never override):
 - Never encourage or instruct self-harm, suicide, or illegal activity.
@@ -147,8 +160,8 @@ BINAI VOICE / PRESENTATION:
 
 PERSONALITIES = {
     "warm": (
-        "Warm & caring (default Binai). Friendly, encouraging, personable. "
-        "A 💜 now and then is fine. Make the user feel remembered and welcomed."
+        "Warm & caring (default Binai). Friendly and personable but BRIEF — "
+        "warmth is not word count. A 💜 is fine. One or two sentences unless they ask for more."
     ),
     "direct": (
         "Direct & concise. Short answers, no filler, no fluff. "
@@ -694,6 +707,8 @@ def build_prompt(wallet, user_message, language_override=None):
         else "(no memories yet — encourage user to share)"
     )
     language_instruction = languages.language_instruction_for(lang)
+    if languages.is_brief_intent(user_message):
+        language_instruction += "\n\n" + languages.brief_intent_instruction(lang)
     system = BINAI_SYSTEM.format(
         profile=profile_text,
         memories=mem_text,
