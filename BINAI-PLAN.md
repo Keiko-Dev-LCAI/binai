@@ -1,6 +1,6 @@
 # Binai 💜 — Full Project Plan
-**Last updated:** 2026-06-20 (session 133 — Grok)  
-**Status:** Phase 1 community beta — **V1 COMPLETE ✅** (web shippable; `binai.win` registered, DNS pending)  
+**Last updated:** 2026-06-21 (brainstorm session — Grok)  
+**Status:** Phase 1 community beta — **web live at binai.win** · still brainstorming camera + retention model below
 **Owner:** Keiko (Keiko-Dev-LCAI)  
 **Repo:** `~/Desktop/binai/` (local; push to `Keiko-Dev-LCAI/binai` when ready)
 
@@ -21,7 +21,9 @@
 
 **v1 includes:** wallet identity, 5 free actions, $1/mo LCAI sub, long-term memory, voice in/out (Web Speech API), morning briefing, notes, reminders.
 
-**Not in v1 yet:** Capacitor Android build, calls/SMS, phone cleaner, Play Store.
+**Shipped in web beta (2026-06-21):** async chat polling (iPhone fix), Reply length (Short/Balanced/Chatty), first-login setup wizard, mute voice, desktop scroll fix, **About Me** private bio tab (`/api/about-me`, 12k chars, not stored as chat).
+
+**Not in v1 yet:** Capacitor Android build, camera/vision (Lens), user-controlled retention tiers, calls/SMS, phone cleaner, Play Store.
 
 **Local dev:** `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && PORT=8190 .venv/bin/python server.py` → open `index.html` with backend at localhost:8190.
 
@@ -135,10 +137,26 @@ Current AIVM on-chain latency = 12–20 seconds per response. Too slow for a con
 - **Translate** — "how do you say thank you in Japanese?"; AI handles directly, no API
 - **Battery check** — "how's my battery?" → reads percentage aloud
 
-### 📷 Camera & Files
-- **Image analysis** — snap a photo OR pick from gallery; AI identifies objects, reads text, describes scenes, identifies plants/animals; uses Cloudflare Workers AI vision model (free tier, already set up); upgrades to AIVM vision model when available
+### 📷 Camera & Vision ("Google Lens" for Binai) — BRAINSTORM → Phase 3
+
+**Goal:** Point camera or pick a photo → ask what something is, read a label, identify a plant, etc.
+
+| Piece | Plan |
+|-------|------|
+| **UI** | 📷 button in chat bar (next to mic); phone: camera or gallery via PWA `capture="environment"`; Android later: `@capacitor/camera` |
+| **Vision backend (v1)** | Cloudflare Workers AI vision (e.g. LLaVA) — same stack as OrcaArt Workers AI; free tier |
+| **Vision backend (v2)** | AIVM vision model when Lightchain ships it |
+| **Flow** | Image → vision API → text description → optional follow-up in chat with context |
+| **Privacy notice** | Photo sent to vision service to answer; not visible to other users; see retention model below |
+| **Beta cost** | Keiko pays during TEST_MODE (same as chat) or per-user caps TBD |
+
+**Example prompts:** "What is this?" · "Read this label" · "Is this plant healthy?" · OCR on menus/signs.
+
+**Not in scope for v1 web:** continuous live Lens, AR overlay, photo library search (Capacitor Phase 5+).
+
+### 📁 Files (later)
 - **Photo search** — browse and search photo library by description via `@capacitor/filesystem`
-- **File sharing** — pick a file, AI reads and discusses it
+- **File sharing** — pick a document, AI reads and discusses it
 
 ### 🌅 Morning Briefing
 - One-tap button on main screen
@@ -237,6 +255,89 @@ These principles were locked in during planning (2026-06-18) and should guide ev
 - **Have a clear "Why Binai?" in onboarding.** Normal users need to understand the benefit in the first 30 seconds.
 - **Voice quality and speed above all.** Even with every feature built, a bad voice experience ruins the app. Get this right first.
 - **The first return visit is the moment.** The wow moment is when a user comes back the next day and Binai already knows their name, their family, their preferences — without re-explaining. This must happen on the first return visit.
+- **User controls what stays.** Default = temporary. Nothing kept forever unless the user explicitly taps Save / Remember / Save photo. Opposite of Big Tech hoovering.
+
+---
+
+## About Me — Private Bio (✅ shipped web beta)
+
+| Item | Detail |
+|------|--------|
+| **Tab** | 👤 About Me (sidebar) / 👤 Me (mobile) |
+| **Purpose** | Full life story — age, work, family, friends, favorites — paste once, up to 12k chars |
+| **Privacy** | Only visible to user's wallet; used to personalize AI; **not saved as chat** |
+| **Never store** | Seed phrases, passwords, payment cards (UI warning) |
+| **Controls** | Included in Export; wiped on Delete all data |
+| **vs Memory** | About Me = big private document; Memory = individual facts ("remember I like iced coffee") |
+
+---
+
+## User-Controlled Retention — BRAINSTORM (locked direction)
+
+**Core rule:** *Default = temporary. Keep only what the user explicitly asks to keep.*
+
+Normal users should never wonder "did Binai keep that forever?" — they tapped a button or they didn't.
+
+### Four retention levels
+
+| Level | Meaning | User action (UI label) | Where it lives |
+|-------|---------|------------------------|----------------|
+| **1. This moment** | Ephemeral — auto-expires | *(default, no tap)* | Session / 24h queue |
+| **2. Save message** | Keep this chat exchange | **Save this message** | Chat history (saved subset) |
+| **3. Remember** | One fact Binai uses forever | **Remember** / **Remember this** | Memory table |
+| **4. Keep file** | Photo or attachment stored | **Save this photo** | User media store (optional thumbnail in Memory) |
+
+**Also map to existing features:**
+- **About Me** — user edits & saves themselves (not from a chat button)
+- **Notes** — "Add to Notes" for lists, receipts, labels
+- **Reminders** — time-based, separate flow
+
+### Photos (camera / Lens)
+
+| Default | User choice |
+|---------|-------------|
+| Photo used for analysis → **auto-delete after 24 hours** (or immediately after answer — TBD in testing) | **Save this photo** — keep on account |
+| Vision text not kept unless user acts | **Remember this** — e.g. "This is my philodendron" → Memory |
+| | **Add to Notes** — label, receipt, etc. |
+
+If user does nothing → photo gone. Privacy-first default.
+
+### Chat messages (today vs target)
+
+| Today (beta) | Target |
+|--------------|--------|
+| All chat logged until Delete all data | **Default:** rolling window (~24h) for unsaved messages; keep last N turns for AI context only |
+| Remember via "remember …" in chat | **Remember** button on each Binai reply |
+| — | **Save this message** on each reply |
+| — | Optional later: **Add to About Me** for big life updates |
+
+### Buttons under Binai replies (target UI)
+
+```
+[Remember]  [Save message]  [Wrong]
+```
+
+After a photo answer:
+
+```
+[Remember this]  [Save photo]  [Ask more]
+```
+
+Short labels. No jargon.
+
+### Optional Settings (power users)
+
+- Chat retention: 24h / 7 days / 30 days / forever (default 24h)
+- Photo auto-delete: 24h on (default) / off
+- "Always ask before saving photos" toggle
+
+### Implementation notes (when we build)
+
+- `media_uploads` table: `wallet`, `blob or path`, `created_at`, `expires_at`, `saved` boolean
+- Cron or lazy delete: purge `saved=0 AND expires_at < now`
+- `chat_log.saved` flag or separate `saved_messages` table
+- Memory extraction unchanged — user tap = explicit consent
+- Export / Delete all data must include photos + saved messages
 
 ---
 
@@ -269,14 +370,26 @@ The goal: Binai should feel like it *understands your life* and reduces mental l
 
 | Phase | Focus | Key Features | Goal |
 |-------|-------|-------------|------|
-| Phase 1 | Core Foundation | Voice loop (STT + TTS), Long-term Memory, basic commands, Subscription system (WalletConnect + wallet identity + free tier gating) | Make the assistant feel like it actually remembers you — and build the payment identity layer from day one |
-| Phase 2 | Daily Usefulness | Weather, Calendar, Reminders, Notes, Morning Briefing, Translate, Flashlight | Make it genuinely useful every day |
-| Phase 3 | Smart Features | Image analysis, Photo search, File analysis | Show AIVM's capabilities |
+| Phase 1 | Core Foundation | Voice loop (STT + TTS), Long-term Memory, About Me, Reply length, setup wizard, Subscription (WalletConnect + wallet identity + free tier gating) | Assistant remembers you — payment identity from day one |
+| Phase 1b | Web beta hardening | iPhone async chat, mute voice, 7-language AI, real-device testing (Keiko EN + Sherry ZH) | Trust core chat before scaling Discord |
+| Phase 2 | Daily Usefulness | Weather, Calendar, Reminders, Notes, Morning Briefing, Translate, Flashlight | Genuinely useful every day |
+| Phase 2b | User-controlled retention | 24h default chat/photo expiry; **Remember** / **Save message** / **Save photo** buttons; optional retention Settings | User trusts what Binai keeps |
+| Phase 3 | Camera & Vision | 📷 in chat, Cloudflare vision API, Lens-style Q&A, photo 24h delete + save opt-in | "What is this?" — show AIVM-era smarts |
+| Phase 3b | Files | Photo search, document pick + discuss | Deeper media integration |
 | Phase 4 | Phone Control | Make calls, Send texts, Open apps/websites, Navigation | Full assistant experience |
-| Phase 5 | Advanced Tools | Phone cleaner module, LightTunes integration | Power user features |
-| Phase 6 | Polish & Launch | Onboarding flow (language + unlock setup), Permissions flow, Play Store submission, Lightchain dApp Hub submission | Make it ready for real users |
+| Phase 5 | Advanced Tools | Phone cleaner module, LightTunes integration, Capacitor camera native | Power user features |
+| Phase 6 | Polish & Launch | Permissions flow, Play Store submission, Lightchain dApp Hub submission | Ready for real users |
 
 **Why subscription in Phase 1:** Wallet address = user identity throughout the whole app. Building payment and identity from the foundation means every feature that follows knows who the user is and whether they're on free or paid tier — no retrofitting later.
+
+### Suggested build order (brainstorm 2026-06-21)
+
+1. **Now:** Real phone testing — chat, About Me, reply length, Settings scroll  
+2. **Next:** User retention UI — Remember / Save message buttons + 24h chat roll-off (backend)  
+3. **Then:** Camera v1 — 📷 + Cloudflare vision + 24h photo delete + Save photo / Remember this  
+4. **Later:** Native Android camera, AIVM vision swap, retention Settings toggles  
+
+*Still brainstorming — nothing in this section is committed code until we pick it up in a build session.*
 
 ---
 
