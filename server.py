@@ -43,6 +43,41 @@ LANG_NAMES = {
     "zh": "Chinese",
 }
 
+LANG_NATIVE = {
+    "en": "English",
+    "es": "Spanish (Español)",
+    "fr": "French (Français)",
+    "pt": "Portuguese (Português)",
+    "de": "German (Deutsch)",
+    "ja": "Japanese (日本語)",
+    "zh": "Simplified Chinese (简体中文)",
+}
+
+BRIEFING_STRINGS = {
+    "en": {
+        "greeting": "Good morning, {name}! Here's your Binai briefing.",
+        "weather": "Weather: {temp}°C, {desc}.",
+        "price": "LCAI price: about ${price:.4f} USD.",
+        "notes": "You have {n} saved note(s).",
+        "reminders": "Reminders: {items}.",
+        "memories": "I remember: {items}.",
+        "no_reminders": "No open reminders.",
+        "no_memories": "No memories yet — tell me about yourself!",
+        "default_name": "friend",
+    },
+    "zh": {
+        "greeting": "早上好，{name}！这是你的 Binai 简报。",
+        "weather": "天气：{temp}°C，{desc}。",
+        "price": "LCAI 价格：约 ${price:.4f} 美元。",
+        "notes": "你有 {n} 条已保存笔记。",
+        "reminders": "提醒：{items}。",
+        "memories": "我记得：{items}。",
+        "no_reminders": "暂无待办提醒。",
+        "no_memories": "暂无记忆 — 和我聊聊你自己吧！",
+        "default_name": "朋友",
+    },
+}
+
 _data_dir = os.environ.get("DATA_DIR", os.path.join(os.path.dirname(__file__), "data"))
 os.makedirs(_data_dir, exist_ok=True)
 DB_PATH = os.path.join(_data_dir, "binai.db")
@@ -571,7 +606,46 @@ def log_chat(wallet, role, content):
     conn.close()
 
 
-def build_prompt(wallet, user_message):
+def resolve_lang(wallet, override=None):
+    if override and override in LANG_NAMES:
+        return override
+    prof = get_profile(wallet) or {}
+    return prof.get("language") or "en"
+
+
+def language_instruction_for(lang):
+    native = LANG_NATIVE.get(lang, LANG_NAMES.get(lang, "English"))
+    if lang == "zh":
+        return (
+            f"CRITICAL — The user's preferred language is {native}. "
+            "You MUST write every reply entirely in 简体中文. "
+            "Do not use English unless the user clearly writes in English first."
+        )
+    return (
+        f"CRITICAL — The user's preferred language is {native}. "
+        f"You MUST write every reply entirely in {native}. "
+        "Do not switch languages unless the user clearly does."
+    )
+
+
+def sync_profile_language(wallet, lang):
+    if lang not in LANG_NAMES:
+        return
+    w = norm_wallet(wallet)
+    prof = get_profile(w) or {}
+    if prof.get("language") == lang:
+        return
+    now = int(time.time())
+    conn = get_db()
+    conn.execute(
+        "UPDATE profiles SET language = ?, updated_at = ? WHERE wallet = ?",
+        (lang, now, w),
+    )
+    conn.commit()
+    conn.close()
+
+
+def build_prompt(wallet, user_message, language_override=None):
     prof = get_profile(wallet) or {}
     prefs = json.loads(prof.get("preferences") or "{}")
     personality_key = prefs.get("personality") or "warm"
@@ -597,11 +671,8 @@ def build_prompt(wallet, user_message):
         if mems
         else "(no memories yet — encourage user to share)"
     )
-    lang = prof.get("language") or "en"
-    lang_name = LANG_NAMES.get(lang, "English")
-    language_instruction = (
-        f"Always respond in {lang_name} unless the user clearly switches to another language."
-    )
+    lang = resolve_lang(wallet, language_override)
+    language_instruction = language_instruction_for(lang)
     system = BINAI_SYSTEM.format(
         profile=profile_text,
         memories=mem_text,
@@ -1028,6 +1099,9 @@ def api_chat():
             }
         ), 402
     ensure_profile(wallet)
+    lang = (data.get("language") or "").strip()
+    if lang in LANG_NAMES:
+        sync_profile_language(wallet, lang)
     safe, safety_category, safety_reply = check_input_safety(message)
     maybe_extract_memory(wallet, message)
     log_chat(wallet, "user", message)
@@ -1035,7 +1109,9 @@ def api_chat():
         reply = safety_reply
         log_chat(wallet, "assistant", f"[safety:{safety_category}] {reply[:200]}")
     else:
-        prompt = build_prompt(wallet, message)
+        prompt = build_prompt(
+            wallet, message, language_override=lang if lang in LANG_NAMES else None
+        )
         try:
             reply = sanitize_output(AIVMProvider.infer(prompt))
         except Exception as e:
@@ -1051,7 +1127,9 @@ def api_chat():
 def api_briefing(wallet):
     w = norm_wallet(wallet)
     prof = get_profile(w) or {}
-    name = prof.get("display_name") or "friend"
+    lang = resolve_lang(w, request.args.get("lang"))
+    strings = BRIEFING_STRINGS.get(lang, BRIEFING_STRINGS["en"])
+    name = prof.get("display_name") or strings["default_name"]
     conn = get_db()
     notes_n = conn.execute(
         "SELECT COUNT(*) as c FROM notes WHERE wallet = ?", (w,)
@@ -1069,16 +1147,19 @@ def api_briefing(wallet):
     if weather and weather.get("current"):
         c = weather["current"]
         code = c.get("weather_code", 0)
-        wx_line = f"Weather: {c.get('temperature_2m', '?')}°C, {WMO.get(code, 'conditions')}."
-    rem_lines = [r["content"] for r in rems] or ["No open reminders."]
-    mem_lines = [m["content"] for m in mems] or ["No memories yet — tell me about yourself!"]
+        wx_line = strings["weather"].format(
+            temp=c.get("temperature_2m", "?"),
+            desc=WMO.get(code, "conditions"),
+        )
+    rem_items = "; ".join(r["content"] for r in rems) or strings["no_reminders"]
+    mem_items = "; ".join(m["content"] for m in mems) or strings["no_memories"]
     briefing = (
-        f"Good morning, {name}! Here's your Binai briefing.\n\n"
+        f"{strings['greeting'].format(name=name)}\n\n"
         f"{wx_line}\n"
-        f"LCAI price: about ${price:.4f} USD.\n"
-        f"You have {notes_n} saved note(s).\n"
-        f"Reminders: {'; '.join(rem_lines)}.\n"
-        f"I remember: {'; '.join(mem_lines)}."
+        f"{strings['price'].format(price=price)}\n"
+        f"{strings['notes'].format(n=notes_n)}\n"
+        f"{strings['reminders'].format(items=rem_items)}\n"
+        f"{strings['memories'].format(items=mem_items)}"
     )
     return jsonify({"briefing": briefing, "lcai_price": price})
 
