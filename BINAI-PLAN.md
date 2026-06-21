@@ -658,7 +658,7 @@ Short labels. No jargon. i18n needed for all 7 launch languages when built.
 
 ## Smart UX Improvements (AIVM Memory Advantage) — ⭐ KEIKO PRIORITY
 
-**Keiko (2026-06-21):** *"I really like this one."* — This is the emotional core of Binai: not a command bot, but something that **understands your life** and reduces mental load. Memory is the moat; these UX patterns make memory *felt*.
+**Keiko (2026-06-21):** *"I really like this one."* · *"That would make it way more personal."* — This is the emotional core of Binai: not a command bot, but something that **understands your life** and reduces mental load. Memory is the moat; these UX patterns make memory *felt*.
 
 The goal: Binai should feel like it already knows your day, your people, your habits — and gently helps without nagging.
 
