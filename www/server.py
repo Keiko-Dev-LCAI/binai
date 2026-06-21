@@ -35,7 +35,7 @@ _test_flag = os.environ.get("TEST_MODE", "true").lower()
 TEST_MODE = _test_flag not in ("0", "false", "no", "off")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
-BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260621-5")
+BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260621-6")
 LIGHTCHAT_API = os.environ.get(
     "LIGHTCHAT_API", "https://web-production-bc64f.up.railway.app"
 ).rstrip("/")
@@ -914,10 +914,10 @@ def build_directions_report(message, prefs, lat=None, lon=None, lang="en"):
         }
     address = (dest.get("address") or "").strip()
     kind = dest.get("kind")
-    if kind in ("home", "work") and not address:
+    if kind not in ("place", "unknown") and not address:
         return {
             "ok": False,
-            "reply": languages.directions_missing_place_reply(lang, kind),
+            "reply": languages.directions_missing_place_reply(lang, "missing", kind),
         }
     if not address:
         return {
@@ -1105,6 +1105,45 @@ def mark_lightchat_seen(wallet):
     )
     conn.commit()
     conn.close()
+
+
+def save_frequent_place(wallet, key, address):
+    w = norm_wallet(wallet)
+    prof = get_profile(w) or {}
+    prefs = json.loads(prof.get("preferences") or "{}")
+    places = prefs.get("frequent_places") or {}
+    if not isinstance(places, dict):
+        places = {}
+    places[(key or "").strip().lower()[:32]] = (address or "").strip()[:200]
+    prefs["frequent_places"] = places
+    conn = get_db()
+    conn.execute(
+        "UPDATE profiles SET preferences = ?, updated_at = ? WHERE wallet = ?",
+        (json.dumps(prefs), int(time.time()), w),
+    )
+    conn.commit()
+    conn.close()
+
+
+def maybe_save_frequent_place(wallet, message):
+    parsed = languages.extract_save_place(message)
+    if not parsed:
+        return None
+    save_frequent_place(wallet, parsed["key"], parsed["address"])
+    return parsed
+
+
+def build_save_place_report(message, lang="en"):
+    parsed = languages.extract_save_place(message)
+    if not parsed:
+        return {"ok": False, "reason": "not_save_place"}
+    lang = lang if lang in languages.LANG_NAMES else "en"
+    return {
+        "ok": True,
+        "key": parsed["key"],
+        "address": parsed["address"],
+        "reply": languages.save_place_reply(lang, parsed["key"], parsed["address"]),
+    }
 
 
 def maybe_extract_kuaishou_link(wallet, message, prefs=None):
@@ -1582,6 +1621,7 @@ def api_chat():
     prof_pre = get_profile(wallet) or {}
     prefs_pre = json.loads(prof_pre.get("preferences") or "{}")
     maybe_extract_memory(wallet, message)
+    maybe_save_frequent_place(wallet, message)
     maybe_extract_kuaishou_link(wallet, message, prefs_pre)
     log_chat(wallet, "user", message)
     _cleanup_old_jobs()
@@ -2067,6 +2107,19 @@ def api_weather_chat():
         prefs = json.loads(prof.get("preferences") or "{}")
         city = languages.frequent_places(prefs).get("home") or ""
     return jsonify(build_weather_report(lat=lat, lon=lon, city=city or None, lang=lang))
+
+
+@app.route("/api/save-place")
+def api_save_place():
+    message = (request.args.get("message") or "").strip()
+    lang = (request.args.get("lang") or "en").strip().lower()
+    wallet = norm_wallet(request.args.get("wallet") or "")
+    if not message:
+        return jsonify({"ok": False, "error": "message required"}), 400
+    report = build_save_place_report(message, lang)
+    if report.get("ok") and wallet:
+        save_frequent_place(wallet, report["key"], report["address"])
+    return jsonify(report)
 
 
 @app.route("/api/directions-lookup")

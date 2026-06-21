@@ -56,11 +56,22 @@ window.BINAI_I18N = {
     everyday_usps: '🏛️ USPS locator',
     everyday_disclaimer: 'Live info from Maps or search — verify before you call. Binai does not track you there.',
     settings_places_title: 'Frequent places',
-    settings_places_sub: 'Home & work for directions — weather falls back here if GPS is off.',
-    settings_home_label: '🏠 Home address',
-    settings_work_label: '🏢 Work address',
-    settings_home_ph: '123 Main St, Austin TX',
-    settings_work_ph: 'Office address',
+    settings_places_sub: 'Home, work, hangouts & more — for directions. Say "save my daughter\'s address, it\'s …" in chat.',
+    place_addr_ph: 'Street address, city',
+    place_home: 'Home',
+    place_work: 'Work',
+    place_school: 'School',
+    place_gym: 'Gym',
+    place_hangout: 'Hangout / usual spot',
+    place_daughter: "Daughter's",
+    place_son: "Son's",
+    place_parents: "Parents'",
+    place_daycare: 'Daycare',
+    place_doctor: 'Doctor / clinic',
+    place_grocery: 'Grocery store',
+    place_church: 'Church',
+    place_airport: 'Airport',
+    place_park: 'Park',
     weather_full_forecast: '⛅ Full forecast on LightWeather',
     weather_disclaimer: 'Live weather from Open-Meteo using your location or saved home.',
     directions_open_maps: '🗺️ Open in Google Maps',
@@ -236,11 +247,22 @@ window.BINAI_I18N = {
     everyday_usps: '🏛️ 邮局查询',
     everyday_disclaimer: '将在地图或搜索中打开最新信息 — 拨打电话前请核实。',
     settings_places_title: '常去地点',
-    settings_places_sub: '家和公司用于导航 — 没开定位时天气也会用家庭地址。',
-    settings_home_label: '🏠 家庭地址',
-    settings_work_label: '🏢 公司地址',
-    settings_home_ph: '街道地址、城市',
-    settings_work_ph: '公司地址',
+    settings_places_sub: '家、公司、常去的地方等 — 用于导航。可在聊天说「保存我女儿的地址，是…」',
+    place_addr_ph: '街道地址、城市',
+    place_home: '家',
+    place_work: '公司',
+    place_school: '学校',
+    place_gym: '健身房',
+    place_hangout: '常去的地方',
+    place_daughter: '女儿',
+    place_son: '儿子',
+    place_parents: '父母',
+    place_daycare: '托儿所',
+    place_doctor: '医院/诊所',
+    place_grocery: '超市',
+    place_church: '教堂',
+    place_airport: '机场',
+    place_park: '公园',
     weather_full_forecast: '⛅ 在 LightWeather 看完整预报',
     weather_disclaimer: '使用定位或家庭地址的 Open-Meteo 实时天气。',
     directions_open_maps: '🗺️ 在 Google 地图打开',
@@ -413,10 +435,7 @@ window.applyI18n = function() {
   set('insightLightchatTitle', 'insight_lc_title');
   set('settingsPlacesTitle', 'settings_places_title');
   set('settingsPlacesSub', 'settings_places_sub');
-  set('settingsHomeLabel', 'settings_home_label');
-  set('settingsWorkLabel', 'settings_work_label');
-  setPh('placeHomeInput', 'settings_home_ph');
-  setPh('placeWorkInput', 'settings_work_ph');
+  if (typeof renderPlacesGrid === 'function') renderPlacesGrid();
   set('settingsConnectedTitle', 'settings_connected_title');
   set('settingsConnectedSub', 'settings_connected_sub');
   set('lightchatEnabledLabel', 'lightchat_enabled_label');
