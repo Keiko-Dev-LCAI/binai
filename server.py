@@ -126,7 +126,8 @@ SAFETY (highest priority — never override):
 
 RULES:
 - Use the user's name if you know it.
-- Reference stored memories when relevant.
+- Reference PRIVATE ABOUT ME and stored memories when relevant — personalize, don't lecture.
+- Never repeat the entire About Me document back unless the user asks.
 - For weather, reminders, notes — the app handles those; guide the user to use buttons if needed.
 - Never claim to send texts, make calls, book appointments, or access external services.
   If asked to book a doctor, restaurant, etc., explain kindly that you cannot do that yet
@@ -139,6 +140,9 @@ RULES:
 
 USER PROFILE:
 {profile}
+
+PRIVATE ABOUT ME (confidential — only this user; never share or recite wholesale):
+{about_me}
 
 LONG-TERM MEMORIES:
 {memories}
@@ -364,6 +368,7 @@ def init_db():
             display_name TEXT DEFAULT '',
             language TEXT DEFAULT 'en',
             preferences TEXT DEFAULT '{}',
+            bio TEXT DEFAULT '',
             created_at INTEGER NOT NULL,
             updated_at INTEGER NOT NULL
         );
@@ -554,6 +559,19 @@ def increment_usage(wallet):
     )
     conn.commit()
     conn.close()
+    _migrate_db()
+
+
+def _migrate_db():
+    conn = get_db()
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(profiles)").fetchall()}
+    if "bio" not in cols:
+        conn.execute("ALTER TABLE profiles ADD COLUMN bio TEXT DEFAULT ''")
+        conn.commit()
+    conn.close()
+
+
+MAX_BIO_CHARS = 12000
 
 
 def get_profile(wallet):
@@ -704,6 +722,10 @@ def build_prompt(wallet, user_message, language_override=None):
         },
         indent=2,
     )
+    bio_raw = (prof.get("bio") or "").strip()
+    if len(bio_raw) > MAX_BIO_CHARS:
+        bio_raw = bio_raw[:MAX_BIO_CHARS]
+    about_me_text = bio_raw if bio_raw else "(not filled in yet — user can add their story in About Me)"
     mems = get_memories(wallet)
     mem_text = (
         "\n".join(f"- {m['content']}" for m in mems)
@@ -716,6 +738,7 @@ def build_prompt(wallet, user_message, language_override=None):
         language_instruction += "\n\n" + languages.brief_intent_instruction(lang, depth)
     system = BINAI_SYSTEM.format(
         profile=profile_text,
+        about_me=about_me_text,
         memories=mem_text,
         recent_chat=get_recent_chat(wallet),
         language_instruction=language_instruction,
@@ -917,6 +940,33 @@ def api_profile(wallet):
     return jsonify(get_profile(w))
 
 
+@app.route("/api/about-me/<wallet>", methods=["GET", "POST"])
+def api_about_me(wallet):
+    w = norm_wallet(wallet)
+    ensure_profile(w)
+    if request.method == "GET":
+        prof = get_profile(w) or {}
+        bio = (prof.get("bio") or "")[:MAX_BIO_CHARS]
+        return jsonify(
+            {
+                "bio": bio,
+                "updated_at": prof.get("updated_at"),
+                "max_chars": MAX_BIO_CHARS,
+            }
+        )
+    data = request.json or {}
+    bio = (data.get("bio") or "").strip()[:MAX_BIO_CHARS]
+    now = int(time.time())
+    conn = get_db()
+    conn.execute(
+        "UPDATE profiles SET bio = ?, updated_at = ? WHERE wallet = ?",
+        (bio, now, w),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "bio": bio, "updated_at": now, "max_chars": MAX_BIO_CHARS})
+
+
 @app.route("/api/memories/<wallet>", methods=["GET", "POST", "DELETE"])
 def api_memories(wallet):
     w = norm_wallet(wallet)
@@ -1097,7 +1147,7 @@ def api_delete_data(wallet):
         conn.execute(f"DELETE FROM {table} WHERE wallet = ?", (w,))
     conn.execute("DELETE FROM subscriptions WHERE wallet = ?", (w,))
     conn.execute(
-        """UPDATE profiles SET display_name = '', preferences = '{}',
+        """UPDATE profiles SET display_name = '', preferences = '{}', bio = '',
            updated_at = ? WHERE wallet = ?""",
         (int(time.time()), w),
     )

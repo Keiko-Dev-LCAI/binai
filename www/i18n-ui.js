@@ -2,8 +2,8 @@
 window.BINAI_I18N = {
   en: {
     nav_chat: '💬 Chat', nav_briefing: '🌅 Morning Brief', nav_notes: '📝 Notes',
-    nav_reminders: '⏰ Reminders', nav_memory: '🧠 Memory', nav_settings: '⚙️ Settings',
-    tab_brief: '🌅 Brief', tab_remind: '⏰ Remind',
+    nav_reminders: '⏰ Reminders', nav_memory: '🧠 Memory', nav_aboutme: '👤 About Me',
+    nav_settings: '⚙️ Settings', tab_brief: '🌅 Brief', tab_remind: '⏰ Remind', tab_about: '👤 Me',
     connect_wallet: 'Connect wallet', beta_unlimited: 'Beta — unlimited',
     sidebar_tagline: 'The AI that remembers you — powered by Lightchain AIVM.',
     disclaimer: 'Disclaimer: Binai is beta software provided as-is. AI responses are not professional advice. The service may go offline or be discontinued at any time. No refunds.',
@@ -22,7 +22,13 @@ window.BINAI_I18N = {
     chat_hint: 'Beta: answers take 1–2 min. Say "remember …" to save facts.',
     briefing_intro: 'One-tap morning catch-up — weather, reminders, memories, LCAI price.',
     briefing_btn: '🌅 Read my briefing', speak_aloud: '🔊 Read aloud',
-    note_ph: 'Quick note…', rem_ph: 'Reminder…', mem_intro: 'What Binai remembers about you. Add manually or say "remember …" in chat.',
+    note_ph: 'Quick note…', rem_ph: 'Reminder…',
+    mem_intro: 'What Binai remembers about you. Add manually or say "remember …" in chat. For your full story, use <a class="footer-link" href="#" onclick="switchTab(\'aboutme\');return false">About Me</a>.',
+    about_privacy_title: '🔒 Private to you',
+    about_privacy: 'Only your wallet can see this. Used to personalize Binai when you chat. Never put seed phrases, passwords, or payment cards here.',
+    about_intro: 'Your life story — age, work, family, friends, favorites. Paste everything once. Binai reads it privately; it is not saved as chat.',
+    about_ph: 'Tell Binai about yourself…', about_save: 'Save About Me', about_saved: 'Saved — Binai will use this privately.',
+    about_connect: 'Connect wallet to save your About Me.', about_chars: '{n} / {max} characters',
     mem_ph: 'Remember that…', no_notes: 'No notes yet.', no_reminders: 'No reminders.',
     no_memories: 'No memories yet — chat with Binai!', no_memories_insight: 'No memories yet. Say "remember …" in chat.',
     insight_plan: 'Your plan', insight_quick: 'Quick action', insight_memory: 'Memory preview',
@@ -118,7 +124,8 @@ window.BINAI_I18N = {
   },
   zh: {
     nav_chat: '💬 聊天', nav_briefing: '🌅 晨间简报', nav_notes: '📝 笔记',
-    nav_reminders: '⏰ 提醒', nav_memory: '🧠 记忆', nav_settings: '⚙️ 设置',
+    nav_reminders: '⏰ 提醒', nav_memory: '🧠 记忆', nav_aboutme: '👤 关于我', nav_settings: '⚙️ 设置',
+    tab_about: '👤 我',
     tab_brief: '🌅 简报', tab_remind: '⏰ 提醒',
     connect_wallet: '连接钱包', beta_unlimited: '测试版 — 无限使用',
     sidebar_tagline: '记住你的 AI 助手 — 由 Lightchain AIVM 驱动。',
@@ -138,7 +145,13 @@ window.BINAI_I18N = {
     chat_hint: '测试版：回复需 1–2 分钟。说「记住…」可保存信息。',
     briefing_intro: '一键晨间汇总 — 天气、提醒、记忆、LCAI 价格。',
     briefing_btn: '🌅 阅读我的简报', speak_aloud: '🔊 朗读',
-    note_ph: '快速笔记…', rem_ph: '提醒内容…', mem_intro: 'Binai 记住关于你的事。可手动添加或在聊天中说「记住…」。',
+    note_ph: '快速笔记…', rem_ph: '提醒内容…',
+    mem_intro: 'Binai 记住关于你的事。可手动添加或在聊天中说「记住…」。完整介绍请用 <a class="footer-link" href="#" onclick="switchTab(\'aboutme\');return false">关于我</a>。',
+    about_privacy_title: '🔒 仅你可见',
+    about_privacy: '只有你的钱包能查看。用于个性化 Binai。请勿填写助记词、密码或银行卡号。',
+    about_intro: '你的人生故事 — 年龄、工作、家人、朋友、喜好。一次粘贴全部。Binai 私密阅读，不会存入聊天记录。',
+    about_ph: '告诉 Binai 关于你的事…', about_save: '保存关于我', about_saved: '已保存 — Binai 将私密使用。',
+    about_connect: '连接钱包以保存关于我。', about_chars: '{n} / {max} 字符',
     mem_ph: '记住…', no_notes: '暂无笔记。', no_reminders: '暂无提醒。',
     no_memories: '暂无记忆 — 和 Binai 聊聊吧！', no_memories_insight: '暂无记忆。在聊天中说「记住…」。',
     insight_plan: '你的方案', insight_quick: '快捷操作', insight_memory: '记忆预览',
@@ -256,7 +269,12 @@ window.applyI18n = function() {
   });
   document.querySelectorAll('.tabs .tab[data-tab]').forEach(el => {
     const tab = el.dataset.tab;
-    el.textContent = t(tab === 'briefing' ? 'tab_brief' : tab === 'reminders' ? 'tab_remind' : 'nav_' + tab);
+    el.textContent = t(
+      tab === 'briefing' ? 'tab_brief'
+        : tab === 'reminders' ? 'tab_remind'
+        : tab === 'aboutme' ? 'tab_about'
+        : 'nav_' + tab
+    );
   });
 
   set('sidebarTagline', 'sidebar_tagline');
@@ -277,7 +295,13 @@ window.applyI18n = function() {
   set('speakBriefingBtn', 'speak_aloud');
   setPh('noteInput', 'note_ph');
   setPh('remInput', 'rem_ph');
-  set('memoryIntro', 'mem_intro');
+  setHTML('memoryIntro', 'mem_intro');
+  set('aboutPrivacyTitle', 'about_privacy_title');
+  set('aboutPrivacyText', 'about_privacy');
+  set('aboutIntro', 'about_intro');
+  setPh('bioInput', 'about_ph');
+  set('aboutSaveBtn', 'about_save');
+  if (typeof updateBioMeta === 'function') updateBioMeta();
   setPh('memInput', 'mem_ph');
   set('insightPlanTitle', 'insight_plan');
   set('insightQuickTitle', 'insight_quick');
