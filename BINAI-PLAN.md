@@ -1,8 +1,9 @@
 # Binai 💜 — Full Project Plan
 **Last updated:** 2026-06-21 (brainstorm session — Grok)  
-**Status:** Phase 1 community beta — **web live at binai.win** · still brainstorming camera + retention model below
+**Status:** Phase 1 community beta — **web live at binai.win** · **brainstorming only** — camera, retention, and UX below are planned, not built yet  
 **Owner:** Keiko (Keiko-Dev-LCAI)  
-**Repo:** `~/Desktop/binai/` (local; push to `Keiko-Dev-LCAI/binai` when ready)
+**Repo:** `~/Desktop/binai/` (local; push to `Keiko-Dev-LCAI/binai` when ready)  
+**Latest commit:** `2cbb2a0` (plan doc) · shipped code through `18e5a03` (About Me)
 
 ---
 
@@ -21,7 +22,7 @@
 
 **v1 includes:** wallet identity, 5 free actions, $1/mo LCAI sub, long-term memory, voice in/out (Web Speech API), morning briefing, notes, reminders.
 
-**Shipped in web beta (2026-06-21):** async chat polling (iPhone fix), Reply length (Short/Balanced/Chatty), first-login setup wizard, mute voice, desktop scroll fix, **About Me** private bio tab (`/api/about-me`, 12k chars, not stored as chat).
+**Shipped in web beta (2026-06-21):** see [Shipped Web Beta](#shipped-web-beta-2026-06-21) below.
 
 **Not in v1 yet:** Capacitor Android build, camera/vision (Lens), user-controlled retention tiers, calls/SMS, phone cleaner, Play Store.
 
@@ -31,6 +32,116 @@
 **Domain:** `binai.win` registered on Cloudflare (2026-06-20) — **DNS → Railway pending** (Claude task)
 
 **Android:** `android/` folder scaffolded — build APK with Android Studio: `npx cap open android`
+
+---
+
+## Community Beta — Auth & Architecture
+
+### Who pays for AI (TEST_MODE)
+
+| Role | Wallet | Pays AIVM? |
+|------|--------|------------|
+| **Keiko (host)** | dApp payment wallet (~`0x729fea…`) | ✅ Yes — all inference during beta |
+| **Testers (Sherry, Discord, etc.)** | Their own wallet | ❌ No — wallet = **identity only** |
+
+- `TEST_MODE=true` on Railway — testers need **no LCAI** to chat
+- UI copy: "Keiko pays for AI during beta; your wallet is your account"
+- Subscription flow still exists for when beta ends
+
+### Request flow
+
+```
+Phone/browser (binai.win)
+  → Binai Railway (binai-production)
+    → AIVM relay (orcaappbuilder-server)
+      → https://web-production-aaaba.up.railway.app
+        → Keiko payment wallet pays per inference
+```
+
+- Frontend uses **same-origin API** (`location.origin`) — fixes iPhone `Load failed`
+- Chat is **async**: `POST /api/chat` → `job_id` → poll `/api/chat/status` (up to ~2 min)
+
+### Testers
+
+| Tester | Device | Language | Role |
+|--------|--------|----------|------|
+| **Sherry** | iPhone, Trust Wallet | Chinese UI + Chinese AI | Primary real-device tester |
+| **Keiko** | PC (phone TBD) | English UI + English AI | Secondary tester |
+
+---
+
+## Community Beta — Testing Status
+
+**Server/curl:** ✅ health, async chat, About Me API verified  
+**Real phones:** ⚠️ **not fully done** after latest fixes — top priority before Discord scale
+
+### Tomorrow checklist (both testers)
+
+1. Hard refresh `binai.win` (close tab → reopen in Trust Wallet)
+2. Send one message, wait on "thinking…" up to ~2 min — no `Load failed`
+3. **English (Keiko):** UI in English, AI replies in English
+4. **Chinese (Sherry):** UI in Chinese, AI replies in Chinese (no English welcome or mixed)
+5. Note anything still wrong: wrong language, timeout, booking weirdness, wallet/PIN flow
+6. **Reply length:** Keiko on **Short** → send `GM` → expect one line back
+7. **About Me:** paste bio → Save → ask Binai something only in bio → confirm it knows
+8. **Mute:** tap 🔇 → confirm no read-aloud
+9. **Settings scroll (desktop):** scroll to PIN, export, legal
+
+### Known gaps to watch
+
+| Gap | Detail |
+|-----|--------|
+| **UI i18n** | `i18n-ui.js` = **English + Chinese only**; backend `languages.py` = 7 langs for AI |
+| **Server PIN** | PIN locks device only — API trusts wallet address, no server-side PIN yet |
+| **Data at rest** | SQLite on Railway — **not encrypted** like a bank vault (beta honesty) |
+| **DNS** | `binai.win` on Cloudflare — confirm DNS → Railway if custom domain issues |
+
+---
+
+## Shipped Web Beta (2026-06-21)
+
+| Commit | Feature |
+|--------|---------|
+| `f534087` | iPhone fix — same-origin API + async chat polling |
+| `7f1d754` | Desktop scroll — Settings/Notes/Reminders panels scroll (`.main overflow-y: auto`) |
+| `6e7d2da` | Mute voice — 🔊/🔇 next to mic; `binai_voice_muted` in localStorage |
+| `da928af` | First-login setup wizard — language, personality, reply length, reminders, voice mute; once per wallet (`binai_prefs_setup_v1_<wallet>`) |
+| `fb15579` | Shorter casual replies — instant one-liners for GM, time, holidays; trim AI ramble |
+| `805afc2` | Reply length — **Short / Balanced / Chatty** in Settings + setup; `preferences.reply_depth`; personality defaults: direct→short, playful→chatty |
+| `18e5a03` | **About Me** — 👤 tab, `/api/about-me/<wallet>` GET/POST, `profiles.bio` (12k chars), in AI prompt as PRIVATE ABOUT ME; export/delete clears bio |
+
+### First-login setup wizard (shipped)
+
+After wallet + PIN, new users see **"Set up your Binai"** popup:
+
+1. Language  
+2. AI personality (warm / direct / playful / professional)  
+3. Reply length (Short / Balanced / Chatty)  
+4. Political context (optional)  
+5. Morning briefing on/off  
+6. Reminder notifications on/off  
+7. Mute voice on/off  
+
+→ **"Save & start chatting"** → into chat. Returning users skip (once per wallet).
+
+### Reply length (shipped)
+
+| Mode | Who it's for | Behavior |
+|------|--------------|----------|
+| **⚡ Short** | GM-style pings | 1–2 sentences; instant one-liners for greetings/time |
+| **💜 Balanced** | Default | Friendly, 2–4 sentences |
+| **💬 Chatty** | Conversation lovers | Up to ~5 sentences; questions welcome |
+
+- Stored in `preferences.reply_depth` per wallet
+- `languages.py`: quick replies + `enforce_brief_reply` for Short mode
+- Emotional messages ("bored", "feeling sad") always get real conversation regardless of mode
+
+### Mute voice (shipped)
+
+- 🔊/🔇 toggle next to mic in chat bar
+- Mute stops current speech immediately
+- Preference persists in `localStorage` (`binai_voice_muted`)
+- Also available in first-login wizard and Settings
 
 ---
 
@@ -269,6 +380,21 @@ These principles were locked in during planning (2026-06-18) and should guide ev
 | **Never store** | Seed phrases, passwords, payment cards (UI warning) |
 | **Controls** | Included in Export; wiped on Delete all data |
 | **vs Memory** | About Me = big private document; Memory = individual facts ("remember I like iced coffee") |
+| **vs Notes** | Notes = user's own lists (not in AI prompt today); About Me = AI reads privately each chat |
+| **vs Chat** | Chat "remember that…" = one fact at a time; Memory tab = 500 chars/item chips — bad for dumping whole bio |
+
+### Privacy honesty (beta — tell users)
+
+- Data on **Keiko's Railway server** in SQLite — not end-to-end encrypted
+- When Binai replies, About Me + memories go in the **AI prompt** (same as any assistant)
+- Other Binai users **cannot** browse your data — keyed by wallet
+- PIN locks **your device only** — not a server login yet
+- Export + Delete all data must always include bio (✅ wired)
+
+### Future brainstorm (not built)
+
+- **"Add to About Me"** button on a chat reply — append a life update without re-pasting whole doc
+- Server-side PIN or session token before API accepts wallet address
 
 ---
 
@@ -317,13 +443,20 @@ If user does nothing → photo gone. Privacy-first default.
 [Remember]  [Save message]  [Wrong]
 ```
 
+- **Remember** — extract one fact → Memory table (explicit consent, replaces typing "remember that…")
+- **Save message** — keep this exchange in saved chat history
+- **Wrong** — feedback when Binai got it wrong; log for quality, optionally trim bad memory (TBD)
+
 After a photo answer:
 
 ```
-[Remember this]  [Save photo]  [Ask more]
+[Remember this]  [Save photo]  [Add to Notes]  [Ask more]
 ```
 
-Short labels. No jargon.
+- **Add to Notes** — receipt, label, list item — separate from Memory facts
+- **Ask more** — follow-up question with same photo context (until photo expires)
+
+Short labels. No jargon. i18n needed for all 7 launch languages when built.
 
 ### Optional Settings (power users)
 
@@ -371,7 +504,7 @@ The goal: Binai should feel like it *understands your life* and reduces mental l
 | Phase | Focus | Key Features | Goal |
 |-------|-------|-------------|------|
 | Phase 1 | Core Foundation | Voice loop (STT + TTS), Long-term Memory, About Me, Reply length, setup wizard, Subscription (WalletConnect + wallet identity + free tier gating) | Assistant remembers you — payment identity from day one |
-| Phase 1b | Web beta hardening | iPhone async chat, mute voice, 7-language AI, real-device testing (Keiko EN + Sherry ZH) | Trust core chat before scaling Discord |
+| Phase 1b | Web beta hardening | iPhone async chat, mute voice, setup wizard, reply length, About Me, 7-language AI backend, **UI i18n (en+zh done; es/fr/pt/de/ja TBD)**, real-device testing (Keiko EN + Sherry ZH) | Trust core chat before scaling Discord |
 | Phase 2 | Daily Usefulness | Weather, Calendar, Reminders, Notes, Morning Briefing, Translate, Flashlight | Genuinely useful every day |
 | Phase 2b | User-controlled retention | 24h default chat/photo expiry; **Remember** / **Save message** / **Save photo** buttons; optional retention Settings | User trusts what Binai keeps |
 | Phase 3 | Camera & Vision | 📷 in chat, Cloudflare vision API, Lens-style Q&A, photo 24h delete + save opt-in | "What is this?" — show AIVM-era smarts |
@@ -390,6 +523,42 @@ The goal: Binai should feel like it *understands your life* and reduces mental l
 4. **Later:** Native Android camera, AIVM vision swap, retention Settings toggles  
 
 *Still brainstorming — nothing in this section is committed code until we pick it up in a build session.*
+
+---
+
+## Open Questions (brainstorm — not decided)
+
+| # | Question | Options |
+|---|----------|---------|
+| 1 | Photo delete timing | 24h default vs delete immediately after answer |
+| 2 | Unsaved chat window | Strict 24h roll-off vs keep last N turns for AI context only |
+| 3 | **Wrong** button behavior | Just log vs offer to forget bad memory vs re-ask AI |
+| 4 | Vision cost in beta | Keiko pays all (TEST_MODE) vs per-user daily cap |
+| 5 | UI i18n before Discord | Ship es/fr/pt/de/ja UI strings now vs en+zh only for first testers |
+| 6 | Photo storage | Railway volume blobs vs Cloudflare R2 vs vision-only (no store) |
+| 7 | Booking / action replies | More canned filters vs wait for better AIVM tool use |
+
+---
+
+## Claude Briefing — Paste Block
+
+Copy-paste to Claude when starting a new session:
+
+```
+## Binai V1 — Status (June 2026)
+
+Live: binai.win · Railway binai-production · Repo Keiko-Dev-LCAI/binai
+Auth: wallet + device PIN · TEST_MODE=true · Keiko pays AIVM, tester wallets = identity only
+Relay: web-production-aaaba.up.railway.app (orcaappbuilder-server)
+
+Shipped: async chat (iPhone), mute voice, setup wizard, reply length, About Me (12k bio), desktop scroll
+Brainstorm only (not built): camera/Lens, retention buttons, 24h expiry
+
+Testing: server ✅ · real phones ⚠️ pending (Sherry ZH iPhone, Keiko EN PC)
+Top priority: hard refresh → chat → language → About Me → Short/GM test
+
+Full plan: ~/Desktop/binai/BINAI-PLAN.md
+```
 
 ---
 
