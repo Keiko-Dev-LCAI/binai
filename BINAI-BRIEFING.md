@@ -69,6 +69,7 @@ Details + commit table → `BINAI-PLAN.md` § Shipped Web Beta
 - **OrcaVault / Archives** — "Save to Archives" for photos forever on-chain (Family Album, etc.)
 - **LightTunes** — 🎵 embed, play playlist, voice control
 - **Keiko App Registry** — JSON manifest so Binai connects to more apps easily
+- **Custom assistant name** — user picks what to call their AI (default Binai); changeable in Settings + wizard
 
 Full spec → `BINAI-PLAN.md` § User-Controlled Retention, App Connectors, OrcaVault, LightTunes
 

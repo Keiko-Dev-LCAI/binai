@@ -235,6 +235,59 @@ Current AIVM on-chain latency = 12–20 seconds per response. Too slow for a con
    - Launch languages: English, Spanish, French, Portuguese, German, Japanese, Chinese (expandable)
 2. App unlock setup: user chooses PIN, biometrics (fingerprint/face), or both — set at first launch, changeable in settings
 3. Wallet connect for subscription
+4. **Assistant name (brainstorm)** — optional in setup wizard; changeable anytime in Settings (see below)
+
+---
+
+## Custom Assistant Name — BRAINSTORM (locked direction: yes)
+
+**Idea:** User picks what **their** AI is called — makes it feel personal. App product name stays **Binai**; the assistant they talk to can be Luna, Alex, 小助手, whatever they want.
+
+### Today vs target
+
+| | Today | Target |
+|--|-------|--------|
+| **User's name** | ✅ Settings — "What should Binai call you?" (`display_name`) | Same |
+| **Assistant name** | ❌ Always "Binai" in AI + UI | ✅ User picks — default **Binai** if blank |
+| **Changeable** | — | ✅ Settings + first-login wizard |
+
+### What stays "Binai" (brand)
+
+- App icon, store listing, legal, disclaimers, footer
+- "Powered by Binai" or small subtitle if needed
+- Keiko ecosystem / marketing
+
+### What uses custom name
+
+| Place | Example |
+|-------|---------|
+| **AI system prompt** | "You are Luna 💜, a warm personal assistant…" (note: runs on Binai / Lightchain) |
+| **Chat placeholder** | "Talk to Luna…" |
+| **Voice read-aloud** | Assistant refers to itself by chosen name |
+| **Setup wizard** | "What should your assistant be called?" — default Binai, skippable |
+
+### Suggested UX
+
+- **Settings → Assistant name** — text field, 2–20 chars, emoji ok (💜 stays app-wide)
+- **First-login wizard** — same field, after language; hint: *"Leave as Binai or pick your own — change anytime"*
+- **Validation:** trim whitespace; block empty → fallback Binai; light profanity filter optional
+- **Storage:** `preferences.assistant_name` in profile JSON (same pattern as `reply_depth`, `personality`)
+- **i18n:** UI labels in en/zh; user's chosen name is **not translated**
+
+### Why this is a good fit
+
+- Pairs with **personality** (warm / direct / playful) and **presentation** prefs already in setup
+- Makes the "remembers you" moment stronger — *"Good morning, Keiko" from Luna* hits different than generic bot
+- Low risk — cosmetic + prompt change; no new permissions or infra
+- **Changeable is mandatory** — people rename pets, cars, and assistants; lock-in feels wrong
+
+### Implementation notes (when we build)
+
+- `server.py`: inject `{assistant_name}` into `BINAI_SYSTEM` instead of hardcoded "Binai"
+- `languages.py` / quick replies: use assistant name in greetings where appropriate
+- `index.html` + `i18n-ui.js`: dynamic label helper `getAssistantName()` — default `"Binai"`
+- Export / delete all data: include `assistant_name` in preferences
+- Do **not** rename the app binary or domain — personal name is per-wallet preference only
 
 ---
 
@@ -671,6 +724,8 @@ The goal: Binai should feel like it *understands your life* and reduces mental l
 | 8 | Archives handoff vs one-tap | Deep link to OrcaVault (user confirms tx) vs Binai relay upload in background |
 | 9 | LightTunes playlist | postMessage from embed vs new `?playlist=` deep link vs relay API |
 | 10 | Which apps in registry v1 | OrcaVault + LightTunes only vs also LightWeather, TopTen, LightTube |
+| 11 | Assistant name in wizard | Optional skip (default Binai) vs encourage pick on first login |
+| 12 | Assistant name length | 20 chars vs allow longer; emoji in name yes/no |
 
 ---
 

@@ -50,6 +50,7 @@ metadata:
 - OrcaVault **Save to Archives** (permanent on-chain photos)
 - LightTunes embed + play playlist
 - Keiko App Registry (connect more apps)
+- Custom assistant name (user picks; default Binai; changeable)
 
 ---
 
