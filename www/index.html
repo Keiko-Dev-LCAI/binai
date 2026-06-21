@@ -88,6 +88,19 @@ body::before {
   border-radius: 999px; padding: 4px 10px; font-size: 12px; cursor: pointer; font-family: inherit;
 }
 .msg-action-btn:hover { border-color: var(--purple); color: var(--text); }
+.msg-visual { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.msg-visual img {
+  max-width: 100%; max-height: 220px; border-radius: 10px; object-fit: cover;
+  border: 1px solid rgba(155,127,232,0.2);
+}
+.msg-visual-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.msg-visual-link {
+  background: rgba(155,127,232,0.14); border: 1px solid rgba(155,127,232,0.35);
+  color: var(--text); border-radius: 999px; padding: 6px 12px; font-size: 13px;
+  text-decoration: none; font-weight: 600;
+}
+.msg-visual-link:hover { background: rgba(155,127,232,0.24); }
+.msg-visual-note { font-size: 12px; color: var(--text2); line-height: 1.4; }
 .wait-banner {
   display: none; background: rgba(155,127,232,0.12); border: 1px solid rgba(155,127,232,0.25);
   border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; font-size: 14px; color: var(--text2);
@@ -814,8 +827,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260621-1';</script>
-<script src="i18n-ui.js?v=20260621-1"></script>
+<script>window.BINAI_BUILD = '20260621-2';</script>
+<script src="i18n-ui.js?v=20260621-2"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -1455,6 +1468,57 @@ function addMsg(text, who, opts = {}) {
 }
 function addBotMsg(t, opts) { return addMsg(t, 'bot', opts); }
 function addUserMsg(t) { return addMsg(t, 'user', { actions: false }); }
+function isVisualLookup(msg) {
+  const m = (msg || '').trim();
+  if (!m || m.length > 200) return false;
+  return /what\s+(?:does|do)\s+(?:a|an|the\s+)?\S.+\s+look\s+like/i.test(m)
+    || /(?:show|picture|image|photo)(?:\s+me)?\s+(?:of\s+)?/i.test(m)
+    || /(?:what|how)\s+(?:does|do)\s+(?:a|an|the\s+)?\S.+\s+(?:look|appear)/i.test(m)
+    || /长什么样|是什么样子|的样子|的图片|的照片/.test(m)
+    || /^给我看/.test(m);
+}
+function appendVisualExtras(el, data) {
+  if (!el || !data || !data.ok || !(data.links || []).length) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-visual';
+  if (data.thumbnail) {
+    const img = document.createElement('img');
+    img.src = data.thumbnail;
+    img.alt = data.title || data.query || '';
+    img.loading = 'lazy';
+    img.referrerPolicy = 'no-referrer';
+    wrap.appendChild(img);
+  }
+  const links = document.createElement('div');
+  links.className = 'msg-visual-links';
+  for (const link of data.links) {
+    const a = document.createElement('a');
+    a.className = 'msg-visual-link';
+    a.href = link.url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = t(link.label_key || 'visual_search_web');
+    links.appendChild(a);
+  }
+  wrap.appendChild(links);
+  const note = document.createElement('div');
+  note.className = 'msg-visual-note';
+  note.textContent = t('visual_disclaimer');
+  wrap.appendChild(note);
+  const actions = el.querySelector('.msg-actions');
+  if (actions) el.insertBefore(wrap, actions);
+  else el.appendChild(wrap);
+}
+async function maybeAttachVisualLookup(userMsg, botEl) {
+  if (!isVisualLookup(userMsg)) return;
+  try {
+    const r = await fetch(API + '/api/visual-lookup?' + new URLSearchParams({
+      message: userMsg, lang: currentLang(),
+    }));
+    const d = await r.json();
+    if (d.ok) appendVisualExtras(botEl, d);
+  } catch (_) {}
+}
 let lastUserMsg = '';
 async function loadChatHistory() {
   if (!wallet) return false;
@@ -1671,14 +1735,16 @@ async function sendChat() {
           addBotMsg(t('err_timeout'));
         } else {
           think.remove();
-          addBotMsg(result.reply);
+          const replyEl = addBotMsg(result.reply);
+          maybeAttachVisualLookup(msg, replyEl);
           speak(result.reply);
           updateUsage(result);
           loadMemories();
         }
       } else if (d.reply) {
         think.remove();
-        addBotMsg(d.reply);
+        const replyEl = addBotMsg(d.reply);
+        maybeAttachVisualLookup(msg, replyEl);
         speak(d.reply);
         updateUsage(d);
         loadMemories();

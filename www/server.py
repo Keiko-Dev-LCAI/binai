@@ -35,7 +35,7 @@ _test_flag = os.environ.get("TEST_MODE", "true").lower()
 TEST_MODE = _test_flag not in ("0", "false", "no", "off")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
-BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260621-1")
+BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260621-2")
 LIGHTCHAT_API = os.environ.get(
     "LIGHTCHAT_API", "https://web-production-bc64f.up.railway.app"
 ).rstrip("/")
@@ -1585,6 +1585,155 @@ def api_briefing(wallet):
         f"{strings['memories'].format(items=mem_items)}"
     )
     return jsonify({"briefing": briefing, "lcai_price": price})
+
+
+_WIKI_TRUSTED_SUFFIXES = (".wikimedia.org",)
+_visual_cache = {}
+_VISUAL_CACHE_TTL = 86400
+
+
+def _trusted_wiki_thumb(url):
+    if not url:
+        return None
+    try:
+        from urllib.parse import urlparse
+
+        host = urlparse(url).netloc.lower()
+        if host.endswith("wikimedia.org"):
+            return url
+    except Exception:
+        pass
+    return None
+
+
+def _wiki_lang(lang):
+    return "zh" if lang == "zh" else "en"
+
+
+def _visual_cache_get(key):
+    entry = _visual_cache.get(key)
+    if entry and time.time() - entry["ts"] < _VISUAL_CACHE_TTL:
+        return entry["data"]
+    return None
+
+
+def _visual_cache_set(key, data):
+    _visual_cache[key] = {"ts": time.time(), "data": data}
+
+
+def _wiki_search_title(query, wiki_lang):
+    api = (
+        f"https://{wiki_lang}.wikipedia.org/w/api.php?"
+        f"action=query&list=search&srsearch={url_quote(query)}&format=json&srlimit=1"
+    )
+    try:
+        r = requests.get(api, timeout=8, headers={"User-Agent": "Binai/1.0 (binai.win)"})
+        r.raise_for_status()
+        hits = (r.json().get("query") or {}).get("search") or []
+        if hits:
+            return hits[0].get("title")
+    except Exception:
+        pass
+    return None
+
+
+def _wiki_summary(title, wiki_lang):
+    if not title:
+        return None
+    api = (
+        f"https://{wiki_lang}.wikipedia.org/api/rest_v1/page/summary/"
+        f"{url_quote(title.replace(' ', '_'), safe='')}"
+    )
+    try:
+        r = requests.get(api, timeout=8, headers={"User-Agent": "Binai/1.0 (binai.win)"})
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        data = r.json()
+        thumb = (data.get("thumbnail") or {}).get("source")
+        page = (data.get("content_urls") or {}).get("desktop", {}).get("page")
+        return {
+            "title": data.get("title") or title,
+            "thumbnail": _trusted_wiki_thumb(thumb),
+            "wiki_url": page,
+            "extract": (data.get("extract") or "")[:200],
+        }
+    except Exception:
+        return None
+
+
+def build_visual_lookup(message, lang="en"):
+    query = languages.extract_visual_query(message)
+    if not query:
+        return {"ok": False, "reason": "not_visual"}
+    lang = lang if lang in languages.LANG_NAMES else "en"
+    cache_key = f"{lang}:{query.lower()}"
+    cached = _visual_cache_get(cache_key)
+    if cached:
+        return cached
+
+    wiki_lang = _wiki_lang(lang)
+    title = _wiki_search_title(query, wiki_lang)
+    if not title and wiki_lang != "en":
+        title = _wiki_search_title(query, "en")
+        if title:
+            wiki_lang = "en"
+    summary = _wiki_summary(title, wiki_lang) if title else None
+
+    encoded = url_quote(query)
+    if lang == "zh":
+        links = [
+            {
+                "kind": "images",
+                "label_key": "visual_more_images",
+                "url": f"https://image.baidu.com/search/index?tn=baiduimage&word={encoded}",
+            },
+            {
+                "kind": "web",
+                "label_key": "visual_search_web",
+                "url": f"https://www.baidu.com/s?wd={encoded}",
+            },
+        ]
+    else:
+        links = [
+            {
+                "kind": "images",
+                "label_key": "visual_more_images",
+                "url": f"https://duckduckgo.com/?q={encoded}&iax=images&ia=images",
+            },
+            {
+                "kind": "web",
+                "label_key": "visual_search_web",
+                "url": f"https://duckduckgo.com/?q={encoded}",
+            },
+        ]
+    if summary and summary.get("wiki_url"):
+        links.append(
+            {
+                "kind": "wiki",
+                "label_key": "visual_wikipedia",
+                "url": summary["wiki_url"],
+            }
+        )
+
+    payload = {
+        "ok": True,
+        "query": query,
+        "title": (summary or {}).get("title"),
+        "thumbnail": (summary or {}).get("thumbnail"),
+        "links": links,
+    }
+    _visual_cache_set(cache_key, payload)
+    return payload
+
+
+@app.route("/api/visual-lookup")
+def api_visual_lookup():
+    message = (request.args.get("message") or request.args.get("q") or "").strip()
+    lang = (request.args.get("lang") or "en").strip().lower()
+    if not message:
+        return jsonify({"ok": False, "error": "message required"}), 400
+    return jsonify(build_visual_lookup(message, lang))
 
 
 @app.route("/api/weather")
