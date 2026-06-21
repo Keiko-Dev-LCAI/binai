@@ -109,6 +109,7 @@ body::before {
 .btn-mic { width: 52px; height: 52px; border-radius: 50%; font-size: 22px; padding: 0;
   flex-shrink: 0; }
 .btn-mic.listening { background: var(--red); color: #fff; animation: pulse 1s infinite; }
+.btn-mic.muted { opacity: 0.55; border: 1px solid var(--border); }
 
 .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
   padding: 14px 16px; margin-bottom: 10px; }
@@ -367,7 +368,8 @@ body::before {
     </div>
     <div class="chat-footer">
       <div class="input-row">
-        <button class="btn btn-mic btn-ghost" id="micBtn" onclick="toggleMic()" title="Voice">🎤</button>
+        <button class="btn btn-mic btn-ghost" id="micBtn" onclick="toggleMic()" title="Voice input">🎤</button>
+        <button class="btn btn-mic btn-ghost" id="voiceMuteBtn" onclick="toggleVoiceMute()" title="Mute Binai voice" type="button">🔊</button>
         <textarea class="chat-input" id="chatInput" rows="1" placeholder="Talk to Binai…"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
         <button class="btn btn-primary" id="sendBtn" onclick="sendChat()">Send</button>
@@ -1393,6 +1395,25 @@ function syncInsightMemory(mems) {
 }
 
 // ── Voice ────────────────────────────────────────────────────────────────────
+function isVoiceMuted() {
+  return localStorage.getItem('binai_voice_muted') === '1';
+}
+
+function updateVoiceMuteBtn() {
+  const btn = document.getElementById('voiceMuteBtn');
+  if (!btn) return;
+  const muted = isVoiceMuted();
+  btn.textContent = muted ? '🔇' : '🔊';
+  btn.title = muted ? t('voice_unmute') : t('voice_mute');
+  btn.classList.toggle('muted', muted);
+}
+
+function toggleVoiceMute() {
+  localStorage.setItem('binai_voice_muted', isVoiceMuted() ? '0' : '1');
+  if (isVoiceMuted() && window.speechSynthesis) speechSynthesis.cancel();
+  updateVoiceMuteBtn();
+}
+
 function toggleMic() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { alert('Voice input not supported in this browser. Type instead.'); return; }
@@ -1424,7 +1445,7 @@ function toggleMic() {
 }
 
 function speak(text) {
-  if (!window.speechSynthesis) return;
+  if (!window.speechSynthesis || isVoiceMuted()) return;
   const u = new SpeechSynthesisUtterance(text.slice(0, 800));
   u.lang = speechLang();
   u.rate = 1;
@@ -1862,6 +1883,7 @@ function startApp() {
   initPreferencePickers();
   initSettingsToggles();
   applyI18n();
+  updateVoiceMuteBtn();
   updateHero();
   if (localStorage.getItem('binai_name'))
     document.getElementById('nameInput').value = localStorage.getItem('binai_name');

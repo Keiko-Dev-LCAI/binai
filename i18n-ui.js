@@ -18,6 +18,7 @@ window.BINAI_I18N = {
     prompt3_title: 'Morning briefing', prompt3_desc: 'Weather, reminders, and LCAI in one tap',
     prompt4_title: 'Plan my day', prompt4_desc: 'Get a friendly start-of-day nudge',
     chat_placeholder: 'Talk to Binai…', send: 'Send',
+    voice_mute: 'Mute Binai voice', voice_unmute: 'Unmute Binai voice',
     chat_hint: 'Beta: answers take 1–2 min. Say "remember …" to save facts.',
     briefing_intro: 'One-tap morning catch-up — weather, reminders, memories, LCAI price.',
     briefing_btn: '🌅 Read my briefing', speak_aloud: '🔊 Read aloud',
@@ -120,6 +121,7 @@ window.BINAI_I18N = {
     prompt3_title: '晨间简报', prompt3_desc: '天气、提醒和 LCAI 一键查看',
     prompt4_title: '规划今天', prompt4_desc: '友好的一天开始建议',
     chat_placeholder: '和 Binai 聊天…', send: '发送',
+    voice_mute: '关闭 Binai 语音', voice_unmute: '开启 Binai 语音',
     chat_hint: '测试版：回复需 1–2 分钟。说「记住…」可保存信息。',
     briefing_intro: '一键晨间汇总 — 天气、提醒、记忆、LCAI 价格。',
     briefing_btn: '🌅 阅读我的简报', speak_aloud: '🔊 朗读',
@@ -242,6 +244,7 @@ window.applyI18n = function() {
   set('waitBanner', 'wait_banner');
   setPh('chatInput', 'chat_placeholder');
   set('sendBtn', 'send');
+  if (typeof updateVoiceMuteBtn === 'function') updateVoiceMuteBtn();
   set('chatHint', 'chat_hint');
   set('briefingIntro', 'briefing_intro');
   set('briefingBtn', 'briefing_btn');
