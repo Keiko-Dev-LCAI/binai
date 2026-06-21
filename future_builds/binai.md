@@ -56,7 +56,12 @@ metadata:
 
 ## Next priority
 
-Real phone testing — Sherry (ZH iPhone) + Keiko (EN PC) before Discord scale.
+1. Real phone testing — Sherry (ZH iPhone) + Keiko (EN PC)
+2. **Smart UX Phase 1c** ⭐ Keiko loves this — Catch Me Up, memory confirmation, welcome-back
+
+## Keiko priority (Smart UX)
+
+Catch Me Up button, memory confirmation moments, gentle suggestions on app open — makes memory *felt*. Web-first; no background services. Full spec: BINAI-PLAN.md § Smart UX.
 
 ---
 

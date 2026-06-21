@@ -656,28 +656,74 @@ Short labels. No jargon. i18n needed for all 7 launch languages when built.
 
 ---
 
-## Smart UX Improvements (AIVM Memory Advantage)
+## Smart UX Improvements (AIVM Memory Advantage) — ⭐ KEIKO PRIORITY
 
-The goal: Binai should feel like it *understands your life* and reduces mental load — not just reacts to commands. This is where AIVM's long-term memory shines over every other assistant.
+**Keiko (2026-06-21):** *"I really like this one."* — This is the emotional core of Binai: not a command bot, but something that **understands your life** and reduces mental load. Memory is the moat; these UX patterns make memory *felt*.
+
+The goal: Binai should feel like it already knows your day, your people, your habits — and gently helps without nagging.
 
 | # | UX Improvement | How It Helps | Leverages AIVM | Priority |
 |---|---------------|-------------|----------------|----------|
 | 1 | **Smart Contextual Reminders** | Instead of just setting reminders, Binai says: "You usually leave for work around 7:30. Want me to remind you to take your keys?" | Memory + pattern recognition | Very High |
 | 2 | **Proactive Daily Suggestions** | In the morning briefing, Binai offers 2–3 useful suggestions based on your day ("You have a dentist at 3pm — want me to prepare directions?") | Memory + calendar awareness | Very High |
 | 3 | **Natural Follow-up Conversations** | After a command, Binai asks smart follow-ups. "Add milk to shopping list" → Binai: "Do you want me to check if you already have milk based on your last grocery run?" | Memory + reasoning | High |
-| 4 | **One-Tap "Catch Me Up"** | Prominent button that summarizes calendar, reminders, notes, weather — everything you might have missed. Combine with "What did I miss?" (same feature) | Memory + context | High |
+| 4 | **One-Tap "Catch Me Up"** | Prominent button that summarizes calendar, reminders, notes, weather — everything you might have missed. Combine with "What did I miss?" (same feature) | Memory + context | **Very High** ⭐ |
 | 5 | **Location + Time Awareness** | Time of day / location changes what Binai suggests. Evening at home = different context than Monday morning. Opt-in only — clearly disclosed | Context awareness | High |
-| 6 | **Smart Defaults & Preferences** | Binai learns your preferences over time ("You always want weather in Celsius," "You prefer short answers in the morning") | Long-term memory | High |
+| 6 | **Smart Defaults & Preferences** | Binai learns your preferences over time ("You always want weather in Celsius," "You prefer short answers in the morning") | Long-term memory | High *(partial — reply length shipped)* |
 | 7 | **Low-Friction Task Creation** | Very natural language for tasks: "Remind me to call mom when I get home" / "Add buy birthday gift for Sarah for next week" | Natural language understanding | Medium-High |
-| 8 | **Memory Confirmation Moments** | Occasionally confirm important memories: "Just to confirm — your daughter's name is Lily, right?" Builds trust in the memory system — more powerful than any explanation | Memory | High *(bumped from Medium)* |
+| 8 | **Memory Confirmation Moments** | Occasionally confirm important memories: "Just to confirm — your daughter's name is Lily, right?" Builds trust in the memory system — more powerful than any explanation | Memory | **Very High** ⭐ |
 | 9 | **Gentle Background Help** | When user does something repetitive, Binai can gently offer help. Example: blurry photo → Binai offers to enhance or organize. Keep this very limited and opt-in | Image analysis + context | Medium |
+
+### What this feels like (examples users will notice)
+
+| Moment | Binai says / does |
+|--------|-------------------|
+| **First open next morning** | "Good morning, Keiko ☀️ You wanted to call the dentist today — still want a reminder at 2pm?" |
+| **Catch Me Up tap** | One read-aloud summary: 2 reminders due, 1 note about groceries, yesterday you said you're tired of takeout |
+| **After you share family info** | "Just checking — your wife's name is Bin, right? I'll remember that." |
+| **Evening open** | "Long day? You usually wind down around 9 — want me to hold notifications?" *(opt-in, gentle)* |
+| **Shopping list add** | "Added milk. You already had eggs on your list from Tuesday — want the full list?" |
+
+### Web-first vs needs Android (important)
+
+**No true background on web/Android without Capacitor tricks** — trigger Smart UX **when user opens the app**, not while phone is locked. That's fine and matches "proactive but not annoying."
+
+| Feature | Web beta now? | Needs |
+|---------|---------------|-------|
+| **Catch Me Up** (#4) | ✅ Yes — reminders, notes, memory, briefing already exist | One button + `/api/catch-up` or prompt bundle |
+| **Memory confirmation** (#8) | ✅ Yes — prompt + occasional card after "remember" | AI instruction + light UI |
+| **Time-of-day tone** (#5 partial) | ✅ Yes — server sends local time in prompt | Already mostly there; sharpen |
+| **Proactive on open** (#2 partial) | ✅ Yes — one suggestion when app opens AM/PM | Memory + About Me + reminders; no calendar yet |
+| **Natural follow-ups** (#3) | ✅ Yes — mostly prompt engineering | `languages.py` + system prompt |
+| **Smart contextual reminders** (#1) | ⚠️ Partial — needs usage patterns over days | Memory history |
+| **Calendar-aware suggestions** (#2 full) | ❌ | Phase 2 `@capacitor/calendar` |
+| **Location hints** (#5 full) | ❌ | Opt-in geolocation + disclosure |
+| **"When I get home"** (#7) | ❌ | Location or manual home time memory |
+
+### Phase 1c — Smart UX (web) — BRAINSTORM build order
+
+*After phone testing passes; before camera if Keiko wants the "wow" on memory first.*
+
+1. **Catch Me Up** — big button on chat screen + voice phrase "what did I miss?"
+2. **Memory confirmation** — after new memory saved, Binai may ask one confirm question (toggle in Settings)
+3. **Welcome-back line** — on return visit, one personalized line from About Me + memories (not generic hello)
+4. **Morning/evening open nudge** — max **one** proactive suggestion per open; dismissible
+5. **Follow-up prompts** — system prompt: offer one relevant follow-up when user adds note/reminder/list item
+
+**UI sketch — chat bar area:**
+```
+[☀️ Catch Me Up]  [🌅 Briefing]     ← prominent, above or beside chat input
+```
+
+**Settings toggle:** "Gentle suggestions when I open Binai" — default **on**; power users can off.
 
 ### Implementation Notes
 - **Memory is the hero.** Make it very visible when Binai remembers something. That's the differentiator — say it out loud in the UI.
-- **Reduce taps.** The best assistant UX removes friction. Don't add features for their own sake.
-- **Proactive but not annoying.** Start with gentle suggestions the user can easily ignore. Never interrupt.
-- **The first return visit is the moment.** When someone opens Binai the next day and it already knows their name, family, preferences — without re-explaining — that's the wow. Design for that moment.
-- **Background activity warning:** Features 1, 2, and 9 require background services. Android aggressively kills background apps to save battery. Plan early for this — either trigger proactive features at app open rather than truly in background, or use a foreground service with clear user consent.
+- **Reduce taps.** Catch Me Up = one tap for the whole mental load dump.
+- **Proactive but not annoying.** Max one unsolicited suggestion per app open. Never interrupt mid-chat. Easy dismiss.
+- **The first return visit is the moment.** Welcome-back + memory confirm + Catch Me Up are how we win the second day.
+- **Show your work:** When Binai uses a memory, subtle "💜 from your memories" or "from About Me" builds trust (optional UI).
+- **Background (Android later):** Features 1, 2 full, and 9 may use foreground service with consent — web uses app-open triggers only.
 
 ---
 
@@ -687,6 +733,7 @@ The goal: Binai should feel like it *understands your life* and reduces mental l
 |-------|-------|-------------|------|
 | Phase 1 | Core Foundation | Voice loop (STT + TTS), Long-term Memory, About Me, Reply length, setup wizard, Subscription (WalletConnect + wallet identity + free tier gating) | Assistant remembers you — payment identity from day one |
 | Phase 1b | Web beta hardening | iPhone async chat, mute voice, setup wizard, reply length, About Me, 7-language AI backend, **UI i18n (en+zh done; es/fr/pt/de/ja TBD)**, real-device testing (Keiko EN + Sherry ZH) | Trust core chat before scaling Discord |
+| **Phase 1c** | **Smart UX (web)** ⭐ | Catch Me Up, memory confirmation, welcome-back line, gentle open suggestions, follow-up prompts | **Memory feels magical** — Keiko priority |
 | Phase 2 | Daily Usefulness | Weather, Calendar, Reminders, Notes, Morning Briefing, Translate, Flashlight | Genuinely useful every day |
 | Phase 2b | User-controlled retention | 24h default chat/photo expiry; **Remember** / **Save message** / **Save photo** buttons; optional retention Settings | User trusts what Binai keeps |
 | Phase 3 | Camera & Vision | 📷 in chat, Cloudflare vision API, Lens-style Q&A, photo 24h delete + save opt-in | "What is this?" — show AIVM-era smarts |
@@ -701,10 +748,11 @@ The goal: Binai should feel like it *understands your life* and reduces mental l
 ### Suggested build order (brainstorm 2026-06-21)
 
 1. **Now:** Real phone testing — chat, About Me, reply length, Settings scroll  
-2. **Next:** User retention UI — Remember / Save message buttons + 24h chat roll-off (backend)  
-3. **Then:** Camera v1 — 📷 + Cloudflare vision + 24h photo delete + Save photo / Remember this  
-4. **Then:** App connectors v1 — Save to Archives (OrcaVault handoff) + LightTunes embed + registry JSON  
-5. **Later:** Archives one-tap upload, LightTunes voice/play playlist, native Android camera
+2. **Next (Keiko priority):** **Smart UX web** — Catch Me Up + memory confirmation + welcome-back (Phase 1c)  
+3. **Then:** User retention UI — Remember / Save message buttons + 24h chat roll-off (backend)  
+4. **Then:** Camera v1 — 📷 + Cloudflare vision + 24h photo delete + Save photo / Remember this  
+5. **Then:** App connectors v1 — Save to Archives (OrcaVault handoff) + LightTunes embed + registry JSON  
+6. **Later:** Archives one-tap upload, LightTunes voice/play playlist, calendar-aware Smart UX, native Android
 
 *Still brainstorming — nothing in this section is committed code until we pick it up in a build session.*
 
