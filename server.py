@@ -606,7 +606,9 @@ def log_chat(wallet, role, content):
     conn.close()
 
 
-def resolve_lang(wallet, override=None):
+def resolve_lang(wallet, override=None, user_message=None):
+    if user_message and re.search(r"[\u4e00-\u9fff]", user_message):
+        return "zh"
     if override and override in LANG_NAMES:
         return override
     prof = get_profile(wallet) or {}
@@ -625,6 +627,39 @@ def language_instruction_for(lang):
         f"CRITICAL — The user's preferred language is {native}. "
         f"You MUST write every reply entirely in {native}. "
         "Do not switch languages unless the user clearly does."
+    )
+
+
+def language_preamble(lang):
+    if lang == "zh":
+        return (
+            "【语言规则 — 最高优先级，不可违反】\n"
+            "你是 Binai 中文助手。你必须用简体中文写每一条回复。\n"
+            "不要用英文回复。不要用中英混杂。\n"
+            "即使用户消息或系统说明是英文，你的回答仍必须是简体中文。\n"
+            "---\n\n"
+        )
+    return ""
+
+
+def reply_is_wrong_language(text, lang):
+    if lang != "zh":
+        return False
+    body = (text or "").strip()
+    if not body:
+        return False
+    cjk = len(re.findall(r"[\u4e00-\u9fff]", body))
+    if cjk >= 12:
+        return False
+    latin_words = len(re.findall(r"[a-zA-Z]{2,}", body))
+    return latin_words >= 4 or (cjk < 4 and len(body) > 16)
+
+
+def chinese_retry_prompt(message):
+    return (
+        "请用简体中文回答以下问题。只使用中文，不要英文。\n\n"
+        f"问题：{message}\n\n"
+        "回答："
     )
 
 
@@ -657,10 +692,11 @@ def build_prompt(wallet, user_message, language_override=None):
     gender_key = prefs.get("persona_gender") or "neutral"
     if gender_key not in PERSONA_GENDER:
         gender_key = "neutral"
+    lang = resolve_lang(wallet, language_override, user_message)
     profile_text = json.dumps(
         {
             "name": prof.get("display_name") or "unknown",
-            "language": prof.get("language") or "en",
+            "language": lang,
             "preferences": prefs,
         },
         indent=2,
@@ -671,7 +707,6 @@ def build_prompt(wallet, user_message, language_override=None):
         if mems
         else "(no memories yet — encourage user to share)"
     )
-    lang = resolve_lang(wallet, language_override)
     language_instruction = language_instruction_for(lang)
     system = BINAI_SYSTEM.format(
         profile=profile_text,
@@ -682,7 +717,18 @@ def build_prompt(wallet, user_message, language_override=None):
         political=POLITICAL_LEANING[political_key],
         persona_gender=PERSONA_GENDER[gender_key],
     )
-    return f"{system}\n\nUSER: {user_message}\n\nBINAI:"
+    user_line = user_message
+    binai_label = "BINAI:"
+    if lang == "zh":
+        user_line = f"{user_message}\n\n（请用简体中文回答）"
+        binai_label = "BINAI（简体中文）:"
+    return (
+        f"{language_preamble(lang)}"
+        f"{language_instruction}\n\n"
+        f"{system}\n\n"
+        f"USER: {user_line}\n\n"
+        f"{binai_label}"
+    )
 
 
 def lightchain_rpc(method, params):
@@ -1099,7 +1145,13 @@ def api_chat():
             }
         ), 402
     ensure_profile(wallet)
-    lang = (data.get("language") or "").strip()
+    req_lang = (data.get("language") or "").strip()
+    lang = req_lang if req_lang in LANG_NAMES else None
+    if re.search(r"[\u4e00-\u9fff]", message):
+        lang = "zh"
+    if not lang:
+        prof = get_profile(wallet) or {}
+        lang = prof.get("language") or "en"
     if lang in LANG_NAMES:
         sync_profile_language(wallet, lang)
     safe, safety_category, safety_reply = check_input_safety(message)
@@ -1109,11 +1161,13 @@ def api_chat():
         reply = safety_reply
         log_chat(wallet, "assistant", f"[safety:{safety_category}] {reply[:200]}")
     else:
-        prompt = build_prompt(
-            wallet, message, language_override=lang if lang in LANG_NAMES else None
-        )
+        prompt = build_prompt(wallet, message, language_override=lang)
         try:
             reply = sanitize_output(AIVMProvider.infer(prompt))
+            if reply_is_wrong_language(reply, lang):
+                reply = sanitize_output(
+                    AIVMProvider.infer(chinese_retry_prompt(message))
+                )
         except Exception as e:
             return jsonify({"error": str(e)[:300]}), 503
         log_chat(wallet, "assistant", reply)
