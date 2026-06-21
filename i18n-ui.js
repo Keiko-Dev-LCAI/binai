@@ -208,7 +208,8 @@ window.t = function(key, vars) {
 
 window.applyI18n = function() {
   const lang = localStorage.getItem('binai_lang') || 'en';
-  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang;
+  const htmlLang = { en:'en', es:'es', fr:'fr', pt:'pt', de:'de', ja:'ja', zh:'zh-CN' };
+  document.documentElement.lang = htmlLang[lang] || 'en';
 
   const set = (id, key, vars) => { const el = document.getElementById(id); if (el) el.textContent = t(key, vars); };
   const setPh = (id, key) => { const el = document.getElementById(id); if (el) el.placeholder = t(key); };

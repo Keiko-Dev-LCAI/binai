@@ -14,6 +14,8 @@ import requests
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
+import languages
+
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder=_ROOT, static_url_path="")
 CORS(app, origins="*")
@@ -33,50 +35,7 @@ TEST_MODE = _test_flag not in ("0", "false", "no", "off")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
 
-LANG_NAMES = {
-    "en": "English",
-    "es": "Spanish",
-    "fr": "French",
-    "pt": "Portuguese",
-    "de": "German",
-    "ja": "Japanese",
-    "zh": "Chinese",
-}
-
-LANG_NATIVE = {
-    "en": "English",
-    "es": "Spanish (Español)",
-    "fr": "French (Français)",
-    "pt": "Portuguese (Português)",
-    "de": "German (Deutsch)",
-    "ja": "Japanese (日本語)",
-    "zh": "Simplified Chinese (简体中文)",
-}
-
-BRIEFING_STRINGS = {
-    "en": {
-        "greeting": "Good morning, {name}! Here's your Binai briefing.",
-        "weather": "Weather: {temp}°C, {desc}.",
-        "price": "LCAI price: about ${price:.4f} USD.",
-        "notes": "You have {n} saved note(s).",
-        "reminders": "Reminders: {items}.",
-        "memories": "I remember: {items}.",
-        "no_reminders": "No open reminders.",
-        "no_memories": "No memories yet — tell me about yourself!",
-        "default_name": "friend",
-    },
-    "zh": {
-        "greeting": "早上好，{name}！这是你的 Binai 简报。",
-        "weather": "天气：{temp}°C，{desc}。",
-        "price": "LCAI 价格：约 ${price:.4f} 美元。",
-        "notes": "你有 {n} 条已保存笔记。",
-        "reminders": "提醒：{items}。",
-        "memories": "我记得：{items}。",
-        "no_reminders": "暂无待办提醒。",
-        "no_memories": "暂无记忆 — 和我聊聊你自己吧！",
-        "default_name": "朋友",
-    },
-}
+LANG_NAMES = languages.LANG_NAMES
 
 _data_dir = os.environ.get("DATA_DIR", os.path.join(os.path.dirname(__file__), "data"))
 os.makedirs(_data_dir, exist_ok=True)
@@ -179,24 +138,6 @@ PERSONA_GENDER = {
     ),
 }
 
-CRISIS_REPLY = (
-    "I'm really glad you reached out, and I'm sorry you're going through this. "
-    "You deserve support from someone who can help right now — I'm an AI and can't "
-    "keep you safe the way a real person can.\n\n"
-    "Please contact one of these resources immediately:\n"
-    "• 988 Suicide & Crisis Lifeline (US): call or text 988\n"
-    "• Crisis Text Line: text HOME to 741741\n"
-    "• Emergency: 911 (US) or your local emergency number\n\n"
-    "If you can, please also reach out to someone you trust — a friend, family member, "
-    "or counselor. You matter, and help is available."
-)
-
-REFUSAL_REPLY = (
-    "I can't help with that one — I'm not able to assist with illegal activity or "
-    "anything that could seriously hurt you or someone else.\n\n"
-    "Happy to help with almost anything else though — what's on your mind?"
-)
-
 # Input patterns: (category, regex). Order matters — crisis checked first.
 _CRISIS_PATTERNS = [
     re.compile(p, re.I)
@@ -236,28 +177,28 @@ _OUTPUT_BLOCK_PATTERNS = [
 ]
 
 
-def check_input_safety(message):
+def check_input_safety(message, lang="en"):
     """Return (safe, category, canned_reply). category is None when safe."""
     text = (message or "").strip()
     if not text:
         return True, None, None
     for pat in _CRISIS_PATTERNS:
         if pat.search(text):
-            return False, "crisis", CRISIS_REPLY
+            return False, "crisis", languages.localized_safety_reply("crisis", lang)
     for pat in _BLOCKED_INPUT_PATTERNS:
         if pat.search(text):
-            return False, "blocked", REFUSAL_REPLY
+            return False, "blocked", languages.localized_safety_reply("blocked", lang)
     return True, None, None
 
 
-def sanitize_output(reply):
+def sanitize_output(reply, lang="en"):
     """Last-resort filter on model output before it reaches the user."""
     text = (reply or "").strip()
     if not text:
-        return REFUSAL_REPLY
+        return languages.localized_safety_reply("blocked", lang)
     for pat in _OUTPUT_BLOCK_PATTERNS:
         if pat.search(text):
-            return REFUSAL_REPLY
+            return languages.localized_safety_reply("blocked", lang)
     return text
 
 
@@ -562,6 +503,12 @@ def maybe_extract_memory(wallet, message):
         r"my name is\s+(.+)",
         r"i am\s+(.+)",
         r"call me\s+(.+)",
+        r"(?:recuerda|recuerde|no olvides)\s+(?:que\s+)?(.+)",
+        r"(?:souviens[- ]toi|n'oublie pas|rappele[- ]toi)\s+(?:que\s+)?(.+)",
+        r"(?:lembre|lembra|não esqueça)\s+(?:que\s+)?(.+)",
+        r"(?:merke dir|vergiss nicht)\s+(?:dass\s+)?(.+)",
+        r"(?:覚えて|覚えておいて|忘れないで)\s*(?:、)?(.+)",
+        r"(?:记住|记得|不要忘记)\s*(.+)",
     ]
     for pat in patterns:
         m = re.search(pat, msg, re.I)
@@ -607,60 +554,7 @@ def log_chat(wallet, role, content):
 
 
 def resolve_lang(wallet, override=None, user_message=None):
-    if user_message and re.search(r"[\u4e00-\u9fff]", user_message):
-        return "zh"
-    if override and override in LANG_NAMES:
-        return override
-    prof = get_profile(wallet) or {}
-    return prof.get("language") or "en"
-
-
-def language_instruction_for(lang):
-    native = LANG_NATIVE.get(lang, LANG_NAMES.get(lang, "English"))
-    if lang == "zh":
-        return (
-            f"CRITICAL — The user's preferred language is {native}. "
-            "You MUST write every reply entirely in 简体中文. "
-            "Do not use English unless the user clearly writes in English first."
-        )
-    return (
-        f"CRITICAL — The user's preferred language is {native}. "
-        f"You MUST write every reply entirely in {native}. "
-        "Do not switch languages unless the user clearly does."
-    )
-
-
-def language_preamble(lang):
-    if lang == "zh":
-        return (
-            "【语言规则 — 最高优先级，不可违反】\n"
-            "你是 Binai 中文助手。你必须用简体中文写每一条回复。\n"
-            "不要用英文回复。不要用中英混杂。\n"
-            "即使用户消息或系统说明是英文，你的回答仍必须是简体中文。\n"
-            "---\n\n"
-        )
-    return ""
-
-
-def reply_is_wrong_language(text, lang):
-    if lang != "zh":
-        return False
-    body = (text or "").strip()
-    if not body:
-        return False
-    cjk = len(re.findall(r"[\u4e00-\u9fff]", body))
-    if cjk >= 12:
-        return False
-    latin_words = len(re.findall(r"[a-zA-Z]{2,}", body))
-    return latin_words >= 4 or (cjk < 4 and len(body) > 16)
-
-
-def chinese_retry_prompt(message):
-    return (
-        "请用简体中文回答以下问题。只使用中文，不要英文。\n\n"
-        f"问题：{message}\n\n"
-        "回答："
-    )
+    return languages.resolve_lang(lambda: get_profile(wallet), override, user_message)
 
 
 def sync_profile_language(wallet, lang):
@@ -707,7 +601,7 @@ def build_prompt(wallet, user_message, language_override=None):
         if mems
         else "(no memories yet — encourage user to share)"
     )
-    language_instruction = language_instruction_for(lang)
+    language_instruction = languages.language_instruction_for(lang)
     system = BINAI_SYSTEM.format(
         profile=profile_text,
         memories=mem_text,
@@ -717,13 +611,10 @@ def build_prompt(wallet, user_message, language_override=None):
         political=POLITICAL_LEANING[political_key],
         persona_gender=PERSONA_GENDER[gender_key],
     )
-    user_line = user_message
-    binai_label = "BINAI:"
-    if lang == "zh":
-        user_line = f"{user_message}\n\n（请用简体中文回答）"
-        binai_label = "BINAI（简体中文）:"
+    user_line = f"{user_message}{languages.prompt_user_suffix(lang)}"
+    binai_label = languages.prompt_binai_label(lang)
     return (
-        f"{language_preamble(lang)}"
+        f"{languages.language_preamble(lang)}"
         f"{language_instruction}\n\n"
         f"{system}\n\n"
         f"USER: {user_line}\n\n"
@@ -1146,15 +1037,14 @@ def api_chat():
         ), 402
     ensure_profile(wallet)
     req_lang = (data.get("language") or "").strip()
-    lang = req_lang if req_lang in LANG_NAMES else None
-    if re.search(r"[\u4e00-\u9fff]", message):
-        lang = "zh"
-    if not lang:
-        prof = get_profile(wallet) or {}
-        lang = prof.get("language") or "en"
+    lang = resolve_lang(
+        wallet,
+        req_lang if req_lang in LANG_NAMES else None,
+        message,
+    )
     if lang in LANG_NAMES:
         sync_profile_language(wallet, lang)
-    safe, safety_category, safety_reply = check_input_safety(message)
+    safe, safety_category, safety_reply = check_input_safety(message, lang)
     maybe_extract_memory(wallet, message)
     log_chat(wallet, "user", message)
     if not safe:
@@ -1163,10 +1053,11 @@ def api_chat():
     else:
         prompt = build_prompt(wallet, message, language_override=lang)
         try:
-            reply = sanitize_output(AIVMProvider.infer(prompt))
-            if reply_is_wrong_language(reply, lang):
+            reply = sanitize_output(AIVMProvider.infer(prompt), lang)
+            if languages.reply_is_wrong_language(reply, lang):
                 reply = sanitize_output(
-                    AIVMProvider.infer(chinese_retry_prompt(message))
+                    AIVMProvider.infer(languages.retry_prompt(lang, message)),
+                    lang,
                 )
         except Exception as e:
             return jsonify({"error": str(e)[:300]}), 503
@@ -1182,7 +1073,7 @@ def api_briefing(wallet):
     w = norm_wallet(wallet)
     prof = get_profile(w) or {}
     lang = resolve_lang(w, request.args.get("lang"))
-    strings = BRIEFING_STRINGS.get(lang, BRIEFING_STRINGS["en"])
+    strings = languages.briefing_strings(lang)
     name = prof.get("display_name") or strings["default_name"]
     conn = get_db()
     notes_n = conn.execute(
