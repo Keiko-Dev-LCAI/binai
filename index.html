@@ -1613,31 +1613,105 @@ async function refreshSub() {
   updateUsage(d);
 }
 
+let subscribing = false;
+const LIGHTCHAIN_CHAIN_ID = '0x23F0';
+
+function formatWalletError(err) {
+  const parts = [
+    err?.message,
+    err?.data?.message,
+    typeof err?.data === 'string' ? err.data : '',
+    err?.code != null ? String(err.code) : '',
+  ].filter(Boolean);
+  const full = parts.join(' ').toLowerCase();
+  if (full.includes('-32000') || full.includes('replacement transaction underpriced')) {
+    return 'A payment is already pending in your wallet. Wait for it to confirm, or open your wallet app to cancel or speed it up — then try Subscribe again.';
+  }
+  if (full.includes('insufficient funds') || full.includes('insufficient balance')) {
+    return 'Not enough LCAI in this wallet for the subscription payment.';
+  }
+  if (full.includes('user rejected') || full.includes('user denied') || full.includes('rejected the request')) {
+    return 'Payment cancelled.';
+  }
+  return err?.message || String(err);
+}
+
+async function buildPaymentTx(from, to, valueWei) {
+  const nonce = await provider.request({
+    method: 'eth_getTransactionCount',
+    params: [from, 'pending'],
+  });
+  const tx = {
+    from,
+    to,
+    value: valueWei,
+    chainId: LIGHTCHAIN_CHAIN_ID,
+    nonce,
+  };
+  try {
+    const gas = await provider.request({
+      method: 'eth_estimateGas',
+      params: [{ from, to, value: valueWei }],
+    });
+    tx.gas = gas;
+  } catch (_) {
+    tx.gas = '0x5208';
+  }
+  try {
+    const priority = await provider.request({ method: 'eth_maxPriorityFeePerGas', params: [] });
+    const block = await provider.request({ method: 'eth_getBlockByNumber', params: ['latest', false] });
+    if (block?.baseFeePerGas) {
+      const base = BigInt(block.baseFeePerGas);
+      const prio = BigInt(priority || '0x0');
+      tx.maxPriorityFeePerGas = priority;
+      tx.maxFeePerGas = '0x' + (base * 2n + prio).toString(16);
+    } else {
+      const gasPrice = await provider.request({ method: 'eth_gasPrice', params: [] });
+      tx.gasPrice = gasPrice;
+    }
+  } catch (_) {
+    try {
+      tx.gasPrice = await provider.request({ method: 'eth_gasPrice', params: [] });
+    } catch (__) {}
+  }
+  return tx;
+}
+
 async function subscribe() {
   if (!wallet) { setupWalletFirstTime(); return; }
+  if (subscribing) return;
   if (!(await ensureProviderForPay())) return;
-  document.getElementById('subErr').textContent = '';
+  const subBtn = document.getElementById('subscribeBtn');
+  const errEl = document.getElementById('subErr');
+  errEl.textContent = '';
+  subscribing = true;
+  if (subBtn) subBtn.disabled = true;
   try {
     const pr = await fetch(API + '/api/price');
     const price = await pr.json();
     const lcai = price.required_lcai;
     const owner = price.owner_wallet;
     const wei = '0x' + BigInt(Math.ceil(lcai * 1e18)).toString(16);
+    const txParams = await buildPaymentTx(wallet, owner, wei);
+    errEl.textContent = 'Confirm payment in your wallet…';
     const tx = await provider.request({
       method: 'eth_sendTransaction',
-      params: [{ from: wallet, to: owner, value: wei, chainId: '0x23F0' }],
+      params: [txParams],
     });
-    document.getElementById('subErr').textContent = 'Verifying payment…';
+    errEl.textContent = 'Verifying payment…';
     const vr = await fetch(API + '/api/verify-subscription', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ wallet, tx_hash: tx }),
     });
     const vd = await vr.json();
     if (!vr.ok) throw new Error(vd.error || 'Verify failed');
-    document.getElementById('subErr').textContent = 'Subscribed! Thank you 💜';
+    errEl.textContent = 'Subscribed! Thank you 💜';
     refreshSub();
   } catch (e) {
-    document.getElementById('subErr').textContent = e.message || String(e);
+    errEl.textContent = formatWalletError(e);
+  } finally {
+    subscribing = false;
+    if (subBtn) subBtn.disabled = false;
   }
 }
 
