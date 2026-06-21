@@ -435,6 +435,11 @@ body::before {
       <div class="lang-grid" id="settingsLangGrid"></div>
     </div>
     <div class="card">
+      <div class="card-title" id="settingsReplyDepthTitle">Reply length</div>
+      <div class="card-sub" id="settingsReplyDepthSub" style="margin-bottom:12px">Short for GM-style pings. Chatty if you want Binai to ask questions back.</div>
+      <div class="lang-grid" id="replyDepthGrid"></div>
+    </div>
+    <div class="card">
       <div class="card-title" id="settingsPersonalityTitle">Binai's personality</div>
       <div class="card-sub" id="settingsPersonalitySub" style="margin-bottom:12px">How Binai talks to you — same brain, different vibe.</div>
       <div class="lang-grid" id="personalityGrid"></div>
@@ -682,6 +687,9 @@ body::before {
     <div class="setup-section-label" id="setupLangTitle">Language</div>
     <p class="setup-section-sub" id="setupLangSub">Binai replies in this language.</p>
     <div class="lang-grid" id="setupLangGrid"></div>
+    <div class="setup-section-label" id="setupReplyDepthTitle">Reply length</div>
+    <p class="setup-section-sub" id="setupReplyDepthSub">Short for quick GM-style pings. Chatty if you want questions back.</p>
+    <div class="lang-grid" id="setupReplyDepthGrid"></div>
     <div class="setup-section-label" id="setupPersonalityTitle">Binai's personality</div>
     <div class="lang-grid" id="setupPersonalityGrid"></div>
     <div class="setup-section-label" id="setupPoliticalTitle">Your political context</div>
@@ -749,6 +757,12 @@ const GENDER_OPTIONS = [
   {id:'female',label:'Female',desc:'Feminine presentation'},
   {id:'male',label:'Male',desc:'Masculine presentation'},
 ];
+const REPLY_DEPTHS = [
+  {id:'short',label:'⚡ Short',desc:'1–2 sentences — GM gets a GM'},
+  {id:'balanced',label:'💜 Balanced',desc:'Friendly, not a novel — default'},
+  {id:'chatty',label:'💬 Chatty',desc:'Conversational — questions welcome'},
+];
+let selectedReplyDepth = localStorage.getItem('binai_reply_depth') || 'balanced';
 let selectedPersonality = localStorage.getItem('binai_personality') || 'warm';
 let selectedPolitical = localStorage.getItem('binai_political') || 'independent';
 if (selectedPolitical === 'neutral') selectedPolitical = 'independent';
@@ -882,8 +896,21 @@ function initLanguagePickers() {
 }
 
 // ── First-login preferences wizard ───────────────────────────────────────────
+function initReplyDepthPickers() {
+  const opts = localizedPrefs(REPLY_DEPTHS, 'reply_depth');
+  const onDepth = id => {
+    selectedReplyDepth = id;
+    localStorage.setItem('binai_reply_depth', id);
+    syncPreferenceGrid('replyDepthGrid', opts, id);
+    syncPreferenceGrid('setupReplyDepthGrid', opts, id);
+    saveProfile();
+  };
+  buildPreferenceGrid('replyDepthGrid', opts, selectedReplyDepth, onDepth);
+  buildPreferenceGrid('setupReplyDepthGrid', opts, selectedReplyDepth, onDepth);
+}
 function initPrefsSetupPickers() {
   buildLanguageGrid('setupLangGrid', () => { applyI18n(); updateLangHint(); });
+  initReplyDepthPickers();
   buildPreferenceGrid('setupPersonalityGrid', localizedPrefs(PERSONALITIES, 'personality'), selectedPersonality, id => {
     selectedPersonality = id;
     localStorage.setItem('binai_personality', id);
@@ -1695,6 +1722,7 @@ function syncPreferenceGrid(gridId, options, selectedId) {
   });
 }
 function initPreferencePickers() {
+  initReplyDepthPickers();
   buildPreferenceGrid('personalityGrid', localizedPrefs(PERSONALITIES, 'personality'), selectedPersonality, id => {
     selectedPersonality = id;
     localStorage.setItem('binai_personality', id);
@@ -1739,6 +1767,10 @@ async function loadProfile() {
       selectedGender = prefs.persona_gender;
       localStorage.setItem('binai_persona_gender', prefs.persona_gender);
     }
+    if (prefs.reply_depth) {
+      selectedReplyDepth = prefs.reply_depth;
+      localStorage.setItem('binai_reply_depth', prefs.reply_depth);
+    }
     initLanguagePickers();
     initPreferencePickers();
     applyI18n();
@@ -1758,6 +1790,7 @@ async function saveProfile() {
         personality: selectedPersonality,
         political: selectedPolitical,
         persona_gender: selectedGender,
+        reply_depth: selectedReplyDepth,
       },
     }),
   });

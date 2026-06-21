@@ -37,6 +37,10 @@ window.BINAI_I18N = {
     sub_testing: 'Beta testing — unlimited AI actions. Billing disabled.',
     name_title: 'Your name', name_ph: 'What should Binai call you?', save: 'Save',
     lang_title: 'Language', lang_sub: 'Binai replies and voice in this language. Change anytime — saved to your account.',
+    reply_depth_title: 'Reply length', reply_depth_sub: 'Short for GM-style pings. Chatty if you want Binai to ask questions back.',
+    reply_depth_short_l: '⚡ Short', reply_depth_short_d: '1–2 sentences — GM gets a GM back',
+    reply_depth_balanced_l: '💜 Balanced', reply_depth_balanced_d: 'Friendly, not a novel — default',
+    reply_depth_chatty_l: '💬 Chatty', reply_depth_chatty_d: 'Conversational — questions welcome',
     personality_title: "Binai's personality", personality_sub: 'How Binai talks to you — same brain, different vibe.',
     political_title: 'Your political context', political_sub: 'Democrat, Republican, or Independent — helps Binai understand your perspective, not a partisan mode.',
     gender_title: 'How Binai presents', gender_sub: 'Male, female, or neutral. Neutral is the default — just Binai 💜',
@@ -66,6 +70,7 @@ window.BINAI_I18N = {
     setup_title: 'Set up your Binai',
     setup_intro: 'Choose how Binai talks to you and which reminders you want. Takes 30 seconds.',
     setup_lang_sub: 'Binai replies in this language.',
+    setup_reply_depth_sub: 'Short for quick GM-style pings. Chatty if you want questions back.',
     setup_political_sub: 'Optional — helps Binai understand your perspective.',
     setup_notif_title: 'Reminders & briefings',
     setup_voice_mute: 'Mute spoken replies (🔊 button in chat)',
@@ -148,6 +153,10 @@ window.BINAI_I18N = {
     sub_testing: '测试模式 — 无限 AI，账单已关闭。',
     name_title: '你的名字', name_ph: 'Binai 怎么称呼你？', save: '保存',
     lang_title: '语言', lang_sub: 'Binai 用此语言回复和语音。随时可改 — 保存到你的账户。',
+    reply_depth_title: '回复长度', reply_depth_sub: '简短适合 GM。健谈会让 Binai 追问你。',
+    reply_depth_short_l: '⚡ 简短', reply_depth_short_d: '1–2 句 — 你 GM 它就 GM',
+    reply_depth_balanced_l: '💜 均衡', reply_depth_balanced_d: '友好但不啰嗦 — 默认',
+    reply_depth_chatty_l: '💬 健谈', reply_depth_chatty_d: '爱聊天 — 欢迎追问',
     personality_title: 'Binai 的性格', personality_sub: 'Binai 和你说话的方式 — 同一个大脑，不同风格。',
     political_title: '你的政治背景', political_sub: '民主党、共和党或独立 — 帮助 Binai 理解你的视角，非党派模式。',
     gender_title: 'Binai 的形象', gender_sub: '男性、女性或中性。默认中性 — 就是 Binai 💜',
@@ -177,6 +186,7 @@ window.BINAI_I18N = {
     setup_title: '设置你的 Binai',
     setup_intro: '选择 Binai 的说话方式和提醒选项。约 30 秒。',
     setup_lang_sub: 'Binai 将用此语言回复。',
+    setup_reply_depth_sub: '简短适合打招呼。健谈会让 Binai 追问你。',
     setup_political_sub: '可选 — 帮助 Binai 理解你的视角。',
     setup_notif_title: '提醒与简报',
     setup_voice_mute: '关闭语音回复（聊天中的 🔊 按钮）',
@@ -285,6 +295,8 @@ window.applyI18n = function() {
   set('settingsSaveBtn', 'save');
   set('settingsLangTitle', 'lang_title');
   set('settingsLangSub', 'lang_sub');
+  set('settingsReplyDepthTitle', 'reply_depth_title');
+  set('settingsReplyDepthSub', 'reply_depth_sub');
   set('settingsPersonalityTitle', 'personality_title');
   set('settingsPersonalitySub', 'personality_sub');
   set('settingsPoliticalTitle', 'political_title');
@@ -336,6 +348,8 @@ window.applyI18n = function() {
   set('setupIntro', 'setup_intro');
   set('setupLangTitle', 'lang_title');
   set('setupLangSub', 'setup_lang_sub');
+  set('setupReplyDepthTitle', 'reply_depth_title');
+  set('setupReplyDepthSub', 'setup_reply_depth_sub');
   set('setupPersonalityTitle', 'personality_title');
   set('setupPoliticalTitle', 'political_title');
   set('setupPoliticalSub', 'setup_political_sub');
