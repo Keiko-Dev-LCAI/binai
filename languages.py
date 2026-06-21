@@ -344,10 +344,86 @@ _AIVM_INFRA_PATTERNS = (
     "-32000",
     "aivm timed out",
     "aivm job failed",
-    "createSession reverted",
-    "submitJob reverted",
+    "createsession reverted",
+    "submitjob reverted",
     "no response from aivm",
+    "error:",
 )
+
+_BAD_AI_PATTERNS = (
+    "lightnode sdk",
+    "private key",
+    "seed phrase",
+    "私钥",
+    "助记词",
+    "here's a response in simplified chinese",
+    "here is a response in simplified chinese",
+    "response in simplified chinese:",
+)
+
+_BOOKING_PATTERNS = (
+    re.compile(r"预约|挂号|就诊|看医生"),
+    re.compile(r"book\s+(?:a\s+)?(?:doctor|medical|appointment)", re.I),
+)
+
+_BOOKING_REPLIES = {
+    "en": (
+        "I can't book doctor appointments or make calls for you yet — that isn't built into Binai.\n\n"
+        "What you can do:\n"
+        "1. Call or use your hospital's app/website yourself\n"
+        "2. Add a reminder in Binai for Tuesday 3:00 PM\n"
+        "3. Ask me to draft what to say when you call\n\n"
+        "Want help with a reminder or a short script to say?"
+    ),
+    "zh": (
+        "我还不能帮你直接预约医生或打电话——这个功能还没上线。\n\n"
+        "你可以：\n"
+        "1. 自己打医院电话或用医院 App/网站预约\n"
+        "2. 在 Binai「提醒」里记下下周二下午 3 点\n"
+        "3. 让我帮你写一段预约时要说的话\n\n"
+        "需要我帮你设提醒或写预约话术吗？"
+    ),
+    "es": (
+        "Todavía no puedo reservar citas médicas ni hacer llamadas por ti.\n\n"
+        "Puedes:\n"
+        "1. Llamar o usar la app/web del hospital\n"
+        "2. Crear un recordatorio en Binai\n"
+        "3. Pedirme un guion corto para la llamada\n\n"
+        "¿Quieres ayuda con un recordatorio o un guion?"
+    ),
+    "fr": (
+        "Je ne peux pas encore prendre de rendez-vous médicaux ni passer d'appels pour toi.\n\n"
+        "Tu peux :\n"
+        "1. Appeler ou utiliser l'app/site de l'hôpital\n"
+        "2. Ajouter un rappel dans Binai\n"
+        "3. Me demander un court script pour l'appel\n\n"
+        "Tu veux de l'aide pour un rappel ou un script ?"
+    ),
+    "pt": (
+        "Ainda não posso marcar consultas médicas nem fazer ligações por você.\n\n"
+        "Você pode:\n"
+        "1. Ligar ou usar o app/site do hospital\n"
+        "2. Criar um lembrete no Binai\n"
+        "3. Pedir um roteiro curto para a ligação\n\n"
+        "Quer ajuda com um lembrete ou roteiro?"
+    ),
+    "de": (
+        "Ich kann noch keine Arzttermine buchen oder Anrufe für dich machen.\n\n"
+        "Du kannst:\n"
+        "1. Selbst anrufen oder die Klinik-App/Website nutzen\n"
+        "2. Eine Erinnerung in Binai anlegen\n"
+        "3. Mich um einen kurzen Anruf-Text bitten\n\n"
+        "Soll ich bei einer Erinnerung oder einem Text helfen?"
+    ),
+    "ja": (
+        "まだ診察の予約や電話代行はできません。\n\n"
+        "できること：\n"
+        "1. 自分で病院に電話、またはアプリ/サイトで予約\n"
+        "2. Binai のリマインダーに登録\n"
+        "3. 電話で言う内容の下書きをお手伝い\n\n"
+        "リマインダーや下書きを手伝いましょうか？"
+    ),
+}
 
 
 def is_aivm_infra_failure(text):
@@ -355,6 +431,24 @@ def is_aivm_infra_failure(text):
     if not body:
         return True
     return any(p in body for p in _AIVM_INFRA_PATTERNS)
+
+
+def is_bad_ai_reply(text):
+    body = (text or "").strip().lower()
+    if not body:
+        return True
+    return any(p in body for p in _BAD_AI_PATTERNS)
+
+
+def is_booking_request(message):
+    msg = (message or "").strip()
+    if not msg:
+        return False
+    return any(p.search(msg) for p in _BOOKING_PATTERNS)
+
+
+def booking_reply(lang):
+    return _BOOKING_REPLIES.get(lang, _BOOKING_REPLIES["en"])
 
 LANG_MARKERS = {
     "en": re.compile(
