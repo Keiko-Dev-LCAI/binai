@@ -284,7 +284,7 @@ body::before {
   <div class="sidebar-logo">
     <div class="logo">Binai <span>💜</span></div>
     <div class="badge" style="display:inline-block;margin-top:8px">BETA</div>
-    <p class="sidebar-tagline">The AI that remembers you — powered by Lightchain AIVM.</p>
+    <p class="sidebar-tagline" id="sidebarTagline">The AI that remembers you — powered by Lightchain AIVM.</p>
   </div>
   <nav class="sidebar-nav">
     <div class="side-nav-item active" data-tab="chat" onclick="switchTab('chat')">💬 Chat</div>
@@ -301,7 +301,7 @@ body::before {
 </aside>
 
 <div class="workspace">
-<div class="top-disclaimer" id="topDisclaimer"><strong>Disclaimer:</strong> Binai is beta software provided as-is. AI responses are not professional advice. The service may go offline or be discontinued at any time. <strong>No refunds.</strong><button class="top-disclaimer-close" onclick="dismissTopDisclaimer()" aria-label="Close">✕</button></div>
+<div class="top-disclaimer" id="topDisclaimer"><span id="topDisclaimerText">Disclaimer: Binai is beta software provided as-is. AI responses are not professional advice. The service may go offline or be discontinued at any time. No refunds.</span><button class="top-disclaimer-close" onclick="dismissTopDisclaimer()" aria-label="Close">✕</button></div>
 <div class="beta-banner" id="betaBanner">🧪 Community beta — everyone gets unlimited AI for testing</div>
 <div class="header mobile-only">
   <div class="header-row">
@@ -325,34 +325,34 @@ body::before {
     <h2 id="heroGreeting">Welcome back 💜</h2>
     <p id="heroSub">Your personal assistant on Lightchain. I remember what you tell me — try "remember my favorite coffee is iced latte."</p>
     <div class="hero-features">
-      <div class="hero-feature">🧠 Remembers you</div>
-      <div class="hero-feature">🌅 Morning briefings</div>
-      <div class="hero-feature">🎤 Voice input</div>
+      <div class="hero-feature" id="heroFeat1">🧠 Remembers you</div>
+      <div class="hero-feature" id="heroFeat2">🌅 Morning briefings</div>
+      <div class="hero-feature" id="heroFeat3">🎤 Voice input</div>
     </div>
   </div>
   <div class="panel active" id="panel-chat">
     <div class="wait-banner" id="waitBanner">⏳ Binai is thinking on Lightchain AIVM — beta can take up to 2 min. Feel free to check notes or reminders while you wait.</div>
     <div class="chat-messages" id="chatMessages">
       <div class="prompt-grid" id="promptGrid">
-        <button type="button" class="prompt-card" onclick="usePrompt('Remember my favorite coffee is iced latte')">
+        <button type="button" class="prompt-card" onclick="usePrompt(t('prompt1_title'))">
           <div class="prompt-icon">☕</div>
-          <div class="prompt-title">Save a memory</div>
-          <div class="prompt-desc">Tell Binai something to remember forever</div>
+          <div class="prompt-title" id="prompt1Title">Save a memory</div>
+          <div class="prompt-desc" id="prompt1Desc">Tell Binai something to remember forever</div>
         </button>
-        <button type="button" class="prompt-card" onclick="usePrompt('What do you remember about me?')">
+        <button type="button" class="prompt-card" onclick="usePrompt(t('prompt2_title'))">
           <div class="prompt-icon">🧠</div>
-          <div class="prompt-title">Recall memories</div>
-          <div class="prompt-desc">See what Binai already knows about you</div>
+          <div class="prompt-title" id="prompt2Title">Recall memories</div>
+          <div class="prompt-desc" id="prompt2Desc">See what Binai already knows about you</div>
         </button>
         <button type="button" class="prompt-card" onclick="switchTab('briefing');loadBriefing(true)">
           <div class="prompt-icon">🌅</div>
-          <div class="prompt-title">Morning briefing</div>
-          <div class="prompt-desc">Weather, reminders, and LCAI in one tap</div>
+          <div class="prompt-title" id="prompt3Title">Morning briefing</div>
+          <div class="prompt-desc" id="prompt3Desc">Weather, reminders, and LCAI in one tap</div>
         </button>
-        <button type="button" class="prompt-card" onclick="usePrompt('Help me plan my day')">
+        <button type="button" class="prompt-card" onclick="usePrompt(t('prompt4_title'))">
           <div class="prompt-icon">📋</div>
-          <div class="prompt-title">Plan my day</div>
-          <div class="prompt-desc">Get a friendly start-of-day nudge</div>
+          <div class="prompt-title" id="prompt4Title">Plan my day</div>
+          <div class="prompt-desc" id="prompt4Desc">Get a friendly start-of-day nudge</div>
         </button>
       </div>
     </div>
@@ -363,15 +363,13 @@ body::before {
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
         <button class="btn btn-primary" id="sendBtn" onclick="sendChat()">Send</button>
       </div>
-      <p class="chat-hint">
-        Beta: answers take 1–2 min. Say "remember …" to save facts. <span id="usageText"></span>
-      </p>
+      <p class="chat-hint"><span id="chatHint"></span> <span id="usageText"></span></p>
     </div>
   </div>
 
   <div class="panel" id="panel-briefing">
-    <p style="color:var(--text2);margin-bottom:14px;line-height:1.5">One-tap morning catch-up — weather, reminders, memories, LCAI price.</p>
-    <button class="btn btn-primary" style="width:100%;margin-bottom:14px" onclick="loadBriefing(true)">🌅 Read my briefing</button>
+    <p id="briefingIntro" style="color:var(--text2);margin-bottom:14px;line-height:1.5">One-tap morning catch-up — weather, reminders, memories, LCAI price.</p>
+    <button class="btn btn-primary" id="briefingBtn" style="width:100%;margin-bottom:14px" onclick="loadBriefing(true)">🌅 Read my briefing</button>
     <div class="briefing-box" id="briefingBox" style="display:none"></div>
     <button class="btn btn-ghost" style="width:100%;display:none" id="speakBriefingBtn" onclick="speakBriefing()">🔊 Read aloud</button>
   </div>
@@ -394,7 +392,7 @@ body::before {
   </div>
 
   <div class="panel" id="panel-memory">
-    <p style="color:var(--text2);margin-bottom:12px;line-height:1.5">What Binai remembers about you. Add manually or say "remember …" in chat.</p>
+    <p id="memoryIntro" style="color:var(--text2);margin-bottom:12px;line-height:1.5">What Binai remembers about you. Add manually or say "remember …" in chat.</p>
     <div class="input-row" style="margin-bottom:12px">
       <input class="field" style="margin:0" id="memInput" placeholder="Remember that…">
       <button class="btn btn-primary" onclick="addMemory()">+</button>
@@ -404,61 +402,61 @@ body::before {
 
   <div class="panel" id="panel-settings">
     <div class="card">
-      <div class="card-title">Subscription</div>
+      <div class="card-title" id="settingsSubTitle">Subscription</div>
       <div class="card-sub" id="subStatus">Connect wallet to see status.</div>
       <button class="btn btn-primary" id="subscribeBtn" style="margin-top:12px;width:100%" onclick="subscribe()">Subscribe — $1/mo LCAI</button>
       <div class="err" id="subErr"></div>
     </div>
     <div class="card">
-      <div class="card-title">Your name</div>
+      <div class="card-title" id="settingsNameTitle">Your name</div>
       <input class="field" id="nameInput" placeholder="What should Binai call you?">
-      <button class="btn btn-ghost" onclick="saveProfile()">Save</button>
+      <button class="btn btn-ghost" id="settingsSaveBtn" onclick="saveProfile()">Save</button>
     </div>
     <div class="card">
-      <div class="card-title">Language</div>
-      <div class="card-sub" style="margin-bottom:12px">Binai replies and voice in this language. Change anytime — saved to your account.</div>
+      <div class="card-title" id="settingsLangTitle">Language</div>
+      <div class="card-sub" id="settingsLangSub" style="margin-bottom:12px">Binai replies and voice in this language. Change anytime — saved to your account.</div>
       <div class="lang-grid" id="settingsLangGrid"></div>
     </div>
     <div class="card">
-      <div class="card-title">Binai's personality</div>
-      <div class="card-sub" style="margin-bottom:12px">How Binai talks to you — same brain, different vibe.</div>
+      <div class="card-title" id="settingsPersonalityTitle">Binai's personality</div>
+      <div class="card-sub" id="settingsPersonalitySub" style="margin-bottom:12px">How Binai talks to you — same brain, different vibe.</div>
       <div class="lang-grid" id="personalityGrid"></div>
     </div>
     <div class="card">
-      <div class="card-title">Your political context</div>
-      <div class="card-sub" style="margin-bottom:12px">Democrat, Republican, or Independent — helps Binai understand your perspective, not a partisan mode.</div>
+      <div class="card-title" id="settingsPoliticalTitle">Your political context</div>
+      <div class="card-sub" id="settingsPoliticalSub" style="margin-bottom:12px">Democrat, Republican, or Independent — helps Binai understand your perspective, not a partisan mode.</div>
       <div class="lang-grid" id="politicalGrid"></div>
     </div>
     <div class="card">
-      <div class="card-title">How Binai presents</div>
-      <div class="card-sub" style="margin-bottom:12px">Male, female, or neutral. Neutral is the default — just Binai 💜</div>
+      <div class="card-title" id="settingsGenderTitle">How Binai presents</div>
+      <div class="card-sub" id="settingsGenderSub" style="margin-bottom:12px">Male, female, or neutral. Neutral is the default — just Binai 💜</div>
       <div class="lang-grid" id="genderGrid"></div>
     </div>
     <div class="card">
-      <div class="card-title">Your data</div>
-      <div class="card-sub">Wallet = your account. PIN is tied to your wallet on this device — each wallet has its own.</div>
-      <button class="btn btn-ghost" style="margin-top:10px;width:100%" onclick="openPinSetupModal(true)">🔒 Set or change PIN</button>
-      <button class="btn btn-ghost" style="margin-top:8px;width:100%" onclick="switchWallet()">🔄 Switch wallet (first-time setup again)</button>
-      <button class="btn btn-ghost" style="margin-top:8px;width:100%" onclick="exportMyData()">⬇️ Export my data</button>
-      <button class="btn btn-ghost" style="margin-top:8px;width:100%;color:var(--red)" onclick="deleteMyData()">🗑️ Delete all my data</button>
+      <div class="card-title" id="settingsDataTitle">Your data</div>
+      <div class="card-sub" id="settingsDataSub">Wallet = your account. PIN is tied to your wallet on this device — each wallet has its own.</div>
+      <button class="btn btn-ghost" id="settingsPinBtn" style="margin-top:10px;width:100%" onclick="openPinSetupModal(true)">🔒 Set or change PIN</button>
+      <button class="btn btn-ghost" id="settingsSwitchWallet" style="margin-top:8px;width:100%" onclick="switchWallet()">🔄 Switch wallet (first-time setup again)</button>
+      <button class="btn btn-ghost" id="settingsExportBtn" style="margin-top:8px;width:100%" onclick="exportMyData()">⬇️ Export my data</button>
+      <button class="btn btn-ghost" id="settingsDeleteBtn" style="margin-top:8px;width:100%;color:var(--red)" onclick="deleteMyData()">🗑️ Delete all my data</button>
       <label style="display:flex;align-items:center;gap:10px;margin-top:14px;font-size:15px;cursor:pointer">
         <input type="checkbox" id="dailyBriefingToggle" onchange="toggleDailyBriefing(this.checked)">
-        Daily morning briefing reminder
+        <span id="dailyBriefingLabel">Daily morning briefing reminder</span>
       </label>
       <label style="display:flex;align-items:center;gap:10px;margin-top:10px;font-size:15px;cursor:pointer">
         <input type="checkbox" id="notifToggle" onchange="toggleNotifications(this.checked)">
-        Reminder notifications
+        <span id="notifLabel">Reminder notifications</span>
       </label>
     </div>
     <div class="card">
-      <div class="card-title">Legal</div>
-      <div class="card-sub">Terms, disclaimers, privacy summary, and no-refund policy.</div>
-      <button class="btn btn-ghost" style="margin-top:10px;width:100%" onclick="showTerms('view')">📋 Terms &amp; Disclosures</button>
-      <button class="btn btn-ghost" style="margin-top:8px;width:100%" onclick="showPrivacy()">🔐 Privacy Policy</button>
+      <div class="card-title" id="settingsLegalTitle">Legal</div>
+      <div class="card-sub" id="settingsLegalSub">Terms, disclaimers, privacy summary, and no-refund policy.</div>
+      <button class="btn btn-ghost" id="settingsTermsBtn" style="margin-top:10px;width:100%" onclick="showTerms('view')">📋 Terms &amp; Disclosures</button>
+      <button class="btn btn-ghost" id="settingsPrivacyBtn" style="margin-top:8px;width:100%" onclick="showPrivacy()">🔐 Privacy Policy</button>
     </div>
     <div class="card">
-      <div class="card-title">About Binai</div>
-      <div class="card-sub">Personal AI on Lightchain AIVM. Remembers you. Community beta for Discord family. Fast mode when REST API ships.</div>
+      <div class="card-title" id="settingsAboutTitle">About Binai</div>
+      <div class="card-sub" id="settingsAboutSub">Personal AI on Lightchain AIVM. Remembers you. Community beta for Discord family. Fast mode when REST API ships.</div>
       <p style="margin-top:10px"><a class="footer-link" href="https://x.com/KeikoDevLCAI" target="_blank">@KeikoDevLCAI on X</a></p>
     </div>
   </div>
@@ -469,22 +467,22 @@ body::before {
 
 <aside class="insight-panel">
   <div class="insight-card">
-    <h3>Your plan</h3>
+    <h3 id="insightPlanTitle">Your plan</h3>
     <div class="insight-stat" id="insightUsage">∞</div>
     <div class="insight-sub" id="insightPlan">Beta testing — unlimited</div>
   </div>
   <div class="insight-card">
-    <h3>Quick action</h3>
-    <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="switchTab('briefing');loadBriefing(true)">🌅 Morning briefing</button>
-    <button class="btn btn-ghost" style="width:100%" onclick="document.getElementById('chatInput').focus();switchTab('chat')">💬 New message</button>
+    <h3 id="insightQuickTitle">Quick action</h3>
+    <button class="btn btn-primary" id="insightMorningBtn" style="width:100%;margin-bottom:8px" onclick="switchTab('briefing');loadBriefing(true)">🌅 Morning briefing</button>
+    <button class="btn btn-ghost" id="insightMsgBtn" style="width:100%" onclick="document.getElementById('chatInput').focus();switchTab('chat')">💬 New message</button>
   </div>
   <div class="insight-card">
-    <h3>Memory preview</h3>
+    <h3 id="insightMemoryTitle">Memory preview</h3>
     <div id="insightMemory" style="font-size:15px;color:var(--text2);line-height:1.5">Connect wallet to see what Binai remembers.</div>
   </div>
   <div class="insight-card">
-    <h3>Built on</h3>
-    <div class="insight-sub">Lightchain AIVM · LCAI · Community beta<br>Fast mode when REST API ships</div>
+    <h3 id="insightBuiltTitle">Built on</h3>
+    <div class="insight-sub" id="insightBuiltSub">Lightchain AIVM · LCAI · Community beta<br>Fast mode when REST API ships</div>
   </div>
 </aside>
 
@@ -493,33 +491,33 @@ body::before {
 <!-- Wallet setup (first time only — LightChat-style) -->
 <div class="overlay hidden" id="walletOverlay">
   <div class="modal" style="max-width:400px">
-    <h2>🔗 Connect wallet</h2>
+    <h2 id="wcTitle">🔗 Connect wallet</h2>
     <p id="wcWelcomeBack" class="pin-hint" style="display:none">Welcome back — tap <strong style="color:var(--text)">Connect</strong> to continue with your saved wallet.</p>
     <p id="wcSetupIntro" class="pin-hint">One-time setup — then Binai remembers your wallet. After that, your PIN opens the app.</p>
     <div id="wcSetupGuide" style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;font-size:14px;color:var(--text2);line-height:1.6">
-      <div>1️⃣ Open your wallet app</div>
-      <div>2️⃣ Copy your <strong style="color:var(--text)">0x address</strong></div>
-      <div>3️⃣ Paste below and tap Connect</div>
+      <div id="wcStep1">1️⃣ Open your wallet app</div>
+      <div id="wcStep2">2️⃣ Copy your <strong style="color:var(--text)">0x address</strong></div>
+      <div id="wcStep3">3️⃣ Paste below and tap Connect</div>
     </div>
     <input class="field" id="wcAddrInput" placeholder="Paste 0x address…" autocomplete="off" autocorrect="off" spellcheck="false"
       style="font-family:monospace;font-size:15px" onkeydown="if(event.key==='Enter')connectPastedWallet()">
     <p class="err" id="wcAddrErr"></p>
-    <button class="btn btn-primary" style="width:100%" onclick="connectPastedWallet()">Connect →</button>
+    <button class="btn btn-primary" id="wcConnectBtn" style="width:100%" onclick="connectPastedWallet()">Connect →</button>
     <button class="btn btn-ghost" id="wcInjectBtn" style="width:100%;margin-top:8px" onclick="connectInjectedWallet()">Use wallet browser extension</button>
-    <p class="pin-hint" style="margin-top:12px;text-align:center">Wallet = your Binai account · PIN unlocks this device later</p>
+    <p class="pin-hint" id="wcFooter" style="margin-top:12px;text-align:center">Wallet = your Binai account · PIN unlocks this device later</p>
   </div>
 </div>
 
 <!-- PIN setup (after wallet connect — tied to that wallet) -->
 <div class="overlay hidden" id="pinSetupOverlay">
   <div class="modal">
-    <h2>🔒 Device PIN</h2>
+    <h2 id="pinSetupTitle">🔒 Device PIN</h2>
     <p class="pin-hint" id="pinSetupHint">Set a PIN for this wallet on this device. Each wallet has its own PIN — not shared with other accounts.</p>
     <input class="field" id="pinSetupInput" type="password" placeholder="4+ digit PIN" maxlength="8">
     <input class="field" id="pinSetupConfirm" type="password" placeholder="Confirm PIN" maxlength="8"
       onkeydown="if(event.key==='Enter')savePinSetup()">
     <p class="err" id="pinSetupErr"></p>
-    <button class="btn btn-primary" style="width:100%" onclick="savePinSetup()">Save PIN</button>
+    <button class="btn btn-primary" id="pinSetupSaveBtn" style="width:100%" onclick="savePinSetup()">Save PIN</button>
     <button class="btn btn-ghost" id="pinSetupSkipBtn" style="width:100%;margin-top:8px" onclick="skipPinSetup()">Skip — wallet only (no device lock)</button>
   </div>
 </div>
@@ -527,12 +525,12 @@ body::before {
 <!-- PIN unlock (return visits — verified against saved wallet) -->
 <div class="overlay hidden" id="pinOverlay">
   <div class="modal">
-    <h2>Unlock Binai 🔒</h2>
+    <h2 id="pinUnlockTitle">Unlock Binai 🔒</h2>
     <p class="pin-hint" id="pinWalletHint">Enter the PIN for your saved wallet.</p>
     <input class="field" id="pinUnlockInput" type="password" placeholder="4+ digit PIN" maxlength="8"
       onkeydown="if(event.key==='Enter')unlockApp()">
     <p class="err" id="pinUnlockErr"></p>
-    <button class="btn btn-primary" style="width:100%" onclick="unlockApp()">Unlock</button>
+    <button class="btn btn-primary" id="pinUnlockBtn" style="width:100%" onclick="unlockApp()">Unlock</button>
   </div>
 </div>
 
@@ -555,7 +553,7 @@ body::before {
         <p>Export or delete all your data anytime in Settings → Your data.</p></div>
     </div>
     <div class="terms-modal-foot">
-      <button class="btn btn-ghost" style="width:100%" onclick="hidePrivacy()">Close</button>
+      <button class="btn btn-ghost" id="privacyCloseBtn" style="width:100%" onclick="hidePrivacy()">Close</button>
     </div>
   </div>
 </div>
@@ -634,12 +632,12 @@ body::before {
     <div class="terms-modal-foot" id="termsAcceptFoot">
       <div class="terms-check-row">
         <input type="checkbox" id="termsCheck" onchange="document.getElementById('termsAcceptBtn').disabled=!this.checked">
-        <label for="termsCheck">I have read and agree to these Terms &amp; Disclosures, including the no-refund policy and the fact that this service may go down or go away at any time.</label>
+        <label for="termsCheck" id="termsCheckLabel">I have read and agree to these Terms &amp; Disclosures, including the no-refund policy and the fact that this service may go down or go away at any time.</label>
       </div>
       <button class="btn btn-primary" id="termsAcceptBtn" style="width:100%" disabled onclick="acceptTerms()">I Agree — Continue</button>
     </div>
     <div class="terms-modal-foot hidden" id="termsViewFoot">
-      <button class="btn btn-ghost" style="width:100%" onclick="hideTerms()">Close</button>
+      <button class="btn btn-ghost" id="termsCloseBtn" style="width:100%" onclick="hideTerms()">Close</button>
     </div>
   </div>
 </div>
@@ -647,18 +645,19 @@ body::before {
 <!-- Onboarding -->
 <div class="overlay hidden" id="onboardOverlay">
   <div class="modal">
-    <h2>Welcome to Binai 💜</h2>
-    <p>The AI assistant that remembers you — without Big Tech watching. Built for the Lightchain community.</p>
-    <p style="font-size:14px;color:var(--gold)">Beta: unlimited AI for everyone while we test. Responses take 1–2 minutes — speed upgrade coming.</p>
-    <label style="font-size:14px;color:var(--text2);display:block;margin-bottom:6px">Your language</label>
+    <h2 id="onboardTitle">Welcome to Binai 💜</h2>
+    <p id="onboardP1">The AI assistant that remembers you — without Big Tech watching. Built for the Lightchain community.</p>
+    <p id="onboardBeta" style="font-size:14px;color:var(--gold)">Beta: unlimited AI for everyone while we test. Responses take 1–2 minutes — speed upgrade coming.</p>
+    <label id="onboardLangLabel" style="font-size:14px;color:var(--text2);display:block;margin-bottom:6px">Your language</label>
     <div class="lang-grid" id="langGrid"></div>
     <input class="field" id="onboardName" placeholder="Your name (optional)">
-    <p style="font-size:13px;color:var(--text2);margin:0 0 12px;line-height:1.45">Wallet setup is once. After that, you'll set a PIN tied to <em>your</em> wallet — so two accounts can both use "1234" without mixing up.</p>
-    <p style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:12px">By continuing you confirm you accepted our <a class="footer-link" href="#" onclick="showTerms('view');return false">Terms &amp; Disclosures</a>.</p>
-    <button class="btn btn-primary" style="width:100%" onclick="finishOnboarding()">Continue → Connect wallet</button>
+    <p id="onboardPinNote" style="font-size:13px;color:var(--text2);margin:0 0 12px;line-height:1.45">Wallet setup is once. After that, you'll set a PIN tied to <em>your</em> wallet — so two accounts can both use "1234" without mixing up.</p>
+    <p id="onboardTerms" style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:12px">By continuing you confirm you accepted our <a class="footer-link" href="#" onclick="showTerms('view');return false">Terms &amp; Disclosures</a>.</p>
+    <button class="btn btn-primary" id="onboardContinueBtn" style="width:100%" onclick="finishOnboarding()">Continue → Connect wallet</button>
   </div>
 </div>
 
+<script src="i18n-ui.js"></script>
 <script>
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
 const API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
@@ -755,7 +754,7 @@ function applyTestModeUI() {
   const subBtn = document.getElementById('subscribeBtn');
   if (subBtn) subBtn.style.display = 'none';
   const subStatus = document.getElementById('subStatus');
-  if (subStatus && !wallet) subStatus.textContent = 'Community beta — unlimited AI for all testers. No payment needed.';
+  if (subStatus && !wallet) subStatus.textContent = t('sub_beta');
 }
 
 function hidePrompts() {
@@ -797,8 +796,8 @@ function buildLanguageGrid(gridId, onSelect) {
   });
 }
 function initLanguagePickers() {
-  buildLanguageGrid('langGrid');
-  buildLanguageGrid('settingsLangGrid', () => saveProfile());
+  buildLanguageGrid('langGrid', () => applyI18n());
+  buildLanguageGrid('settingsLangGrid', () => { applyI18n(); saveProfile(); });
 }
 
 // ── Onboarding ─────────────────────────────────────────────────────────────
@@ -1079,9 +1078,7 @@ async function afterUnlock() {
   if (!document.getElementById('chatMessages').querySelector('.msg')) {
     if (wallet) await restoreSession();
     else if (!localStorage.getItem('binai_onboarded')) { /* onboarding handles */ }
-    else addBotMsg(testMode
-      ? "Hi! I'm Binai 💜 Connect your wallet to start — community beta, unlimited AI."
-      : "Hi! I'm Binai 💜 Connect your wallet to start.");
+    else addBotMsg(testMode ? t('connect_start_test') : t('connect_start'));
   } else if (wallet) {
     await restoreSession();
   }
@@ -1158,12 +1155,12 @@ function addMsg(text, who, opts = {}) {
     const rem = document.createElement('button');
     rem.type = 'button';
     rem.className = 'msg-action-btn';
-    rem.textContent = '🧠 Remember';
+    rem.textContent = t('msg_remember');
     rem.onclick = () => rememberFromMsg(el);
     const bad = document.createElement('button');
     bad.type = 'button';
     bad.className = 'msg-action-btn';
-    bad.textContent = '👎 Wrong';
+    bad.textContent = t('msg_wrong');
     bad.onclick = () => feedbackBad(el);
     actions.append(rem, bad);
     el.appendChild(actions);
@@ -1212,7 +1209,7 @@ async function showWelcomeBack() {
     else msg += '\n\nGood to see you again. What can I help with?';
     addBotMsg(msg);
   } catch (_) {
-    addBotMsg('Welcome back 💜 Good to see you again.');
+    addBotMsg(t('welcome_back'));
   }
 }
 async function rememberFromMsg(el) {
@@ -1223,7 +1220,7 @@ async function rememberFromMsg(el) {
     body: JSON.stringify({ content: text.slice(0, 500) }),
   });
   loadMemories();
-  addBotMsg('Got it — I saved that to your memories 🧠');
+  addBotMsg(t('saved_memory'));
 }
 async function feedbackBad(el) {
   const reply = el.querySelector('.msg-body')?.textContent?.trim() || '';
@@ -1232,7 +1229,7 @@ async function feedbackBad(el) {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ wallet, rating: 'bad', bot_reply: reply, user_message: lastUserMsg }),
   });
-  addBotMsg('Thanks for the feedback — noted for beta tuning 👍');
+  addBotMsg(t('feedback_thanks'));
 }
 let thinkTimer = null;
 async function sendChat() {
@@ -1243,14 +1240,14 @@ async function sendChat() {
   input.value = '';
   lastUserMsg = msg;
   addUserMsg(msg);
-  const think = addBotMsg('Binai is thinking… 0s', { actions: false });
+  const think = addBotMsg(t('thinking'), { actions: false });
   think.classList.add('thinking');
   const t0 = Date.now();
   thinkTimer = setInterval(() => {
     const s = Math.floor((Date.now() - t0) / 1000);
     const body = think.querySelector('.msg-body');
-    if (body) body.textContent = `Binai is thinking… ${s}s (beta: up to 2 min)`;
-    document.getElementById('statusBar').textContent = `Waiting for AIVM… ${s}s`;
+    if (body) body.textContent = t('status_thinking', { s });
+    document.getElementById('statusBar').textContent = t('thinking_status', { s });
   }, 1000);
   document.getElementById('waitBanner').classList.add('visible');
   document.getElementById('sendBtn').disabled = true;
@@ -1263,7 +1260,7 @@ async function sendChat() {
     const d = await r.json();
     think.remove();
     if (!r.ok) {
-      addBotMsg(d.error || 'Something went wrong.');
+      addBotMsg(d.error || t('err_generic'));
       if (d.code === 'limit_reached') switchTab('settings');
     } else {
       addBotMsg(d.reply);
@@ -1273,12 +1270,12 @@ async function sendChat() {
     }
   } catch (e) {
     think.remove();
-    addBotMsg('Connection error. Is the backend running? ' + e.message);
+    addBotMsg(t('err_connection') + ' ' + e.message);
   }
   clearInterval(thinkTimer);
   document.getElementById('waitBanner').classList.remove('visible');
   document.getElementById('sendBtn').disabled = false;
-  document.getElementById('statusBar').textContent = 'Binai 💜 — Lightchain community beta';
+  document.getElementById('statusBar').textContent = t('status_default');
 }
 
 function updateUsage(d) {
@@ -1287,23 +1284,23 @@ function updateUsage(d) {
   const iu = document.getElementById('insightUsage');
   const ip = document.getElementById('insightPlan');
   if (d.testing) {
-    if (el) el.textContent = 'Testing — unlimited actions.';
-    if (side) side.textContent = 'Testing — unlimited';
+    if (el) el.textContent = t('usage_testing');
+    if (side) side.textContent = t('insight_beta');
     if (iu) iu.textContent = '∞';
-    if (ip) ip.textContent = 'Beta testing mode';
+    if (ip) ip.textContent = t('insight_beta_mode');
     return;
   }
   if (d.subscribed) {
-    if (el) el.textContent = 'Subscribed ✅';
-    if (side) side.textContent = 'Subscribed ✅';
-    if (iu) iu.textContent = 'Pro';
-    if (ip) ip.textContent = '$1/mo LCAI active';
+    if (el) el.textContent = t('usage_subscribed');
+    if (side) side.textContent = t('usage_subscribed');
+    if (iu) iu.textContent = t('usage_pro');
+    if (ip) ip.textContent = t('usage_pro');
   } else {
     const rem = d.remaining_free ?? 5;
-    if (el) el.textContent = `Free: ${rem}/5 actions left.`;
-    if (side) side.textContent = `${rem}/5 free actions`;
-    if (iu) iu.textContent = `${rem} / 5`;
-    if (ip) ip.textContent = 'Free actions remaining';
+    if (el) el.textContent = t('usage_free_left', { rem });
+    if (side) side.textContent = t('usage_free_side', { rem });
+    if (iu) iu.textContent = t('usage_free_stat', { rem });
+    if (ip) ip.textContent = t('usage_free_plan');
   }
 }
 
@@ -1311,15 +1308,16 @@ function updateHero() {
   const name = localStorage.getItem('binai_name') || '';
   const h = document.getElementById('heroGreeting');
   const s = document.getElementById('heroSub');
-  if (h) h.textContent = name ? `Hey ${name} 💜` : 'Welcome to Binai 💜';
-  if (s && wallet) s.textContent = 'I remember what you share across sessions. Ask anything — or tap Morning Briefing on the right.';
+  if (h) h.textContent = name ? t('hero_hey', { name }) : t('hero_welcome_new');
+  if (s && wallet) s.textContent = t('hero_sub_connected');
+  else if (s) s.textContent = t('hero_sub');
 }
 
 function syncInsightMemory(mems) {
   const el = document.getElementById('insightMemory');
   if (!el) return;
   if (!mems || !mems.length) {
-    el.innerHTML = '<span style="color:var(--text2)">No memories yet. Say "remember …" in chat.</span>';
+    el.innerHTML = '<span style="color:var(--text2)">' + esc(t('no_memories_insight')) + '</span>';
     return;
   }
   el.innerHTML = mems.slice(0, 6).map(m =>
@@ -1390,7 +1388,7 @@ async function loadNotes() {
   const r = await fetch(API + '/api/notes/' + wallet);
   const notes = await r.json();
   const el = document.getElementById('notesList');
-  el.innerHTML = notes.length ? '' : '<p style="color:var(--text2)">No notes yet.</p>';
+  el.innerHTML = notes.length ? '' : '<p style="color:var(--text2)">' + esc(t('no_notes')) + '</p>';
   notes.forEach(n => {
     const d = document.createElement('div');
     d.className = 'list-item';
@@ -1420,7 +1418,7 @@ async function loadReminders() {
   const r = await fetch(API + '/api/reminders/' + wallet);
   const items = await r.json();
   const el = document.getElementById('remindersList');
-  el.innerHTML = items.length ? '' : '<p style="color:var(--text2)">No reminders.</p>';
+  el.innerHTML = items.length ? '' : '<p style="color:var(--text2)">' + esc(t('no_reminders')) + '</p>';
   items.forEach(n => {
     const due = n.due_at ? new Date(n.due_at * 1000).toLocaleString() : 'no date';
     const d = document.createElement('div');
@@ -1457,7 +1455,7 @@ async function loadMemories() {
   const r = await fetch(API + '/api/memories/' + wallet);
   const mems = await r.json();
   const el = document.getElementById('memoryList');
-  el.innerHTML = mems.length ? '' : '<p style="color:var(--text2)">No memories yet — chat with Binai!</p>';
+  el.innerHTML = mems.length ? '' : '<p style="color:var(--text2)">' + esc(t('no_memories')) + '</p>';
   mems.forEach(m => {
     const s = document.createElement('span');
     s.className = 'mem-chip';
@@ -1479,6 +1477,13 @@ async function addMemory() {
 }
 
 // ── Profile / Subscribe ──────────────────────────────────────────────────────
+function localizedPrefs(base, prefix) {
+  return base.map(o => ({
+    id: o.id,
+    label: t(prefix + '_' + o.id + '_l'),
+    desc: t(prefix + '_' + o.id + '_d'),
+  }));
+}
 function buildPreferenceGrid(gridId, options, selectedId, onSelect) {
   const grid = document.getElementById(gridId);
   if (!grid) return;
@@ -1499,22 +1504,22 @@ function syncPreferenceGrid(gridId, options, selectedId) {
   });
 }
 function initPreferencePickers() {
-  buildPreferenceGrid('personalityGrid', PERSONALITIES, selectedPersonality, id => {
+  buildPreferenceGrid('personalityGrid', localizedPrefs(PERSONALITIES, 'personality'), selectedPersonality, id => {
     selectedPersonality = id;
     localStorage.setItem('binai_personality', id);
-    syncPreferenceGrid('personalityGrid', PERSONALITIES, id);
+    syncPreferenceGrid('personalityGrid', localizedPrefs(PERSONALITIES, 'personality'), id);
     saveProfile();
   });
-  buildPreferenceGrid('politicalGrid', POLITICAL_OPTIONS, selectedPolitical, id => {
+  buildPreferenceGrid('politicalGrid', localizedPrefs(POLITICAL_OPTIONS, 'political'), selectedPolitical, id => {
     selectedPolitical = id;
     localStorage.setItem('binai_political', id);
-    syncPreferenceGrid('politicalGrid', POLITICAL_OPTIONS, id);
+    syncPreferenceGrid('politicalGrid', localizedPrefs(POLITICAL_OPTIONS, 'political'), id);
     saveProfile();
   });
-  buildPreferenceGrid('genderGrid', GENDER_OPTIONS, selectedGender, id => {
+  buildPreferenceGrid('genderGrid', localizedPrefs(GENDER_OPTIONS, 'gender'), selectedGender, id => {
     selectedGender = id;
     localStorage.setItem('binai_persona_gender', id);
-    syncPreferenceGrid('genderGrid', GENDER_OPTIONS, id);
+    syncPreferenceGrid('genderGrid', localizedPrefs(GENDER_OPTIONS, 'gender'), id);
     saveProfile();
   });
 }
@@ -1540,6 +1545,7 @@ async function loadProfile() {
     }
     initLanguagePickers();
     initPreferencePickers();
+    applyI18n();
   } catch (_) {}
 }
 async function saveProfile() {
@@ -1566,9 +1572,9 @@ async function refreshSub() {
   const r = await fetch(API + '/api/subscription/' + wallet);
   const d = await r.json();
   const el = document.getElementById('subStatus');
-  if (d.testing) el.textContent = 'Beta testing — unlimited AI actions. Billing disabled.';
-  else if (d.subscribed) el.textContent = 'Subscribed until ' + new Date(d.expires_at * 1000).toLocaleDateString();
-  else el.textContent = `Free tier: ${d.remaining_free} of ${d.free_limit} actions left. Then $1/mo LCAI.`;
+  if (d.testing) el.textContent = t('sub_testing');
+  else if (d.subscribed) el.textContent = t('sub_subscribed_until', { date: new Date(d.expires_at * 1000).toLocaleDateString() });
+  else el.textContent = t('sub_free_tier', { rem: d.remaining_free, limit: d.free_limit });
   updateUsage(d);
 }
 
@@ -1698,11 +1704,17 @@ async function loadAppConfig() {
     }
   } catch (_) {}
 }
+function refreshInsightMemoryText() {
+  const el = document.getElementById('insightMemory');
+  if (!el || el.querySelector('span[style]')) return;
+  if (!wallet) el.textContent = t('insight_connect_mem');
+}
 function startApp() {
   initOnboarding();
   initLanguagePickers();
   initPreferencePickers();
   initSettingsToggles();
+  applyI18n();
   updateHero();
   if (localStorage.getItem('binai_name'))
     document.getElementById('nameInput').value = localStorage.getItem('binai_name');
@@ -1716,7 +1728,7 @@ async function boot() {
   const saved = localStorage.getItem('binai_wallet') || '';
   if (!isValidWallet(saved)) {
     if (localStorage.getItem('binai_onboarded') && !document.getElementById('chatMessages').querySelector('.msg'))
-      addBotMsg('Hi! I\'m Binai 💜 Finish wallet setup to start — tap Connect wallet.');
+      addBotMsg(t('finish_wallet'));
     return;
   }
   wallet = saved.toLowerCase();
