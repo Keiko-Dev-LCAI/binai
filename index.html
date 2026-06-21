@@ -101,6 +101,9 @@ body::before {
 }
 .msg-visual-link:hover { background: rgba(155,127,232,0.24); }
 .msg-visual-note { font-size: 12px; color: var(--text2); line-height: 1.4; }
+.places-grid { display: flex; flex-direction: column; gap: 10px; }
+.place-row label { display: block; font-size: 14px; color: var(--text2); margin-bottom: 4px; }
+.place-row .field { margin: 0; }
 .wait-banner {
   display: none; background: rgba(155,127,232,0.12); border: 1px solid rgba(155,127,232,0.25);
   border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; font-size: 14px; color: var(--text2);
@@ -525,11 +528,9 @@ body::before {
     </div>
     <div class="card">
       <div class="card-title" id="settingsPlacesTitle">Frequent places</div>
-      <div class="card-sub" id="settingsPlacesSub" style="margin-bottom:12px">Home &amp; work for directions — weather falls back here if GPS is off.</div>
-      <div class="card-sub" id="settingsHomeLabel" style="margin-bottom:6px">🏠 Home address</div>
-      <input class="field" id="placeHomeInput" placeholder="123 Main St, Austin TX" maxlength="200" onchange="if(wallet)saveProfile()">
-      <div class="card-sub" id="settingsWorkLabel" style="margin:12px 0 6px">🏢 Work address</div>
-      <input class="field" id="placeWorkInput" placeholder="Office address" maxlength="200" onchange="if(wallet)saveProfile()">
+      <div class="card-sub" id="settingsPlacesSub" style="margin-bottom:12px">Home, work, hangouts &amp; more — for directions. Say "save my daughter's address, it's …" in chat.</div>
+      <div id="placesGrid" class="places-grid"></div>
+      <div id="customPlacesGrid" class="places-grid" style="margin-top:8px"></div>
     </div>
     <div class="card">
       <div class="card-title" id="settingsConnectedTitle">Connected apps</div>
@@ -835,8 +836,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260621-5';</script>
-<script src="i18n-ui.js?v=20260621-5"></script>
+<script>window.BINAI_BUILD = '20260621-6';</script>
+<script src="i18n-ui.js?v=20260621-6"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -1788,8 +1789,101 @@ async function fetchDirectionsChat(msg) {
   const r = await fetch(API + '/api/directions-lookup?' + params);
   return r.json();
 }
+const PLACE_PRESETS = [
+  { key: 'home', icon: '🏠', labelKey: 'place_home' },
+  { key: 'work', icon: '🏢', labelKey: 'place_work' },
+  { key: 'school', icon: '🏫', labelKey: 'place_school' },
+  { key: 'gym', icon: '💪', labelKey: 'place_gym' },
+  { key: 'hangout', icon: '☕', labelKey: 'place_hangout' },
+  { key: 'daughter', icon: '👧', labelKey: 'place_daughter' },
+  { key: 'son', icon: '👦', labelKey: 'place_son' },
+  { key: 'parents', icon: '👨‍👩‍👧', labelKey: 'place_parents' },
+  { key: 'daycare', icon: '🧒', labelKey: 'place_daycare' },
+  { key: 'doctor', icon: '🏥', labelKey: 'place_doctor' },
+  { key: 'grocery', icon: '🛒', labelKey: 'place_grocery' },
+  { key: 'church', icon: '⛪', labelKey: 'place_church' },
+  { key: 'airport', icon: '✈️', labelKey: 'place_airport' },
+  { key: 'park', icon: '🌳', labelKey: 'place_park' },
+];
+function renderPlacesGrid() {
+  const grid = document.getElementById('placesGrid');
+  if (!grid) return;
+  const saved = window._binaiPlacesCache || readPlacesFromUI();
+  grid.innerHTML = '';
+  for (const p of PLACE_PRESETS) {
+    const row = document.createElement('div');
+    row.className = 'place-row';
+    const lab = document.createElement('label');
+    lab.textContent = (p.icon + ' ' + t(p.labelKey));
+    lab.setAttribute('for', 'place-' + p.key);
+    const inp = document.createElement('input');
+    inp.className = 'field';
+    inp.id = 'place-' + p.key;
+    inp.dataset.placeKey = p.key;
+    inp.maxLength = 200;
+    inp.placeholder = t('place_addr_ph');
+    inp.onchange = () => { if (wallet) saveProfile(); };
+    row.append(lab, inp);
+    grid.appendChild(row);
+  }
+  populatePlacesUI(saved);
+}
+function readPlacesFromUI() {
+  const places = {};
+  document.querySelectorAll('[data-place-key]').forEach(inp => {
+    const v = inp.value.trim();
+    if (v) places[inp.dataset.placeKey] = v.slice(0, 200);
+  });
+  return places;
+}
+function populatePlacesUI(places) {
+  places = places || {};
+  const presetKeys = new Set(PLACE_PRESETS.map(p => p.key));
+  document.querySelectorAll('[data-place-key]').forEach(inp => {
+    inp.value = places[inp.dataset.placeKey] || '';
+  });
+  const custom = document.getElementById('customPlacesGrid');
+  if (!custom) return;
+  custom.innerHTML = '';
+  for (const [key, addr] of Object.entries(places)) {
+    if (presetKeys.has(key) || !addr) continue;
+    const row = document.createElement('div');
+    row.className = 'place-row';
+    const lab = document.createElement('label');
+    lab.textContent = '📍 ' + key.replace(/_/g, ' ');
+    const inp = document.createElement('input');
+    inp.className = 'field';
+    inp.dataset.placeKey = key;
+    inp.value = addr;
+    inp.maxLength = 200;
+    inp.onchange = () => { if (wallet) saveProfile(); };
+    row.append(lab, inp);
+    custom.appendChild(row);
+  }
+}
+function isSavePlaceQuery(msg) {
+  return /(?:save|remember|store)\s+.+(?:address|location|place)\s/i.test(msg)
+    || /my\s+.+'s\s+address\s+is/i.test(msg)
+    || /(?:记住|保存).+(?:地址|位置)/.test(msg);
+}
+async function fetchSavePlaceChat(msg) {
+  const params = new URLSearchParams({
+    message: msg, lang: currentLang(), wallet: wallet || '',
+  });
+  const r = await fetch(API + '/api/save-place?' + params);
+  return r.json();
+}
 async function tryInstantChatReply(msg) {
   try {
+    if (isSavePlaceQuery(msg)) {
+      const d = await fetchSavePlaceChat(msg);
+      if (d.ok && d.reply) {
+        window._binaiPlacesCache = window._binaiPlacesCache || {};
+        if (d.key && d.address) window._binaiPlacesCache[d.key] = d.address;
+        populatePlacesUI(window._binaiPlacesCache);
+        return { reply: d.reply };
+      }
+    }
     if (isWeatherQuery(msg)) {
       const d = await fetchWeatherChat(msg);
       if (d.reply) return { reply: d.reply, links: d.links, disclaimerKey: 'weather_disclaimer' };
@@ -2268,11 +2362,8 @@ async function loadProfile() {
     }
     if (prefs.kuaishou_enabled === false) localStorage.setItem('binai_kuaishou_enabled', '0');
     else localStorage.setItem('binai_kuaishou_enabled', '1');
-    const fp = prefs.frequent_places || {};
-    const hi = document.getElementById('placeHomeInput');
-    const wi = document.getElementById('placeWorkInput');
-    if (hi) hi.value = fp.home || '';
-    if (wi) wi.value = fp.work || '';
+    window._binaiPlacesCache = prefs.frequent_places || {};
+    populatePlacesUI(window._binaiPlacesCache);
     initLanguagePickers();
     initPreferencePickers();
     initSettingsToggles();
@@ -2300,8 +2391,6 @@ function readPersonalizePrefs() {
   localStorage.setItem('binai_lightchat_memories', lcMem ? '1' : '0');
   localStorage.setItem('binai_lightchat_handle', lcHandle);
   localStorage.setItem('binai_kuaishou_enabled', ksEn ? '1' : '0');
-  const home = (document.getElementById('placeHomeInput')?.value || '').trim().slice(0, 200);
-  const work = (document.getElementById('placeWorkInput')?.value || '').trim().slice(0, 200);
   return {
     assistant_name: assistant,
     friend_mode: friendMode,
@@ -2311,10 +2400,11 @@ function readPersonalizePrefs() {
     lightchat_primary_handle: lcHandle,
     kuaishou_enabled: ksEn,
     kuaishou_remember_links: ksEn,
-    frequent_places: { home, work },
+    frequent_places: readPlacesFromUI(),
   };
 }
 async function saveProfile() {
+  window._binaiPlacesCache = readPlacesFromUI();
   const name = document.getElementById('nameInput').value.trim() ||
     localStorage.getItem('binai_name') || '';
   if (name) localStorage.setItem('binai_name', name);
@@ -2616,6 +2706,7 @@ async function initServiceWorker() {
 }
 function startApp() {
   initOnboarding();
+  renderPlacesGrid();
   initLanguagePickers();
   initPreferencePickers();
   initSettingsToggles();

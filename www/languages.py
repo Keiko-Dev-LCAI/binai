@@ -1316,14 +1316,139 @@ def format_weather_reply(lang, place_name, cur, daily=None):
     return " ".join(lines)
 
 
-# ── Directions (GPS + frequent places) ─────────────────────────────────────────
+# ── Frequent places (home, work, activities, custom) ───────────────────────────
+
+PLACE_PRESET_KEYS = (
+    "home",
+    "work",
+    "school",
+    "gym",
+    "hangout",
+    "daughter",
+    "son",
+    "parents",
+    "daycare",
+    "doctor",
+    "grocery",
+    "church",
+    "airport",
+    "park",
+)
+
+_PLACE_LABELS = {
+    "en": {
+        "home": "home",
+        "work": "work",
+        "school": "school",
+        "gym": "the gym",
+        "hangout": "your hangout spot",
+        "daughter": "your daughter's",
+        "son": "your son's",
+        "parents": "your parents'",
+        "daycare": "daycare",
+        "doctor": "the doctor",
+        "grocery": "the grocery store",
+        "church": "church",
+        "airport": "the airport",
+        "park": "the park",
+    },
+    "zh": {
+        "home": "家",
+        "work": "公司",
+        "school": "学校",
+        "gym": "健身房",
+        "hangout": "常去的地方",
+        "daughter": "女儿家",
+        "son": "儿子家",
+        "parents": "父母家",
+        "daycare": "托儿所",
+        "doctor": "医院",
+        "grocery": "超市",
+        "church": "教堂",
+        "airport": "机场",
+        "park": "公园",
+    },
+}
+
+_PLACE_ALIAS_MAP = {
+    "home": ("home", "my house", "my place", "house"),
+    "work": ("work", "office", "my job", "workplace"),
+    "school": ("school", "college", "university", "campus"),
+    "gym": ("gym", "fitness", "fitness center", "workout"),
+    "hangout": ("hangout", "hangouts", "usual spot", "our spot", "favorite spot", "coffee shop"),
+    "daughter": ("daughter", "my daughter", "daughters"),
+    "son": ("son", "my son", "sons"),
+    "parents": ("parents", "parent", "mom", "dad", "mother", "father", "mom's", "dad's"),
+    "daycare": ("daycare", "childcare", "preschool"),
+    "doctor": ("doctor", "hospital", "clinic", "dentist"),
+    "grocery": ("grocery", "grocery store", "supermarket", "store"),
+    "church": ("church", "temple", "mosque"),
+    "airport": ("airport",),
+    "park": ("park",),
+}
+
+_ZH_PLACE_ALIASES = {
+    "home": ("家", "回家"),
+    "work": ("公司", "上班", "单位"),
+    "school": ("学校", "大学"),
+    "gym": ("健身房", "健身"),
+    "hangout": ("常去", "聚会", "hangout", "咖啡馆"),
+    "daughter": ("女儿", "女儿家"),
+    "son": ("儿子", "儿子家"),
+    "parents": ("父母", "爸妈", "妈妈", "爸爸", "我妈", "我爸"),
+    "daycare": ("托儿所", "幼儿园"),
+    "doctor": ("医院", "医生", "诊所"),
+    "grocery": ("超市", "杂货"),
+    "church": ("教堂", "寺庙"),
+    "airport": ("机场",),
+    "park": ("公园",),
+}
+
+_SAVE_PLACE_PATTERNS = [
+    re.compile(
+        r"(?:save|remember|store)\s+(?:my\s+)?(.+?)(?:'s|'s)?\s+"
+        r"(?:address|location|place)(?:\s+is|\s*[,;:]|(?:\s+it'?s))\s+(.+)",
+        re.I,
+    ),
+    re.compile(
+        r"(?:save|remember|store)\s+(?:the\s+)?(?:address\s+for\s+)?(.+?)\s*[,;:]\s*(.+)",
+        re.I,
+    ),
+    re.compile(r"my\s+(.+?)(?:'s|'s)?\s+(?:address|place|location)\s+is\s+(.+)", re.I),
+    re.compile(r"(?:记住|保存)(?:我)?(.+?)(?:的)?(?:地址|位置)(?:是|：|:)\s*(.+)", re.I),
+]
 
 _DIRECTIONS_PAT = re.compile(
     r"\b(directions|navigate|route|drive|get\s+(?:me\s+)?(?:to|home|back)|how\s+do\s+i\s+get|"
-    r"how\s+to\s+get|take\s+me\s+home|go\s+home)\b|"
-    r"怎么走|怎么去|导航|回家|去公司|去上班",
+    r"how\s+to\s+get|take\s+me\s+(?:to|home)|go\s+(?:to|home)|head\s+to)\b|"
+    r"怎么走|怎么去|导航|回家|去公司|去上班|到.+那",
     re.I,
 )
+
+
+def normalize_place_key(label):
+    s = (label or "").strip().lower()
+    s = re.sub(r"^(?:my|the)\s+", "", s)
+    s = re.sub(r"(?:'s|'s)$", "", s)
+    s = re.sub(r"\s+(?:address|place|location|house|apartment)$", "", s)
+    s = s.strip()
+    if not s:
+        return None
+    for key, aliases in _PLACE_ALIAS_MAP.items():
+        if s == key or s in aliases:
+            return key
+    for zh_key, aliases in _ZH_PLACE_ALIASES.items():
+        if s in aliases or any(a in s for a in aliases):
+            return zh_key
+    slug = re.sub(r"[^a-z0-9\u4e00-\u9fff]+", "_", s).strip("_")[:32]
+    return slug if len(slug) >= 2 else None
+
+
+def place_display_name(key, lang="en"):
+    pack = _PLACE_LABELS.get(lang, _PLACE_LABELS["en"])
+    if key in pack:
+        return pack[key]
+    return (key or "").replace("_", " ")
 
 
 def frequent_places(prefs):
@@ -1331,10 +1456,69 @@ def frequent_places(prefs):
     raw = prefs.get("frequent_places") or {}
     if not isinstance(raw, dict):
         return {}
-    return {
-        "home": (raw.get("home") or "").strip()[:200],
-        "work": (raw.get("work") or "").strip()[:200],
-    }
+    out = {}
+    for k, v in raw.items():
+        key = (k or "").strip().lower()[:32]
+        addr = (v or "").strip()[:200]
+        if key and addr:
+            out[key] = addr
+    return out
+
+
+def extract_save_place(message):
+    msg = (message or "").strip()
+    if not msg or len(msg) > 240:
+        return None
+    for pat in _SAVE_PLACE_PATTERNS:
+        m = pat.search(msg)
+        if not m:
+            continue
+        label = m.group(1).strip()
+        address = m.group(2).strip().rstrip("?.!")
+        address = re.sub(r"^(?:it'?s|its)\s+", "", address, flags=re.I).strip()
+        key = normalize_place_key(label)
+        if key and address and len(address) >= 4:
+            return {"key": key, "label": label, "address": address[:200]}
+    return None
+
+
+def is_save_place_query(message):
+    return bool(extract_save_place(message))
+
+
+def save_place_reply(lang, key, address):
+    who = place_display_name(key, lang)
+    if lang == "zh":
+        return f"已保存{who}地址：{address} 💜 可在 ⚙️ 常去地点查看，或者说「怎么去{who}」。"
+    return (
+        f"Saved {who} address: {address} 💜 "
+        f"See ⚙️ Frequent Places, or ask \"directions to {who}\"."
+    )
+
+
+def match_place_from_message(message, places):
+    msg = (message or "").strip()
+    low = msg.lower()
+    if not places:
+        return None, None
+    ranked = []
+    for key, address in places.items():
+        if not address:
+            continue
+        aliases = list(_PLACE_ALIAS_MAP.get(key, (key,)))
+        aliases += list(_ZH_PLACE_ALIASES.get(key, ()))
+        aliases.append(key.replace("_", " "))
+        for alias in aliases:
+            a = alias.lower() if alias.isascii() else alias
+            if not a:
+                continue
+            if a in low or f"my {a}" in low or f"{a}'s" in low:
+                ranked.append((len(a), key, address))
+                break
+    if not ranked:
+        return None, None
+    ranked.sort(reverse=True)
+    return ranked[0][1], ranked[0][2]
 
 
 def is_directions_query(message):
@@ -1352,22 +1536,39 @@ def extract_directions_destination(message, prefs=None):
         return None
     places = frequent_places(prefs)
     low = msg.lower()
-    if re.search(r"\b(home|my\s+house|my\s+place)\b|回家|到家", msg, re.I):
-        return {"kind": "home", "address": places.get("home"), "label": "home"}
-    if re.search(r"\b(work|office|my\s+job)\b|上班|去公司|到公司", msg, re.I):
-        return {"kind": "work", "address": places.get("work"), "label": "work"}
+    key, address = match_place_from_message(msg, places)
+    if key:
+        return {
+            "kind": key,
+            "address": address,
+            "label": place_display_name(key, "en"),
+        }
     m = re.search(
-        r"(?:directions|navigate|route|drive|get)\s+(?:me\s+)?to\s+(?:the\s+)?(.+)",
+        r"(?:directions|navigate|route|drive|get|go|head)\s+(?:me\s+)?to\s+(?:the\s+)?(.+)",
         msg,
         re.I,
     )
     if m:
         dest = m.group(1).strip().rstrip("?.!")
+        sub_key = normalize_place_key(dest)
+        if sub_key and places.get(sub_key):
+            return {
+                "kind": sub_key,
+                "address": places[sub_key],
+                "label": place_display_name(sub_key, "en"),
+            }
         if dest and len(dest) >= 2:
             return {"kind": "place", "address": dest[:200], "label": dest}
-    m = re.search(r"(?:去|到)(.+?)(?:怎么走|怎么去|的路)", msg)
+    m = re.search(r"(?:去|到)(.+?)(?:怎么走|怎么去|的路|那)", msg)
     if m:
         dest = m.group(1).strip()
+        sub_key = normalize_place_key(dest)
+        if sub_key and places.get(sub_key):
+            return {
+                "kind": sub_key,
+                "address": places[sub_key],
+                "label": place_display_name(sub_key, "zh"),
+            }
         if dest:
             return {"kind": "place", "address": dest[:200], "label": dest}
     if re.search(r"回家|go\s+home|get\s+home", low):
@@ -1375,20 +1576,24 @@ def extract_directions_destination(message, prefs=None):
     return {"kind": "unknown", "address": None, "label": ""}
 
 
-def directions_missing_place_reply(lang, kind):
+def directions_missing_place_reply(lang, kind, place_key=None):
+    who = place_display_name(place_key or kind, lang) if place_key or kind not in (
+        "unknown",
+        "location",
+    ) else ""
     templates = {
         "en": {
-            "home": "I don't have your home address yet — add it in ⚙️ Settings → Frequent Places.",
-            "work": "I don't have your work address yet — add it in ⚙️ Settings → Frequent Places.",
-            "unknown": "Where do you want to go? Save home/work in ⚙️ Settings → Frequent Places, or say \"directions to …\"",
+            "unknown": "Where do you want to go? Save a place in ⚙️ Frequent Places, or say \"save my daughter's address, it's …\"",
             "location": "I need your location for directions — allow location when prompted, then ask again.",
+            "missing": f"I don't have {who} saved yet — say \"save {who} address, it's …\" or add it in ⚙️ Frequent Places.",
         },
         "zh": {
-            "home": "还没有你的家庭地址 — 请在 ⚙️ 设置 → 常去地点 里添加。",
-            "work": "还没有你的公司地址 — 请在 ⚙️ 设置 → 常去地点 里添加。",
-            "unknown": "你想去哪里？在 ⚙️ 设置 → 常去地点 保存家/公司，或者说「怎么去…」",
+            "unknown": "你想去哪里？在 ⚙️ 常去地点 保存，或者说「保存我女儿的地址，是…」",
             "location": "导航需要你的位置 — 请允许定位后再问一次。",
+            "missing": f"还没有保存{who} — 可以说「保存{who}地址，是…」或在 ⚙️ 常去地点 添加。",
         },
     }
     pack = templates.get(lang, templates["en"])
-    return pack.get(kind, pack["unknown"])
+    if kind in ("unknown", "location"):
+        return pack[kind]
+    return pack["missing"]
