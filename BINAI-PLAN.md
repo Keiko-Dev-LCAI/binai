@@ -17,6 +17,22 @@
 
 **Rule:** End of every Binai session → update `BINAI-BRIEFING.md` (always) + sections here if plan changed → commit → push.
 
+### Brainstorm workflow (Keiko rule)
+
+When brainstorming a new idea:
+
+1. **Ship now** — anything doable in current web beta without new infra (prompts, buttons, API using existing data)
+2. **Plan later** — needs camera, Capacitor, retention schema, other apps, etc.
+3. **Record both** in this file + `BINAI-BRIEFING.md` session log
+
+| Shipped from brainstorm (2026-06-21) | Still in plan only |
+|--------------------------------------|-------------------|
+| Friend mode + appearance opinion prompts | Photo vision ("do I look fat in this dress" with image) |
+| Custom assistant name (Settings + wizard) | Retention buttons + 24h expiry |
+| ☀️ Catch Me Up button + `/api/catch-up` | OrcaVault Save to Archives |
+| Gentle open suggestion on welcome-back | LightTunes embed |
+| Memory confirm instruction in AI prompt | Full Smart UX #1–3 with calendar/location |
+
 | Role | Typical work |
 |------|----------------|
 | **Grok** | Code, deploy, tests in `~/Desktop/binai/` |
@@ -239,7 +255,13 @@ Current AIVM on-chain latency = 12–20 seconds per response. Too slow for a con
 
 ---
 
-## Custom Assistant Name — BRAINSTORM (locked direction: yes)
+## Custom Assistant Name — ✅ SHIPPED (web beta 2026-06-21)
+
+`preferences.assistant_name` in Settings + setup wizard. Default Binai. Chat placeholder: "Talk to {name}…"
+
+---
+
+## Custom Assistant Name — spec (reference)
 
 **Idea:** User picks what **their** AI is called — makes it feel personal. App product name stays **Binai**; the assistant they talk to can be Luna, Alex, 小助手, whatever they want.
 
@@ -700,7 +722,14 @@ The goal: Binai should feel like it already knows your day, your people, your ha
 | **Location hints** (#5 full) | ❌ | Opt-in geolocation + disclosure |
 | **"When I get home"** (#7) | ❌ | Location or manual home time memory |
 
-### Casual friend conversations — BRAINSTORM (Keiko direction)
+### Casual friend conversations — ✅ PARTIAL (text shipped 2026-06-21)
+
+**Shipped:** `friend_mode` toggle · opinion/appearance AI prompts · supportive "what do you think?" handling in text.  
+**Plan:** photo + vision for dress/outfit questions.
+
+---
+
+### Casual friend conversations — spec (reference)
 
 **Use case:** Wife snaps a photo, asks her AI *"what do you think?"* or *"do I look fat in this dress?"* — like texting a trusted friend, not a corporate bot.
 
@@ -736,15 +765,13 @@ The goal: Binai should feel like it already knows your day, your people, your ha
 
 ---
 
-### Phase 1c — Smart UX (web) — BRAINSTORM build order
+### Phase 1c — Smart UX (web) — build order
 
-*After phone testing passes; before camera if Keiko wants the "wow" on memory first.*
-
-1. **Catch Me Up** — big button on chat screen + voice phrase "what did I miss?"
-2. **Memory confirmation** — after new memory saved, Binai may ask one confirm question (toggle in Settings)
-3. **Welcome-back line** — on return visit, one personalized line from About Me + memories (not generic hello)
-4. **Morning/evening open nudge** — max **one** proactive suggestion per open; dismissible
-5. **Follow-up prompts** — system prompt: offer one relevant follow-up when user adds note/reminder/list item
+1. **Catch Me Up** — ✅ shipped (`/api/catch-up`, chat button)
+2. **Memory confirmation** — ✅ shipped (AI prompt on "remember …")
+3. **Welcome-back + gentle suggestion** — ✅ shipped (`/api/welcome` + `gentle_suggestions` pref)
+4. **Follow-up prompts** — partial (friend mode + chatty depth); fuller note/list hooks → plan
+5. **Calendar/location-aware suggestions** — plan (Phase 2)
 
 **UI sketch — chat bar area:**
 ```

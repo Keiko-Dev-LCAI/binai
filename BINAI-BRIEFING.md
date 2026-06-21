@@ -49,6 +49,10 @@ Whoever worked on Binai last (Grok or Claude) **must** before closing:
 
 ---
 
+## Brainstorm rule
+
+**Do what we can now → put the rest in the plan.** Grok ships web-beta-ready pieces; plan holds camera, connectors, retention, etc.
+
 ## Shipped ✅ (web beta)
 
 - Async chat + iPhone `Load failed` fix (`f534087`)
@@ -57,6 +61,9 @@ Whoever worked on Binai last (Grok or Claude) **must** before closing:
 - First-login setup wizard (`da928af`)
 - Reply length Short / Balanced / Chatty (`805afc2`)
 - About Me private bio tab, 12k chars (`18e5a03`)
+- **Friend mode** + opinion/appearance prompts (text chat)
+- **Assistant name** (custom, changeable)
+- **☀️ Catch Me Up** + gentle welcome suggestion
 
 Details + commit table → `BINAI-PLAN.md` § Shipped Web Beta
 
@@ -69,7 +76,8 @@ Details + commit table → `BINAI-PLAN.md` § Shipped Web Beta
 - **OrcaVault / Archives** — "Save to Archives" for photos forever on-chain (Family Album, etc.)
 - **LightTunes** — 🎵 embed, play playlist, voice control
 - **Keiko App Registry** — JSON manifest so Binai connects to more apps easily
-- **Custom assistant name** — user picks what to call their AI (default Binai); changeable in Settings + wizard
+- ~~**Custom assistant name**~~ ✅ shipped
+- ~~**Friend mode / casual chat**~~ ✅ shipped (text); photo opinions need camera
 - **⭐ Smart UX (Keiko loves this)** — Catch Me Up, memory confirmation, gentle open suggestions — Phase 1c after phone testing
 - **Casual friend chat** — opinion questions, "what do you think?" text today (warm/playful); **photo opinions** need camera + vision (Phase 3)
 

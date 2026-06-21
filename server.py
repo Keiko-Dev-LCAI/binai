@@ -104,9 +104,15 @@ def _run_chat_job(job_id, wallet, message, lang, reason, safe, safety_category, 
     except Exception as e:
         _set_job(job_id, status="error", error=str(e)[:300])
 
-BINAI_SYSTEM = """You are Binai 💜, a warm personal AI assistant powered by Lightchain AIVM.
+BINAI_SYSTEM = """You are {assistant_name} 💜, a warm personal AI assistant on the Binai app (Lightchain AIVM).
 You remember the user across sessions. Speak naturally, concisely, and kindly.
 You are in BETA — responses may take up to 2 minutes (fast mode coming soon).
+
+{friend_mode_block}
+
+{appearance_opinion_block}
+
+{memory_confirm_block}
 
 REPLY LENGTH:
 - Follow the REPLY DEPTH block below — each user picks Short, Balanced, or Chatty.
@@ -202,15 +208,15 @@ POLITICAL_LEANING = {
 
 PERSONA_GENDER = {
     "neutral": (
-        "Neutral presentation (default). Binai has no gender — refer to yourself as Binai only; "
-        "avoid gendered self-descriptions."
+        "Neutral presentation (default). {assistant_name} has no gender — refer to yourself as "
+        "{assistant_name} only; avoid gendered self-descriptions."
     ),
     "female": (
-        "Female presentation. Subtly feminine tone and warmth. Still Binai — an AI assistant, "
+        "Female presentation. Subtly feminine tone and warmth. Still {assistant_name} — an AI assistant, "
         "not a human woman."
     ),
     "male": (
-        "Male presentation. Subtly masculine tone and directness. Still Binai — an AI assistant, "
+        "Male presentation. Subtly masculine tone and directness. Still {assistant_name} — an AI assistant, "
         "not a human man."
     ),
 }
@@ -736,7 +742,21 @@ def build_prompt(wallet, user_message, language_override=None):
     language_instruction = languages.language_instruction_for(lang)
     if languages.is_brief_intent(user_message):
         language_instruction += "\n\n" + languages.brief_intent_instruction(lang, depth)
+    assistant = languages.resolve_assistant_name(prefs)
+    friend_on = bool(prefs.get("friend_mode"))
+    friend_block = languages.friend_mode_instruction(lang, friend_on)
+    appearance_block = ""
+    if friend_on or languages.is_opinion_or_appearance(user_message):
+        appearance_block = languages.appearance_opinion_instruction(lang)
+    memory_block = ""
+    if languages.is_remember_intent(user_message):
+        memory_block = languages.memory_confirm_instruction(lang)
+    persona_gender = PERSONA_GENDER[gender_key].format(assistant_name=assistant)
     system = BINAI_SYSTEM.format(
+        assistant_name=assistant,
+        friend_mode_block=friend_block,
+        appearance_opinion_block=appearance_block,
+        memory_confirm_block=memory_block,
         profile=profile_text,
         about_me=about_me_text,
         memories=mem_text,
@@ -745,10 +765,10 @@ def build_prompt(wallet, user_message, language_override=None):
         reply_depth_instruction=languages.reply_depth_instruction(depth, lang),
         personality=PERSONALITIES[personality_key],
         political=POLITICAL_LEANING[political_key],
-        persona_gender=PERSONA_GENDER[gender_key],
+        persona_gender=persona_gender,
     )
     user_line = f"{user_message}{languages.prompt_user_suffix(lang)}"
-    binai_label = languages.prompt_binai_label(lang)
+    binai_label = f"{assistant.upper()}:"
     return (
         f"{languages.language_preamble(lang)}"
         f"{language_instruction}\n\n"
@@ -1096,12 +1116,34 @@ def api_welcome(wallet):
         "SELECT COUNT(*) as c FROM notes WHERE wallet = ?", (w,)
     ).fetchone()["c"]
     conn.close()
+    prefs = json.loads(prof.get("preferences") or "{}")
+    suggestion = ""
+    if prefs.get("gentle_suggestions", True):
+        lang = resolve_lang(w)
+        name = (prof.get("display_name") or "").strip()
+        hour = request.args.get("hour", type=int)
+        if hour is None:
+            hour = int(time.strftime("%H", time.gmtime()))
+        if rems:
+            suggestion = languages.gentle_open_suggestion(
+                lang, "reminder", name, rems[0]["content"]
+            )
+        elif mems:
+            suggestion = languages.gentle_open_suggestion(
+                lang, "memory", name, mems[0]["content"]
+            )
+        elif 5 <= hour < 12:
+            suggestion = languages.gentle_open_suggestion(lang, "morning", name)
+        elif 18 <= hour < 23:
+            suggestion = languages.gentle_open_suggestion(lang, "evening", name)
     return jsonify(
         {
             "name": prof.get("display_name") or "",
+            "assistant_name": languages.resolve_assistant_name(prefs),
             "memories": [m["content"] for m in mems],
             "reminders": [dict(r) for r in rems],
             "notes_count": notes_n,
+            "open_suggestion": suggestion,
         }
     )
 
@@ -1241,6 +1283,46 @@ def api_chat_status(job_id):
         return jsonify({"status": "error", "error": job.get("error") or "Chat failed"}), 200
     payload = {k: v for k, v in job.items() if k not in ("wallet", "created_at")}
     return jsonify(payload)
+
+
+@app.route("/api/catch-up/<wallet>")
+def api_catch_up(wallet):
+    w = norm_wallet(wallet)
+    prof = get_profile(w) or {}
+    lang = resolve_lang(w, request.args.get("lang"))
+    strings = languages.catch_up_strings(lang)
+    name = prof.get("display_name") or strings["default_name"]
+    conn = get_db()
+    notes_n = conn.execute(
+        "SELECT COUNT(*) as c FROM notes WHERE wallet = ?", (w,)
+    ).fetchone()["c"]
+    rems = conn.execute(
+        """SELECT content FROM reminders WHERE wallet = ? AND done = 0
+           ORDER BY due_at ASC LIMIT 5""",
+        (w,),
+    ).fetchall()
+    conn.close()
+    mems = get_memories(w, 5)
+    price = get_lcai_price()
+    lines = [strings["greeting"].format(name=name)]
+    if rems:
+        lines.append(
+            strings["reminders"].format(
+                items="; ".join(r["content"] for r in rems)
+            )
+        )
+    if notes_n:
+        lines.append(strings["notes"].format(n=notes_n))
+    if mems:
+        lines.append(
+            strings["memories"].format(
+                items="; ".join(m["content"] for m in mems)
+            )
+        )
+    lines.append(strings["price"].format(price=price))
+    if not rems and not notes_n and not mems:
+        lines.append(strings["all_clear"])
+    return jsonify({"catch_up": "\n".join(lines), "lcai_price": price})
 
 
 @app.route("/api/briefing/<wallet>")
