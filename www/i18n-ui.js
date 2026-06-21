@@ -63,6 +63,14 @@ window.BINAI_I18N = {
     onboard_pin_note: 'Wallet setup is once. After that, you\'ll set a PIN tied to your wallet — so two accounts can both use "1234" without mixing up.',
     onboard_terms: 'By continuing you confirm you accepted our Terms & Disclosures.',
     onboard_continue: 'Continue → Connect wallet',
+    setup_title: 'Set up your Binai',
+    setup_intro: 'Choose how Binai talks to you and which reminders you want. Takes 30 seconds.',
+    setup_lang_sub: 'Binai replies in this language.',
+    setup_political_sub: 'Optional — helps Binai understand your perspective.',
+    setup_notif_title: 'Reminders & briefings',
+    setup_voice_mute: 'Mute spoken replies (🔊 button in chat)',
+    setup_settings_hint: 'Change anytime in ⚙️ Settings — scroll down for PIN, export, and legal.',
+    setup_save: 'Save & start chatting',
     msg_remember: '🧠 Remember', msg_wrong: '👎 Wrong', thinking: 'Binai is thinking… 0s',
     thinking_status: 'Waiting for AIVM… {s}s', status_thinking: 'Binai is thinking… {s}s (beta: up to 2 min)',
     saved_memory: 'Got it — I saved that to your memories 🧠', feedback_thanks: 'Thanks for the feedback — noted for beta tuning 👍',
@@ -166,6 +174,14 @@ window.BINAI_I18N = {
     onboard_pin_note: '钱包只需设置一次。之后会为该钱包设置 PIN — 不同账户可用相同数字。',
     onboard_terms: '继续即表示你已接受我们的条款与声明。',
     onboard_continue: '继续 → 连接钱包',
+    setup_title: '设置你的 Binai',
+    setup_intro: '选择 Binai 的说话方式和提醒选项。约 30 秒。',
+    setup_lang_sub: 'Binai 将用此语言回复。',
+    setup_political_sub: '可选 — 帮助 Binai 理解你的视角。',
+    setup_notif_title: '提醒与简报',
+    setup_voice_mute: '关闭语音回复（聊天中的 🔊 按钮）',
+    setup_settings_hint: '随时在 ⚙️ 设置中修改 — 向下滚动可找到 PIN、导出和法律条款。',
+    setup_save: '保存并开始聊天',
     msg_remember: '🧠 记住', msg_wrong: '👎 不好', thinking: 'Binai 正在思考… 0秒',
     thinking_status: '等待 AIVM… {s}秒', status_thinking: 'Binai 正在思考… {s}秒（测试版：最多 2 分钟）',
     saved_memory: '好的 — 已保存到你的记忆 🧠', feedback_thanks: '感谢反馈 — 已记录 👍',
@@ -316,6 +332,20 @@ window.applyI18n = function() {
   set('onboardPinNote', 'onboard_pin_note');
   set('onboardTerms', 'onboard_terms');
   set('onboardContinueBtn', 'onboard_continue');
+  set('setupTitle', 'setup_title');
+  set('setupIntro', 'setup_intro');
+  set('setupLangTitle', 'lang_title');
+  set('setupLangSub', 'setup_lang_sub');
+  set('setupPersonalityTitle', 'personality_title');
+  set('setupPoliticalTitle', 'political_title');
+  set('setupPoliticalSub', 'setup_political_sub');
+  set('setupGenderTitle', 'gender_title');
+  set('setupNotifTitle', 'setup_notif_title');
+  set('setupDailyBriefingLabel', 'daily_briefing');
+  set('setupNotifLabel', 'notif_label');
+  set('setupVoiceMuteLabel', 'setup_voice_mute');
+  set('setupSettingsHint', 'setup_settings_hint');
+  set('setupSaveBtn', 'setup_save');
   set('prompt1Title', 'prompt1_title');
   set('prompt1Desc', 'prompt1_desc');
   set('prompt2Title', 'prompt2_title');
