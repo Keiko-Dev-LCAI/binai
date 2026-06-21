@@ -278,10 +278,120 @@ Current AIVM on-chain latency = 12–20 seconds per response. Too slow for a con
 - **Flashlight** — "turn on the flashlight"; hands-free, instant
 - **Translate** — any language pair, AI handles it
 
-### 🎵 LightTunes Integration
-- **v1:** Music button opens LightTunes inside Binai panel; background audio keeps playing when user returns to assistant
-- **v1.5:** LightTunes embedded panel — user never leaves the app; pick playlist, start playing, keep chatting
-- **v2:** Voice controls — "pause the music," "next song," "turn it down" → Binai controls Android media session API
+### 🔗 Keiko App Connectors — BRAINSTORM (how Binai talks to other apps)
+
+**Goal:** Say or tap one thing in Binai → something happens in another Keiko app. Same wallet everywhere. Easy to add new apps later without rebuilding Binai core.
+
+#### Three save paths for a photo (don't mix these up)
+
+| Button / voice | Where it goes | How long |
+|----------------|---------------|----------|
+| *(default)* | Binai vision only | ~24h then gone |
+| **Save photo** | Binai account (retention model) | Until user deletes or changes retention |
+| **Save to Archives** | **OrcaVault / Lightchain Archives** | **Forever on Lightchain** — on-chain, permanent |
+
+Users who take a beautiful sunset and want it **forever** → **Save to Archives**, not Binai temp storage.
+
+#### Connector pattern (reusable for every app)
+
+```
+User intent (voice or button)
+  → Binai parses intent + wallet
+    → Keiko App Registry (JSON manifest per app)
+      → Action: deep link | embed panel | signed API call
+        → Target app (OrcaVault, LightTunes, LightWeather, …)
+```
+
+| Layer | What it is |
+|-------|------------|
+| **Registry** | One JSON file — app id, name, URL, icon, enabled actions |
+| **Intents** | `save_to_archive`, `play_playlist`, `open_weather`, … — Binai AI maps natural language → intent |
+| **Deep link (fastest)** | `orcavault?vault=3&add=photo` · `lighttunes?playlist=1` · already partial on LightTunes (`?song=`) |
+| **Embed panel** | iframe/slide-over inside Binai — user stays in assistant, music keeps playing |
+| **postMessage API** | Child app listens: `binai.action.playPlaylist()` — clean cross-app control |
+| **Signed relay** | Binai backend → `orcavault-production` relay with wallet signature (upload without leaving Binai) |
+
+**User control:** Settings → **Connected apps** — toggle which apps Binai can open or act on. Off by default for sensitive apps.
+
+**Why wallet-first helps:** OrcaVault, LightTunes, Binai all key off the same wallet — identity is already shared.
+
+---
+
+### 🗄️ OrcaVault / Lightchain Archives — BRAINSTORM
+
+**App:** [Lightchain Archives](https://keiko-dev-lcai.github.io/orcavault/) (folder `orcavault-app/`) · relay `orcavault-production.up.railway.app`  
+**Also called:** OrcaVault, Orca Archives — same product.
+
+**What it does today:** User creates an **archive** (vault) — Family Album, Pet Album, Travel, etc. — and adds photos/videos/audio **on-chain forever**.
+
+| Piece | Today |
+|-------|-------|
+| Vault templates | Family Album, Pet Album, Travel, Memorial, … |
+| Add memory | `addMemory(vaultId, memType, title, caption, date, dataURI)` on-chain |
+| Deep link | `?vault=3` or `?vault=3&item=2` |
+| Relay | Thumbnails, visibility, moderation — same relay as LightTube |
+
+#### Binai integration (planned)
+
+**UI — after camera or on any photo answer:**
+```
+[Remember this]  [Save photo]  [Save to Archives ▾]  [Ask more]
+```
+Dropdown: pick vault — "Family Album", "Travel 2026", or **+ New archive**.
+
+**Voice examples:**
+- "Save this to my family album"
+- "Add this picture to my pet archive"
+- "Keep this photo forever on Lightchain"
+
+**Build tiers:**
+
+| Tier | Effort | Flow |
+|------|--------|------|
+| **v1 — Handoff** | Low | Binai passes image + vault hint via deep link → OrcaVault upload screen pre-filled; user confirms wallet tx |
+| **v1.5 — In-app picker** | Medium | Binai lists user's vaults (read chain events for wallet) → pick album → handoff |
+| **v2 — One tap** | Higher | Binai calls OrcaVault relay with signed upload; toast "Saved to Family Album 💜" — user may still approve tx |
+
+**Default vault:** Binai remembers `preferences.default_archive_vault_id` per wallet (set in setup or first Save to Archives).
+
+**Privacy copy:** "This photo will be stored **permanently on Lightchain** — visible in your archive. Not the same as Binai's temporary chat photos."
+
+---
+
+### 🎵 LightTunes Integration — BRAINSTORM (expanded)
+
+**App:** `lighttunes-app/` · same OrcaVault relay · playlist in `localStorage` (`lt_playlist_<wallet>`)  
+**Today:** `?song=123` deep link auto-plays one track · ♥ Playlist is private per wallet · auto-play next in playlist order.
+
+#### Binai integration (planned)
+
+**UI:**
+- **🎵 Music** button in Binai sidebar or chat bar → opens LightTunes panel (embed or new tab)
+- Quick actions: **Play my playlist** · **Play something chill** · **Pause** · **Next song**
+
+**Voice examples:**
+- "Play my playlist"
+- "Put on some music"
+- "Pause the music"
+- "Next song"
+
+**Build tiers:**
+
+| Tier | Effort | Flow |
+|------|--------|------|
+| **v1 — Open + embed** | Low | Music panel iframe → `lighttunes` · user picks song manually · audio continues when back to chat |
+| **v1.5 — Deep link** | Low | `lighttunes?playlist=1` (needs new param on LightTunes) or `?song=` for specific track |
+| **v2 — Voice control** | Medium | LightTunes adds `postMessage` listener: `{ action: 'playPlaylist' }` · Binai iframe sends commands |
+| **v3 — Android native** | Later | Capacitor media session — "pause/next" works with screen off |
+
+**Playlist gap today:** LightTunes playlist lives in **browser localStorage** — Binai on another origin **cannot read it** until we add one of:
+- `postMessage` from embedded LightTunes panel
+- Binai stores "favorite playlist mood" in its own DB
+- LightTunes exposes wallet-keyed playlist API on relay (optional v2)
+
+**Mood presets (nice UX):** User picks default in Binai setup — "When I say play music, start my ♥ Playlist" or a genre channel.
+
+---
 
 ### 🧹 Phone Cleaner (CCleaner-style)
 All of the following are confirmed achievable on Android:
@@ -450,9 +560,10 @@ If user does nothing → photo gone. Privacy-first default.
 After a photo answer:
 
 ```
-[Remember this]  [Save photo]  [Add to Notes]  [Ask more]
+[Remember this]  [Save photo]  [Save to Archives ▾]  [Add to Notes]  [Ask more]
 ```
 
+- **Save to Archives** — permanent on-chain via OrcaVault (Family Album, etc.) — **not** Binai temp storage
 - **Add to Notes** — receipt, label, list item — separate from Memory facts
 - **Ask more** — follow-up question with same photo context (until photo expires)
 
@@ -508,9 +619,10 @@ The goal: Binai should feel like it *understands your life* and reduces mental l
 | Phase 2 | Daily Usefulness | Weather, Calendar, Reminders, Notes, Morning Briefing, Translate, Flashlight | Genuinely useful every day |
 | Phase 2b | User-controlled retention | 24h default chat/photo expiry; **Remember** / **Save message** / **Save photo** buttons; optional retention Settings | User trusts what Binai keeps |
 | Phase 3 | Camera & Vision | 📷 in chat, Cloudflare vision API, Lens-style Q&A, photo 24h delete + save opt-in | "What is this?" — show AIVM-era smarts |
-| Phase 3b | Files | Photo search, document pick + discuss | Deeper media integration |
+| Phase 3b | **App Connectors v1** | Keiko App Registry JSON; **Save to Archives** handoff (OrcaVault deep link); **🎵 Music** embed (LightTunes iframe); Connected apps toggles in Settings | Ecosystem feels like one assistant |
+| Phase 3c | Files + Archives v2 | Photo search, document pick; one-tap archive upload via signed relay; default vault per wallet | Beautiful pics saved forever on-chain |
 | Phase 4 | Phone Control | Make calls, Send texts, Open apps/websites, Navigation | Full assistant experience |
-| Phase 5 | Advanced Tools | Phone cleaner module, LightTunes integration, Capacitor camera native | Power user features |
+| Phase 5 | Advanced Tools | LightTunes voice control (postMessage / media session), phone cleaner, Capacitor camera native | Power user features |
 | Phase 6 | Polish & Launch | Permissions flow, Play Store submission, Lightchain dApp Hub submission | Ready for real users |
 
 **Why subscription in Phase 1:** Wallet address = user identity throughout the whole app. Building payment and identity from the foundation means every feature that follows knows who the user is and whether they're on free or paid tier — no retrofitting later.
@@ -520,7 +632,8 @@ The goal: Binai should feel like it *understands your life* and reduces mental l
 1. **Now:** Real phone testing — chat, About Me, reply length, Settings scroll  
 2. **Next:** User retention UI — Remember / Save message buttons + 24h chat roll-off (backend)  
 3. **Then:** Camera v1 — 📷 + Cloudflare vision + 24h photo delete + Save photo / Remember this  
-4. **Later:** Native Android camera, AIVM vision swap, retention Settings toggles  
+4. **Then:** App connectors v1 — Save to Archives (OrcaVault handoff) + LightTunes embed + registry JSON  
+5. **Later:** Archives one-tap upload, LightTunes voice/play playlist, native Android camera
 
 *Still brainstorming — nothing in this section is committed code until we pick it up in a build session.*
 
@@ -537,6 +650,9 @@ The goal: Binai should feel like it *understands your life* and reduces mental l
 | 5 | UI i18n before Discord | Ship es/fr/pt/de/ja UI strings now vs en+zh only for first testers |
 | 6 | Photo storage | Railway volume blobs vs Cloudflare R2 vs vision-only (no store) |
 | 7 | Booking / action replies | More canned filters vs wait for better AIVM tool use |
+| 8 | Archives handoff vs one-tap | Deep link to OrcaVault (user confirms tx) vs Binai relay upload in background |
+| 9 | LightTunes playlist | postMessage from embed vs new `?playlist=` deep link vs relay API |
+| 10 | Which apps in registry v1 | OrcaVault + LightTunes only vs also LightWeather, TopTen, LightTube |
 
 ---
 
@@ -552,7 +668,7 @@ Auth: wallet + device PIN · TEST_MODE=true · Keiko pays AIVM, tester wallets =
 Relay: web-production-aaaba.up.railway.app (orcaappbuilder-server)
 
 Shipped: async chat (iPhone), mute voice, setup wizard, reply length, About Me (12k bio), desktop scroll
-Brainstorm only (not built): camera/Lens, retention buttons, 24h expiry
+Brainstorm only (not built): camera/Lens, retention buttons, OrcaVault Archives, LightTunes connectors
 
 Testing: server ✅ · real phones ⚠️ pending (Sherry ZH iPhone, Keiko EN PC)
 Top priority: hard refresh → chat → language → About Me → Short/GM test
@@ -563,6 +679,9 @@ Full plan: ~/Desktop/binai/BINAI-PLAN.md
 ---
 
 ## Related Projects & Files
+- **OrcaVault / Lightchain Archives** (`orcavault-app/`) — permanent photo/video albums on-chain; **Save to Archives** target
+- **LightTunes** (`lighttunes-app/`) — music + private ♥ playlist; embed + voice control target
+- **OrcaVault relay** (`orcavault-production.up.railway.app`) — shared by LightTube, LightTunes, Archives uploads
 - **LightChat** (lightchat.chat) — voice AI already live; voice layer patterns apply here
 - **OrcaMail** (orcamail.ai) — AIVM Railway server pattern to reuse
 - **LightWeather** (lightweather.win) — Open-Meteo integration to reuse
