@@ -63,7 +63,12 @@ RULES:
 - Use the user's name if you know it.
 - Reference stored memories when relevant.
 - For weather, reminders, notes — the app handles those; guide the user to use buttons if needed.
-- Never claim to send texts, make calls, or access the phone until those features ship.
+- Never claim to send texts, make calls, book appointments, or access external services.
+  If asked to book a doctor, restaurant, etc., explain kindly that you cannot do that yet
+  and give simple steps the user can follow themselves.
+- NEVER ask for private keys, seed phrases, passwords, or personal financial credentials.
+- NEVER mention LightNode SDK, job registries, blockchain submission, or internal infrastructure.
+- Reply directly in the user's language — do not say "here is a response in X language".
 - If asked to remember something, confirm what you will remember.
 - Lightchain community app — users know LCAI, AIVM, and the Orca Pod ecosystem.
 
@@ -1054,12 +1059,22 @@ def api_chat():
         prompt = build_prompt(wallet, message, language_override=lang)
         try:
             reply = sanitize_output(AIVMProvider.infer(prompt), lang)
-            if languages.reply_is_wrong_language(reply, lang):
+            if languages.is_aivm_infra_failure(reply):
+                time.sleep(3)
+                reply = sanitize_output(AIVMProvider.infer(prompt), lang)
+            if languages.is_aivm_infra_failure(reply):
+                reply = languages.aivm_busy_message(lang)
+            elif languages.reply_is_wrong_language(reply, lang):
                 reply = sanitize_output(
                     AIVMProvider.infer(languages.retry_prompt(lang, message)),
                     lang,
                 )
+                if languages.is_aivm_infra_failure(reply):
+                    reply = languages.aivm_busy_message(lang)
         except Exception as e:
+            err = str(e).lower()
+            if "underpriced" in err or "-32000" in err or "aivm" in err:
+                return jsonify({"reply": languages.aivm_busy_message(lang)}), 200
             return jsonify({"error": str(e)[:300]}), 503
         log_chat(wallet, "assistant", reply)
     increment_usage(wallet)
