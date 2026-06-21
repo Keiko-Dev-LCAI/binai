@@ -70,23 +70,25 @@ Details + commit table → `BINAI-PLAN.md` § Shipped Web Beta
 - **LightTunes** — 🎵 embed, play playlist, voice control
 - **Keiko App Registry** — JSON manifest so Binai connects to more apps easily
 - **Custom assistant name** — user picks what to call their AI (default Binai); changeable in Settings + wizard
+- **⭐ Smart UX (Keiko loves this)** — Catch Me Up, memory confirmation ("your daughter is Lily, right?"), gentle open suggestions — see `BINAI-PLAN.md` § Smart UX · **Phase 1c after phone testing**
 
-Full spec → `BINAI-PLAN.md` § User-Controlled Retention, App Connectors, OrcaVault, LightTunes
+Full spec → `BINAI-PLAN.md` § User-Controlled Retention, App Connectors, OrcaVault, LightTunes, Smart UX
 
 ---
 
 ## Next up (priority order)
 
 1. **Real phone testing** — Sherry (ZH iPhone) + Keiko (EN PC) — see checklist in `BINAI-PLAN.md`
-2. **Retention UI** — Remember / Save message + 24h chat roll-off (when ready to build)
-3. **Camera v1** — 📷 + vision API
-4. **App connectors v1** — Save to Archives handoff + LightTunes embed
+2. **⭐ Smart UX (Phase 1c)** — Catch Me Up button + memory confirmation + welcome-back — Keiko priority
+3. **Retention UI** — Remember / Save message + 24h chat roll-off
+4. **Camera v1** — 📷 + vision API
+5. **App connectors v1** — Save to Archives handoff + LightTunes embed
 
 ## From Claude plan — not discussed yet (still in BINAI-PLAN.md)
 
 | Item | Status | When |
 |------|--------|------|
-| **9 Smart UX ideas** (Catch Me Up, memory confirm, proactive briefing…) | In plan only | Phase 2+ after core loop trusted |
+| **9 Smart UX ideas** ⭐ | Keiko priority — expanded in plan | **Phase 1c** after phone testing (web-first: Catch Me Up, memory confirm) |
 | **dApp Hub PR** | Not submitted | Before/after Discord — Claude task |
 | **www.binai.win** redirect | Optional | Claude / Cloudflare when you want |
 | **UI i18n** es/fr/pt/de/ja | AI backend yes; UI en+zh only | Before wider beta if non-CN testers |
