@@ -524,6 +524,14 @@ body::before {
       <div class="lang-grid" id="genderGrid"></div>
     </div>
     <div class="card">
+      <div class="card-title" id="settingsPlacesTitle">Frequent places</div>
+      <div class="card-sub" id="settingsPlacesSub" style="margin-bottom:12px">Home &amp; work for directions — weather falls back here if GPS is off.</div>
+      <div class="card-sub" id="settingsHomeLabel" style="margin-bottom:6px">🏠 Home address</div>
+      <input class="field" id="placeHomeInput" placeholder="123 Main St, Austin TX" maxlength="200" onchange="if(wallet)saveProfile()">
+      <div class="card-sub" id="settingsWorkLabel" style="margin:12px 0 6px">🏢 Work address</div>
+      <input class="field" id="placeWorkInput" placeholder="Office address" maxlength="200" onchange="if(wallet)saveProfile()">
+    </div>
+    <div class="card">
       <div class="card-title" id="settingsConnectedTitle">Connected apps</div>
       <div class="card-sub" id="settingsConnectedSub" style="margin-bottom:12px">Binai can read LightChat and open 快手 — same wallet everywhere.</div>
       <label class="setup-check">
@@ -827,8 +835,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260621-4';</script>
-<script src="i18n-ui.js?v=20260621-4"></script>
+<script>window.BINAI_BUILD = '20260621-5';</script>
+<script src="i18n-ui.js?v=20260621-5"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -1202,6 +1210,7 @@ async function finishSessionWelcome() {
   clearChat();
   const hadHistory = await loadChatHistory();
   if (!hadHistory) await showWelcomeBack();
+  getBinaiLocation();
 }
 async function connectPastedWallet() {
   const raw = (document.getElementById('wcAddrInput').value || '').trim();
@@ -1363,6 +1372,7 @@ async function restoreSession() {
   await refreshLightchatPanel();
   const hadHistory = await loadChatHistory();
   if (!hadHistory) await showWelcomeBack();
+  getBinaiLocation();
 }
 async function afterUnlock() {
   wallet = (localStorage.getItem('binai_wallet') || '').toLowerCase();
@@ -1729,6 +1739,73 @@ async function feedbackBad(el) {
   });
   addBotMsg(t('feedback_thanks'));
 }
+const BINAI_LOC_CACHE_MS = 15 * 60 * 1000;
+function getBinaiLocation(opts = {}) {
+  const cached = (() => {
+    try { return JSON.parse(sessionStorage.getItem('binai_loc') || 'null'); }
+    catch (_) { return null; }
+  })();
+  if (cached && Date.now() - cached.ts < BINAI_LOC_CACHE_MS && !opts.fresh) {
+    return Promise.resolve(cached);
+  }
+  if (!navigator.geolocation) return Promise.resolve(cached);
+  return new Promise(resolve => {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const data = { lat: pos.coords.latitude, lon: pos.coords.longitude, ts: Date.now() };
+        sessionStorage.setItem('binai_loc', JSON.stringify(data));
+        resolve(data);
+      },
+      () => resolve(cached),
+      { timeout: 10000, maximumAge: 600000 }
+    );
+  });
+}
+function isWeatherQuery(msg) {
+  const m = (msg || '').trim();
+  return /\b(weather|forecast|temperature|temp|rain|sunny|cloudy)\b/i.test(m)
+    || /天气|气温|下雨|预报|多少度/.test(m);
+}
+function isDirectionsQuery(msg) {
+  const m = (msg || '').trim();
+  if (isWeatherQuery(m)) return false;
+  return /\b(directions|navigate|route|drive|how\s+do\s+i\s+get|how\s+to\s+get|take\s+me\s+home|go\s+home|get\s+home)\b/i.test(m)
+    || /怎么走|怎么去|导航|回家|去公司/.test(m);
+}
+async function fetchWeatherChat(msg) {
+  const loc = await getBinaiLocation();
+  const params = new URLSearchParams({ lang: currentLang(), wallet: wallet || '' });
+  if (loc) { params.set('lat', loc.lat); params.set('lon', loc.lon); }
+  const r = await fetch(API + '/api/weather-chat?' + params);
+  return r.json();
+}
+async function fetchDirectionsChat(msg) {
+  const loc = await getBinaiLocation();
+  const params = new URLSearchParams({
+    message: msg, lang: currentLang(), wallet: wallet || '',
+  });
+  if (loc) { params.set('lat', loc.lat); params.set('lon', loc.lon); }
+  const r = await fetch(API + '/api/directions-lookup?' + params);
+  return r.json();
+}
+async function tryInstantChatReply(msg) {
+  try {
+    if (isWeatherQuery(msg)) {
+      const d = await fetchWeatherChat(msg);
+      if (d.reply) return { reply: d.reply, links: d.links, disclaimerKey: 'weather_disclaimer' };
+    }
+    if (isDirectionsQuery(msg)) {
+      const d = await fetchDirectionsChat(msg);
+      if (d.reply) return {
+        reply: d.reply,
+        links: d.links,
+        disclaimerKey: 'directions_disclaimer',
+        okLinks: d.ok,
+      };
+    }
+  } catch (_) {}
+  return null;
+}
 let thinkTimer = null;
 async function sendChat() {
   if (!wallet) { connectWallet(); return; }
@@ -1745,6 +1822,15 @@ async function sendChat() {
   input.value = '';
   lastUserMsg = msg;
   addUserMsg(msg);
+  const instant = await tryInstantChatReply(msg);
+  if (instant) {
+    const el = addBotMsg(instant.reply);
+    if (instant.links && instant.links.length && instant.okLinks !== false) {
+      appendLookupExtras(el, { ok: true, links: instant.links }, instant.disclaimerKey);
+    }
+    speak(instant.reply);
+    return;
+  }
   if (KUAISHOU_LINK_RE.test(msg) && localStorage.getItem('binai_kuaishou_enabled') !== '0') {
     setTimeout(() => addBotMsg(t('connector_kuaishou_saved')), 400);
   }
@@ -1927,7 +2013,10 @@ function speak(text) {
 async function loadBriefing(speakIt) {
   if (!wallet) { connectWallet(); return; }
   try {
-    const r = await fetch(API + '/api/briefing/' + wallet + '?lang=' + encodeURIComponent(currentLang()));
+    const loc = await getBinaiLocation();
+    let url = API + '/api/briefing/' + wallet + '?lang=' + encodeURIComponent(currentLang());
+    if (loc) url += '&lat=' + encodeURIComponent(loc.lat) + '&lon=' + encodeURIComponent(loc.lon);
+    const r = await fetch(url);
     const d = await r.json();
     lastBriefing = d.briefing;
     const box = document.getElementById('briefingBox');
@@ -2179,6 +2268,11 @@ async function loadProfile() {
     }
     if (prefs.kuaishou_enabled === false) localStorage.setItem('binai_kuaishou_enabled', '0');
     else localStorage.setItem('binai_kuaishou_enabled', '1');
+    const fp = prefs.frequent_places || {};
+    const hi = document.getElementById('placeHomeInput');
+    const wi = document.getElementById('placeWorkInput');
+    if (hi) hi.value = fp.home || '';
+    if (wi) wi.value = fp.work || '';
     initLanguagePickers();
     initPreferencePickers();
     initSettingsToggles();
@@ -2206,6 +2300,8 @@ function readPersonalizePrefs() {
   localStorage.setItem('binai_lightchat_memories', lcMem ? '1' : '0');
   localStorage.setItem('binai_lightchat_handle', lcHandle);
   localStorage.setItem('binai_kuaishou_enabled', ksEn ? '1' : '0');
+  const home = (document.getElementById('placeHomeInput')?.value || '').trim().slice(0, 200);
+  const work = (document.getElementById('placeWorkInput')?.value || '').trim().slice(0, 200);
   return {
     assistant_name: assistant,
     friend_mode: friendMode,
@@ -2215,6 +2311,7 @@ function readPersonalizePrefs() {
     lightchat_primary_handle: lcHandle,
     kuaishou_enabled: ksEn,
     kuaishou_remember_links: ksEn,
+    frequent_places: { home, work },
   };
 }
 async function saveProfile() {
@@ -2242,6 +2339,7 @@ async function saveProfile() {
         lightchat_primary_handle: personal.lightchat_primary_handle,
         kuaishou_enabled: personal.kuaishou_enabled,
         kuaishou_remember_links: personal.kuaishou_remember_links,
+        frequent_places: personal.frequent_places,
       },
     }),
   });

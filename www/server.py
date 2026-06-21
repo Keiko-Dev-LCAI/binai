@@ -35,7 +35,7 @@ _test_flag = os.environ.get("TEST_MODE", "true").lower()
 TEST_MODE = _test_flag not in ("0", "false", "no", "off")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
-BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260621-4")
+BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260621-5")
 LIGHTCHAT_API = os.environ.get(
     "LIGHTCHAT_API", "https://web-production-bc64f.up.railway.app"
 ).rstrip("/")
@@ -142,7 +142,7 @@ RULES:
 - Use the user's name if you know it.
 - Reference PRIVATE ABOUT ME and stored memories when relevant — personalize, don't lecture.
 - Never repeat the entire About Me document back unless the user asks.
-- For weather, reminders, notes — the app handles those; guide the user to use buttons if needed.
+- For live weather and directions, Binai can answer with GPS + Frequent Places; still help if they ask in general terms.
 - Never claim to send texts, make calls, book appointments, or access external services.
   If asked to book a doctor, restaurant, etc., explain kindly that you cannot do that yet
   and give simple steps the user can follow themselves.
@@ -799,6 +799,26 @@ def lightchain_rpc(method, params):
         return json.loads(r.read())
 
 
+def reverse_geocode(lat, lon, lang="en"):
+    try:
+        lang_code = "zh" if lang == "zh" else "en"
+        geo_req = urllib_req.Request(
+            "https://geocoding-api.open-meteo.com/v1/reverse?"
+            f"latitude={lat}&longitude={lon}&language={lang_code}",
+            headers={"User-Agent": "Binai/1.0"},
+        )
+        with urllib_req.urlopen(geo_req, timeout=8) as gr:
+            geo = json.loads(gr.read())
+        results = geo.get("results") or []
+        if not results:
+            return None
+        hit = results[0]
+        parts = [hit.get("name"), hit.get("admin1"), hit.get("country")]
+        return ", ".join(p for p in parts if p) or None
+    except Exception:
+        return None
+
+
 def fetch_weather(lat=None, lon=None, city=None):
     try:
         if lat is not None and lon is not None:
@@ -806,7 +826,8 @@ def fetch_weather(lat=None, lon=None, city=None):
                 f"https://api.open-meteo.com/v1/forecast?"
                 f"latitude={lat}&longitude={lon}"
                 f"&current=temperature_2m,weather_code,wind_speed_10m"
-                f"&daily=temperature_2m_max,temperature_2m_min,weather_code"
+                f"&daily=temperature_2m_max,temperature_2m_min,weather_code,"
+                f"precipitation_probability_max"
                 f"&timezone=auto&forecast_days=3"
             )
         elif city:
@@ -824,15 +845,110 @@ def fetch_weather(lat=None, lon=None, city=None):
                 f"https://api.open-meteo.com/v1/forecast?"
                 f"latitude={lat}&longitude={lon}"
                 f"&current=temperature_2m,weather_code"
-                f"&timezone=auto"
+                f"&daily=temperature_2m_max,temperature_2m_min,weather_code,"
+                f"precipitation_probability_max"
+                f"&timezone=auto&forecast_days=3"
             )
         else:
             return None
         req = urllib_req.Request(url, headers={"User-Agent": "Binai/1.0"})
         with urllib_req.urlopen(req, timeout=12) as r:
-            return json.loads(r.read())
+            data = json.loads(r.read())
+        data["_lat"] = lat
+        data["_lon"] = lon
+        return data
     except Exception:
         return None
+
+
+def build_weather_report(lat=None, lon=None, city=None, lang="en"):
+    lang = lang if lang in languages.LANG_NAMES else "en"
+    data = fetch_weather(lat=lat, lon=lon, city=city)
+    if not data or not data.get("current"):
+        return {
+            "ok": False,
+            "error": "weather_unavailable",
+            "reply": (
+                "I couldn't load live weather — allow location access or add home in "
+                "⚙️ Settings → Frequent Places."
+                if lang == "en"
+                else "无法获取实时天气 — 请允许定位，或在 ⚙️ 设置 → 常去地点 添加家庭地址。"
+            ),
+        }
+    place = None
+    if lat is not None and lon is not None:
+        place = reverse_geocode(lat, lon, lang)
+    elif city:
+        place = city
+    reply = languages.format_weather_reply(
+        lang, place, data["current"], data.get("daily")
+    )
+    links = [
+        {
+            "kind": "lightweather",
+            "label_key": "weather_full_forecast",
+            "url": "https://lightweather.win",
+        }
+    ]
+    return {
+        "ok": True,
+        "reply": reply,
+        "place": place,
+        "temp_c": data["current"].get("temperature_2m"),
+        "description": languages.wmo_description(
+            data["current"].get("weather_code"), lang
+        ),
+        "links": links,
+    }
+
+
+def build_directions_report(message, prefs, lat=None, lon=None, lang="en"):
+    lang = lang if lang in languages.LANG_NAMES else "en"
+    dest = languages.extract_directions_destination(message, prefs)
+    if not dest:
+        return {"ok": False, "reason": "not_directions"}
+    if lat is None or lon is None:
+        return {
+            "ok": False,
+            "reply": languages.directions_missing_place_reply(lang, "location"),
+        }
+    address = (dest.get("address") or "").strip()
+    kind = dest.get("kind")
+    if kind in ("home", "work") and not address:
+        return {
+            "ok": False,
+            "reply": languages.directions_missing_place_reply(lang, kind),
+        }
+    if not address:
+        return {
+            "ok": False,
+            "reply": languages.directions_missing_place_reply(lang, "unknown"),
+        }
+    enc_dest = url_quote(address)
+    origin = f"{lat},{lon}"
+    if lang == "zh":
+        maps_url = (
+            f"https://uri.amap.com/navigation?from={lon},{lat},我的位置"
+            f"&to={enc_dest}&mode=car"
+        )
+        label_key = "directions_open_amap"
+    else:
+        maps_url = (
+            "https://www.google.com/maps/dir/?api=1"
+            f"&origin={origin}&destination={enc_dest}"
+        )
+        label_key = "directions_open_maps"
+    dest_label = dest.get("label") or address
+    if lang == "zh":
+        reply = f"从你现在这里导航到{dest_label} — 点下面按钮在地图里打开路线。"
+    else:
+        reply = f"Directions from here to {dest_label} — tap below to open in Maps."
+    return {
+        "ok": True,
+        "reply": reply,
+        "destination": address,
+        "links": [{"kind": "maps", "label_key": label_key, "url": maps_url}],
+    }
 
 
 WMO = {
@@ -1565,14 +1681,21 @@ def api_briefing(wallet):
     conn.close()
     mems = get_memories(w, 5)
     price = get_lcai_price()
-    weather = fetch_weather(city="New York")
+    lat = request.args.get("lat", type=float)
+    lon = request.args.get("lon", type=float)
+    prefs = json.loads(prof.get("preferences") or "{}")
+    places = languages.frequent_places(prefs)
     wx_line = ""
+    weather = None
+    if lat is not None and lon is not None:
+        weather = fetch_weather(lat=lat, lon=lon)
+    elif places.get("home"):
+        weather = fetch_weather(city=places["home"])
     if weather and weather.get("current"):
         c = weather["current"]
-        code = c.get("weather_code", 0)
         wx_line = strings["weather"].format(
             temp=c.get("temperature_2m", "?"),
-            desc=WMO.get(code, "conditions"),
+            desc=languages.wmo_description(c.get("weather_code", 0), lang),
         )
     rem_items = "; ".join(r["content"] for r in rems) or strings["no_reminders"]
     mem_items = "; ".join(m["content"] for m in mems) or strings["no_memories"]
@@ -1911,17 +2034,55 @@ def api_weather():
     lat = request.args.get("lat", type=float)
     lon = request.args.get("lon", type=float)
     city = request.args.get("city")
+    lang = (request.args.get("lang") or "en").strip().lower()
     data = fetch_weather(lat=lat, lon=lon, city=city)
     if not data:
         return jsonify({"error": "Weather unavailable"}), 404
     cur = data.get("current") or {}
+    place = None
+    if lat is not None and lon is not None:
+        place = reverse_geocode(lat, lon, lang)
     return jsonify(
         {
             "temp_c": cur.get("temperature_2m"),
-            "description": WMO.get(cur.get("weather_code", 0), "unknown"),
+            "description": languages.wmo_description(cur.get("weather_code", 0), lang),
+            "place": place,
+            "reply": languages.format_weather_reply(
+                lang, place, cur, data.get("daily")
+            ),
             "raw": data,
         }
     )
+
+
+@app.route("/api/weather-chat")
+def api_weather_chat():
+    lat = request.args.get("lat", type=float)
+    lon = request.args.get("lon", type=float)
+    city = (request.args.get("city") or "").strip()
+    lang = (request.args.get("lang") or "en").strip().lower()
+    wallet = request.args.get("wallet", "").strip()
+    if wallet and not city:
+        prof = get_profile(norm_wallet(wallet)) or {}
+        prefs = json.loads(prof.get("preferences") or "{}")
+        city = languages.frequent_places(prefs).get("home") or ""
+    return jsonify(build_weather_report(lat=lat, lon=lon, city=city or None, lang=lang))
+
+
+@app.route("/api/directions-lookup")
+def api_directions_lookup():
+    message = (request.args.get("message") or "").strip()
+    lang = (request.args.get("lang") or "en").strip().lower()
+    lat = request.args.get("lat", type=float)
+    lon = request.args.get("lon", type=float)
+    wallet = norm_wallet(request.args.get("wallet") or "")
+    if not message:
+        return jsonify({"ok": False, "error": "message required"}), 400
+    prefs = {}
+    if wallet:
+        prof = get_profile(wallet) or {}
+        prefs = json.loads(prof.get("preferences") or "{}")
+    return jsonify(build_directions_report(message, prefs, lat=lat, lon=lon, lang=lang))
 
 
 if __name__ == "__main__":

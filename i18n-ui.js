@@ -55,6 +55,17 @@ window.BINAI_I18N = {
     everyday_search: '🔍 Search the web',
     everyday_usps: '🏛️ USPS locator',
     everyday_disclaimer: 'Live info from Maps or search — verify before you call. Binai does not track you there.',
+    settings_places_title: 'Frequent places',
+    settings_places_sub: 'Home & work for directions — weather falls back here if GPS is off.',
+    settings_home_label: '🏠 Home address',
+    settings_work_label: '🏢 Work address',
+    settings_home_ph: '123 Main St, Austin TX',
+    settings_work_ph: 'Office address',
+    weather_full_forecast: '⛅ Full forecast on LightWeather',
+    weather_disclaimer: 'Live weather from Open-Meteo using your location or saved home.',
+    directions_open_maps: '🗺️ Open in Google Maps',
+    directions_open_amap: '🗺️ Open in 高德地图',
+    directions_disclaimer: 'Opens turn-by-turn directions in Maps — Binai does not track you there.',
     assistant_name_title: 'Assistant name',
     assistant_name_sub: 'What to call your AI — default Binai. The app stays Binai 💜',
     assistant_name_ph: 'Binai',
@@ -224,6 +235,17 @@ window.BINAI_I18N = {
     everyday_search: '🔍 百度搜索',
     everyday_usps: '🏛️ 邮局查询',
     everyday_disclaimer: '将在地图或搜索中打开最新信息 — 拨打电话前请核实。',
+    settings_places_title: '常去地点',
+    settings_places_sub: '家和公司用于导航 — 没开定位时天气也会用家庭地址。',
+    settings_home_label: '🏠 家庭地址',
+    settings_work_label: '🏢 公司地址',
+    settings_home_ph: '街道地址、城市',
+    settings_work_ph: '公司地址',
+    weather_full_forecast: '⛅ 在 LightWeather 看完整预报',
+    weather_disclaimer: '使用定位或家庭地址的 Open-Meteo 实时天气。',
+    directions_open_maps: '🗺️ 在 Google 地图打开',
+    directions_open_amap: '🗺️ 在高德地图打开',
+    directions_disclaimer: '将在地图中打开导航路线 — Binai 不会在那里追踪你。',
     assistant_name_title: '助手名字',
     assistant_name_sub: '怎么称呼你的 AI — 默认 Binai。应用名仍是 Binai 💜',
     assistant_name_ph: 'Binai',
@@ -389,6 +411,12 @@ window.applyI18n = function() {
   set('insightLcBtn', 'insight_lc_btn');
   set('insightKsBtn', 'insight_ks_btn');
   set('insightLightchatTitle', 'insight_lc_title');
+  set('settingsPlacesTitle', 'settings_places_title');
+  set('settingsPlacesSub', 'settings_places_sub');
+  set('settingsHomeLabel', 'settings_home_label');
+  set('settingsWorkLabel', 'settings_work_label');
+  setPh('placeHomeInput', 'settings_home_ph');
+  setPh('placeWorkInput', 'settings_work_ph');
   set('settingsConnectedTitle', 'settings_connected_title');
   set('settingsConnectedSub', 'settings_connected_sub');
   set('lightchatEnabledLabel', 'lightchat_enabled_label');
