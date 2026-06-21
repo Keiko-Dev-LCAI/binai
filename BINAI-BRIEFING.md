@@ -70,7 +70,8 @@ Details + commit table → `BINAI-PLAN.md` § Shipped Web Beta
 - **LightTunes** — 🎵 embed, play playlist, voice control
 - **Keiko App Registry** — JSON manifest so Binai connects to more apps easily
 - **Custom assistant name** — user picks what to call their AI (default Binai); changeable in Settings + wizard
-- **⭐ Smart UX (Keiko loves this)** — Catch Me Up, memory confirmation ("your daughter is Lily, right?"), gentle open suggestions — see `BINAI-PLAN.md` § Smart UX · **Phase 1c after phone testing**
+- **⭐ Smart UX (Keiko loves this)** — Catch Me Up, memory confirmation, gentle open suggestions — Phase 1c after phone testing
+- **Casual friend chat** — opinion questions, "what do you think?" text today (warm/playful); **photo opinions** need camera + vision (Phase 3)
 
 Full spec → `BINAI-PLAN.md` § User-Controlled Retention, App Connectors, OrcaVault, LightTunes, Smart UX
 
