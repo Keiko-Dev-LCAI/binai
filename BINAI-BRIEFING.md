@@ -40,7 +40,7 @@ Whoever worked on Binai last (Grok or Claude) **must** before closing:
 |------|--------|
 | **Live URL** | https://binai.win · Railway `binai-production` |
 | **Repo** | `Keiko-Dev-LCAI/binai` · local `~/Desktop/binai/` |
-| **Latest commit** | `ed9ba46` (plan: OrcaVault + LightTunes connectors) |
+| **Latest commit** | `0041e45` (plan docs) · code through `18e5a03` |
 | **Code shipped through** | `18e5a03` (About Me) |
 | **Phase** | 1b — web beta hardening + real-device testing |
 | **Mode** | Brainstorming — camera, retention, app connectors are **planned, not built** |
@@ -81,6 +81,21 @@ Full spec → `BINAI-PLAN.md` § User-Controlled Retention, App Connectors, Orca
 2. **Retention UI** — Remember / Save message + 24h chat roll-off (when ready to build)
 3. **Camera v1** — 📷 + vision API
 4. **App connectors v1** — Save to Archives handoff + LightTunes embed
+
+## From Claude plan — not discussed yet (still in BINAI-PLAN.md)
+
+| Item | Status | When |
+|------|--------|------|
+| **9 Smart UX ideas** (Catch Me Up, memory confirm, proactive briefing…) | In plan only | Phase 2+ after core loop trusted |
+| **dApp Hub PR** | Not submitted | Before/after Discord — Claude task |
+| **www.binai.win** redirect | Optional | Claude / Cloudflare when you want |
+| **UI i18n** es/fr/pt/de/ja | AI backend yes; UI en+zh only | Before wider beta if non-CN testers |
+| **Biometrics** unlock | Plan says PIN or fingerprint | Android / Capacitor — not web |
+| **Live billing** `TEST_MODE=false` | Code exists, off | After beta testing |
+| **Auto-pay subscription relay** | Spec in `auto_subscription_relay.md` | Post-beta |
+| **Dual-track payment** (Google Play + managed wallet) | v2 roadmap | Far future |
+
+See audit in user session 2026-06-21 — Grok answered Keiko "anything from Claude plan missing?"
 
 ---
 
