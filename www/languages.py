@@ -1237,3 +1237,158 @@ def extract_everyday_query(message):
 
 def is_everyday_lookup(message):
     return bool(extract_everyday_query(message))
+
+
+# ── Weather (live Open-Meteo + location) ───────────────────────────────────────
+
+_WEATHER_QUERY_PAT = re.compile(
+    r"\b(weather|forecast|temperature|temp|rain|sunny|cloudy|hot|cold)\b|"
+    r"天气|气温|下雨|预报|多少度",
+    re.I,
+)
+
+
+def is_weather_query(message):
+    msg = (message or "").strip()
+    if not msg or len(msg) > 200:
+        return False
+    return bool(_WEATHER_QUERY_PAT.search(msg))
+
+
+_WMO_EN = {
+    0: "clear",
+    1: "mainly clear",
+    2: "partly cloudy",
+    3: "overcast",
+    45: "foggy",
+    61: "light rain",
+    63: "rain",
+    80: "rain showers",
+    95: "thunderstorm",
+}
+
+_WMO_ZH = {
+    0: "晴",
+    1: "大部晴朗",
+    2: "多云",
+    3: "阴",
+    45: "雾",
+    61: "小雨",
+    63: "雨",
+    80: "阵雨",
+    95: "雷暴",
+}
+
+
+def wmo_description(code, lang="en"):
+    table = _WMO_ZH if lang == "zh" else _WMO_EN
+    return table.get(int(code or 0), _WMO_EN.get(int(code or 0), "conditions"))
+
+
+def format_weather_reply(lang, place_name, cur, daily=None):
+    temp = cur.get("temperature_2m")
+    code = int(cur.get("weather_code") or 0)
+    desc = wmo_description(code, lang)
+    place = (place_name or "").strip() or ("here" if lang == "en" else "你这里")
+    hi = lo = rain = None
+    if daily:
+        highs = daily.get("temperature_2m_max") or []
+        lows = daily.get("temperature_2m_min") or []
+        rains = daily.get("precipitation_probability_max") or []
+        if highs:
+            hi = highs[0]
+        if lows:
+            lo = lows[0]
+        if rains:
+            rain = rains[0]
+    if lang == "zh":
+        lines = [f"{place}：现在 {temp}°C，{desc}。"]
+        if hi is not None and lo is not None:
+            lines.append(f"今天高温 {hi}°C，低温 {lo}°C。")
+        if rain:
+            lines.append(f"降水概率约 {rain}%。")
+        return " ".join(lines)
+    lines = [f"{place}: {temp}°C, {desc} right now."]
+    if hi is not None and lo is not None:
+        lines.append(f"Today: high {hi}°C, low {lo}°C.")
+    if rain:
+        lines.append(f"Rain chance: {rain}%.")
+    return " ".join(lines)
+
+
+# ── Directions (GPS + frequent places) ─────────────────────────────────────────
+
+_DIRECTIONS_PAT = re.compile(
+    r"\b(directions|navigate|route|drive|get\s+(?:me\s+)?(?:to|home|back)|how\s+do\s+i\s+get|"
+    r"how\s+to\s+get|take\s+me\s+home|go\s+home)\b|"
+    r"怎么走|怎么去|导航|回家|去公司|去上班",
+    re.I,
+)
+
+
+def frequent_places(prefs):
+    prefs = prefs or {}
+    raw = prefs.get("frequent_places") or {}
+    if not isinstance(raw, dict):
+        return {}
+    return {
+        "home": (raw.get("home") or "").strip()[:200],
+        "work": (raw.get("work") or "").strip()[:200],
+    }
+
+
+def is_directions_query(message):
+    msg = (message or "").strip()
+    if not msg or len(msg) > 220:
+        return False
+    if is_weather_query(msg):
+        return False
+    return bool(_DIRECTIONS_PAT.search(msg))
+
+
+def extract_directions_destination(message, prefs=None):
+    msg = (message or "").strip()
+    if not is_directions_query(msg):
+        return None
+    places = frequent_places(prefs)
+    low = msg.lower()
+    if re.search(r"\b(home|my\s+house|my\s+place)\b|回家|到家", msg, re.I):
+        return {"kind": "home", "address": places.get("home"), "label": "home"}
+    if re.search(r"\b(work|office|my\s+job)\b|上班|去公司|到公司", msg, re.I):
+        return {"kind": "work", "address": places.get("work"), "label": "work"}
+    m = re.search(
+        r"(?:directions|navigate|route|drive|get)\s+(?:me\s+)?to\s+(?:the\s+)?(.+)",
+        msg,
+        re.I,
+    )
+    if m:
+        dest = m.group(1).strip().rstrip("?.!")
+        if dest and len(dest) >= 2:
+            return {"kind": "place", "address": dest[:200], "label": dest}
+    m = re.search(r"(?:去|到)(.+?)(?:怎么走|怎么去|的路)", msg)
+    if m:
+        dest = m.group(1).strip()
+        if dest:
+            return {"kind": "place", "address": dest[:200], "label": dest}
+    if re.search(r"回家|go\s+home|get\s+home", low):
+        return {"kind": "home", "address": places.get("home"), "label": "home"}
+    return {"kind": "unknown", "address": None, "label": ""}
+
+
+def directions_missing_place_reply(lang, kind):
+    templates = {
+        "en": {
+            "home": "I don't have your home address yet — add it in ⚙️ Settings → Frequent Places.",
+            "work": "I don't have your work address yet — add it in ⚙️ Settings → Frequent Places.",
+            "unknown": "Where do you want to go? Save home/work in ⚙️ Settings → Frequent Places, or say \"directions to …\"",
+            "location": "I need your location for directions — allow location when prompted, then ask again.",
+        },
+        "zh": {
+            "home": "还没有你的家庭地址 — 请在 ⚙️ 设置 → 常去地点 里添加。",
+            "work": "还没有你的公司地址 — 请在 ⚙️ 设置 → 常去地点 里添加。",
+            "unknown": "你想去哪里？在 ⚙️ 设置 → 常去地点 保存家/公司，或者说「怎么去…」",
+            "location": "导航需要你的位置 — 请允许定位后再问一次。",
+        },
+    }
+    pack = templates.get(lang, templates["en"])
+    return pack.get(kind, pack["unknown"])
