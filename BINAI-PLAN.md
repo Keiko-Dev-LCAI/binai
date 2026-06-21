@@ -13,6 +13,7 @@
 |------|---------|
 | **`BINAI-BRIEFING.md`** | **Start here** — live status, priorities, who does what, session log, Claude paste block |
 | **`BINAI-PLAN.md`** (this file) | Full product plan — features, brainstorm, phases, architecture, open questions |
+| **`future_builds/binai.md`** | Claude memory node (started session 116) — sync with briefing; also in Claude app memory folder |
 
 **Rule:** End of every Binai session → update `BINAI-BRIEFING.md` (always) + sections here if plan changed → commit → push.
 

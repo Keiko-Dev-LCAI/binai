@@ -2,6 +2,8 @@
 **Last updated:** 2026-06-21 · **Session:** brainstorm + ecosystem connectors  
 **Read this first** every Binai session. Full product plan → `BINAI-PLAN.md` in this folder.
 
+**Started with Claude:** Session 116 (2026-06-18) — tagline, 6-phase build, UX improvements in `BINAI-PLAN.md`. Claude also keeps a memory node at `future_builds/binai.md` (see below).
+
 ---
 
 ## How to use these files
@@ -10,6 +12,13 @@
 |------|-----|------|
 | **`BINAI-BRIEFING.md`** (this file) | **Claude + Grok** | Start of every session — status, priorities, who does what |
 | **`BINAI-PLAN.md`** | **Claude + Grok** | Full spec — features, brainstorm, build phases, open questions |
+| **`future_builds/binai.md`** | **Claude** | Memory node — Claude auto-loads this; mirror of briefing summary |
+
+**Claude memory (same content, two copies — keep in sync):**
+- In repo: `~/Desktop/binai/future_builds/binai.md`
+- In Claude app: `~/.config/Claude/.../agent/memory/future_builds/binai.md`
+
+Also referenced in `~/Desktop/Importantant stuff/CLAUDE-MASTER-BRIEFING.md` and `GROK-BRIEFING.md`.
 
 ### Update protocol (end of every Binai session)
 
@@ -17,8 +26,9 @@ Whoever worked on Binai last (Grok or Claude) **must** before closing:
 
 1. Update **Last updated** date and **Session log** row in this file  
 2. Update **Current status** and **Next up** if anything changed  
-3. If brainstorm or phases shifted → edit matching section in `BINAI-PLAN.md`  
-4. Commit and push: `Keiko-Dev-LCAI/binai` (or tell Keiko to push)
+3. Sync **`future_builds/binai.md`** (repo + Claude memory copy)  
+4. If brainstorm or phases shifted → edit matching section in `BINAI-PLAN.md`  
+5. Commit and push: `Keiko-Dev-LCAI/binai` (or tell Keiko to push)
 
 **Keiko:** Paste this whole file (or the Claude block at the bottom) into a new Claude chat when coordinating Binai.
 
@@ -119,7 +129,10 @@ Checklist → `BINAI-PLAN.md` § Community Beta — Testing Status
 
 | Date | Who | What changed |
 |------|-----|----------------|
+| 2026-06-21 | Grok | Linked Claude's `future_builds/binai.md` to binai folder; synced memory node |
 | 2026-06-21 | Grok | Created `BINAI-BRIEFING.md`; full brainstorm in `BINAI-PLAN.md` (retention, camera, About Me, OrcaVault, LightTunes, app registry) |
+| 2026-06-18 | Claude | Session 116 — `BINAI-PLAN.md` major update (tagline, 6 phases, UX improvements, payment roadmap) |
+| 2026-06-20 | Claude | Session 134 — `binai.win` DNS → Railway live |
 | 2026-06-21 | Grok | Shipped About Me, reply length, setup wizard, mute, iPhone fix (commits through `18e5a03`) |
 | 2026-06-20 | — | Phase 1 community beta started; `binai.win` live on Railway |
 
@@ -130,7 +143,7 @@ Checklist → `BINAI-PLAN.md` § Community Beta — Testing Status
 ## Claude — paste this block
 
 ```
-Binai living docs: ~/Desktop/binai/BINAI-BRIEFING.md (status) + BINAI-PLAN.md (full spec)
+Binai living docs: ~/Desktop/binai/BINAI-BRIEFING.md (status) + BINAI-PLAN.md (full spec) + future_builds/binai.md (your memory node)
 Live: binai.win · TEST_MODE=true · Keiko pays AIVM, tester wallet = identity only
 Shipped: async chat, mute, setup wizard, reply length, About Me
 Brainstorm only: camera/Lens, retention buttons, OrcaVault Archives, LightTunes connectors
