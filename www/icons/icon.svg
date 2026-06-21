@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#12122a"/>
+      <stop offset="100%" stop-color="#0d0d1a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="35%" r="55%">
+      <stop offset="0%" stop-color="#9b7fe8" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#9b7fe8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="letter" x1="150" y1="110" x2="360" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#c4b0ff"/>
+      <stop offset="55%" stop-color="#9b7fe8"/>
+      <stop offset="100%" stop-color="#7b5fd4"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="108" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="108" fill="url(#glow)"/>
+  <path d="M168 136h88c58 0 94 30 94 78 0 30-14 54-40 66 34 12 54 38 54 74 0 52-42 86-108 86h-88V136zm72 118c32 0 50-14 50-38s-18-38-50-38h-28v76h28zm-28 132h36c38 0 58-18 58-46 0-28-20-46-58-46h-36v92z" fill="url(#letter)"/>
+  <circle cx="392" cy="372" r="22" fill="#e84b9a" opacity="0.95"/>
+  <circle cx="392" cy="372" r="34" fill="#9b7fe8" opacity="0.22"/>
+</svg>
