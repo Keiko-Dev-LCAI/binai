@@ -827,8 +827,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260621-3';</script>
-<script src="i18n-ui.js?v=20260621-3"></script>
+<script>window.BINAI_BUILD = '20260621-4';</script>
+<script src="i18n-ui.js?v=20260621-4"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -1481,6 +1481,23 @@ function appendLookupExtras(el, data, disclaimerKey) {
   if (!el || !data || !data.ok || !(data.links || []).length) return;
   const wrap = document.createElement('div');
   wrap.className = 'msg-visual';
+  if (data.hint) {
+    const hint = document.createElement('div');
+    hint.className = 'msg-visual-note';
+    hint.style.marginBottom = '4px';
+    if (data.hint_url) {
+      const a = document.createElement('a');
+      a.href = data.hint_url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = data.hint;
+      a.style.color = 'var(--text2)';
+      hint.appendChild(a);
+    } else {
+      hint.textContent = data.hint;
+    }
+    wrap.appendChild(hint);
+  }
   if (data.thumbnail) {
     const img = document.createElement('img');
     img.src = data.thumbnail;
@@ -1524,15 +1541,30 @@ async function maybeAttachLookups(userMsg, botEl) {
         .then(r => r.json()).then(d => ({ kind: 'video', d }))
     );
   }
+  if (isEverydayLookup(userMsg)) {
+    fetches.push(
+      fetch(API + '/api/everyday-lookup?' + new URLSearchParams({ message: userMsg, lang }))
+        .then(r => r.json()).then(d => ({ kind: 'everyday', d }))
+    );
+  }
   if (!fetches.length) return;
   try {
     const results = await Promise.all(fetches);
     for (const row of results) {
       if (!row.d.ok) continue;
       if (row.kind === 'video') appendLookupExtras(botEl, row.d, 'video_disclaimer');
+      else if (row.kind === 'everyday') appendLookupExtras(botEl, row.d, 'everyday_disclaimer');
       else appendLookupExtras(botEl, row.d, 'visual_disclaimer');
     }
   } catch (_) {}
+}
+function isEverydayLookup(msg) {
+  const m = (msg || '').trim();
+  if (!m || m.length > 220) return false;
+  if (isVisualLookup(m) || isVideoLookup(m)) return false;
+  if (/\b(remember|weather|time|look\s+like|video|youtube|picture|photo)\b|记住|视频|长什么样/.test(m)) return false;
+  return /\b(phone|number|address|hours|open|contact|nearest|closest|local|near\s+me|where\s+is|look\s+up|directions)\b/i.test(m)
+    || /电话|地址|营业|在哪|哪里|附近|邮编|查询/.test(m);
 }
 function isVideoLookup(msg) {
   const m = (msg || '').trim();

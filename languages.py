@@ -1117,3 +1117,123 @@ def extract_video_query(message):
 
 def is_video_lookup(message):
     return bool(extract_video_query(message))
+
+
+# ── Everyday lookup (phone, hours, address — Maps + search links) ──────────────
+
+_EVERYDAY_INTENT_PAT = re.compile(
+    r"\b(phone|number|address|hours|open|close|contact|call|directions|"
+    r"nearest|closest|local|near\s+me|zip|location|where\s+is|look\s+up)\b|"
+    r"电话|地址|营业|几点|开门|关门|在哪|哪里|附近|邮编|怎么去|查询",
+    re.I,
+)
+
+_EVERYDAY_EXTRACT_PATTERNS = [
+    re.compile(
+        r"(?:find|search|get|look\s+up)(?:\s+me)?\s+(?:the\s+)?(?:a\s+)?"
+        r"(?:phone\s+number|number|address|hours|location|contact(?:\s+info)?)"
+        r"(?:\s+(?:of|for))?\s*(?:the\s+)?(?:local\s+)?(.+)",
+        re.I,
+    ),
+    re.compile(
+        r"(?:what(?:'s| is)|where(?:'s| is))\s+(?:the\s+)?(.+?)(?:\s+'s)?\s*"
+        r"(?:phone|number|address|hours)",
+        re.I,
+    ),
+    re.compile(
+        r"(?:phone\s+number|contact\s+number|address|hours)\s+(?:of|for)\s*"
+        r"(?:the\s+)?(?:local\s+)?(.+)",
+        re.I,
+    ),
+    re.compile(r"(?:nearest|closest|local)\s+(.+)", re.I),
+    re.compile(
+        r"(?:how\s+do\s+i\s+(?:call|contact|reach|find))\s+(?:the\s+)?(.+)",
+        re.I,
+    ),
+    re.compile(r"(?:找|查)(?:一下|一个)?(?:附近)?(.+?)(?:的)?(?:电话|地址|位置)"),
+    re.compile(r"(?:附近)?(.+?)(?:的电话|电话多少|联系方式|地址|营业时间)"),
+    re.compile(r"(.+?)(?:在哪|在哪里|附近有)"),
+]
+
+_EVERYDAY_SKIP_PAT = re.compile(
+    r"\b(remember|remind|weather|time|price|lcai|lightchat|kuaishou|"
+    r"video|youtube|picture|photo|image|look\s+like)\b|记住|提醒|视频|图片|长什么样",
+    re.I,
+)
+
+_ZIP_PAT = re.compile(r"\b(\d{5}(?:-\d{4})?)\b")
+
+
+def _simplify_everyday_message(msg):
+    s = (msg or "").strip()
+    s = re.sub(r"^(?:find|search|get|look\s+up)(?:\s+me)?\s+", "", s, flags=re.I)
+    s = re.sub(r"^(?:what(?:'s| is)|where(?:'s| is)|how\s+do\s+i)\s+", "", s, flags=re.I)
+    return s.rstrip("?.!").strip()[:120]
+
+
+def _clean_everyday_query(raw, full_msg=""):
+    q = (raw or "").strip()
+    q = re.sub(r"^(?:找|查)(?:一下|一个)?", "", q)
+    q = re.sub(r"^(?:the|a|an|local|nearest|closest)\s+", "", q, flags=re.I)
+    q = re.sub(
+        r"\b(phone\s+number|phone|number|address|hours|contact)\b",
+        "",
+        q,
+        flags=re.I,
+    )
+    q = re.sub(r"(?:的)?(?:电话|地址|营业时间)$", "", q)
+    q = q.strip(" 的?")
+    if len(q) < 2:
+        q = _simplify_everyday_message(full_msg)
+    return q.strip()[:120]
+
+
+def everyday_search_query(query, message):
+    msg = message or ""
+    low = msg.lower()
+    base = (query or "").strip()
+    if not base:
+        return _simplify_everyday_message(message)
+    if re.search(r"\b(phone|number|call|contact)\b|电话|联系方式", msg, re.I):
+        if re.search(r"[\u4e00-\u9fff]", base):
+            return f"附近{base}电话" if "附近" not in base else f"{base}电话"
+        return f"{base} phone number"
+    if re.search(r"\b(hours|open|close)\b|营业|几点|开门", low):
+        if re.search(r"[\u4e00-\u9fff]", base):
+            return f"{base}营业时间"
+        return f"{base} hours"
+    if re.search(r"\b(address|location|directions|where)\b|地址|在哪|哪里", msg, re.I):
+        if re.search(r"[\u4e00-\u9fff]", base):
+            return f"{base}地址"
+        return f"{base} address"
+    if re.search(r"[\u4e00-\u9fff]", base):
+        return base
+    return base
+
+
+def extract_everyday_query(message):
+    msg = (message or "").strip()
+    if not msg or len(msg) > 220:
+        return None
+    if is_visual_lookup(msg) or is_video_lookup(msg):
+        return None
+    if is_booking_request(msg):
+        return None
+    if _EVERYDAY_SKIP_PAT.search(msg) or _VISUAL_SKIP_PAT.search(msg):
+        return None
+    if not _EVERYDAY_INTENT_PAT.search(msg):
+        return None
+    for pat in _EVERYDAY_EXTRACT_PATTERNS:
+        m = pat.search(msg)
+        if m:
+            q = _clean_everyday_query(m.group(1), msg)
+            if q and len(q) >= 2:
+                return q
+    simplified = _simplify_everyday_message(msg)
+    if simplified and len(simplified) >= 4 and _EVERYDAY_INTENT_PAT.search(msg):
+        return simplified
+    return None
+
+
+def is_everyday_lookup(message):
+    return bool(extract_everyday_query(message))
