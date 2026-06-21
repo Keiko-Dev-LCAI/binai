@@ -35,7 +35,7 @@ _test_flag = os.environ.get("TEST_MODE", "true").lower()
 TEST_MODE = _test_flag not in ("0", "false", "no", "off")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
-BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260621-2")
+BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260621-3")
 LIGHTCHAT_API = os.environ.get(
     "LIGHTCHAT_API", "https://web-production-bc64f.up.railway.app"
 ).rstrip("/")
@@ -1734,6 +1734,77 @@ def api_visual_lookup():
     if not message:
         return jsonify({"ok": False, "error": "message required"}), 400
     return jsonify(build_visual_lookup(message, lang))
+
+
+_video_cache = {}
+
+
+def _video_cache_get(key):
+    entry = _video_cache.get(key)
+    if entry and time.time() - entry["ts"] < _VISUAL_CACHE_TTL:
+        return entry["data"]
+    return None
+
+
+def _video_cache_set(key, data):
+    _video_cache[key] = {"ts": time.time(), "data": data}
+
+
+def build_video_lookup(message, lang="en"):
+    query = languages.extract_video_query(message)
+    if not query:
+        return {"ok": False, "reason": "not_video"}
+    lang = lang if lang in languages.LANG_NAMES else "en"
+    cache_key = f"{lang}:{query.lower()}"
+    cached = _video_cache_get(cache_key)
+    if cached:
+        return cached
+
+    encoded = url_quote(query)
+    if lang == "zh":
+        links = [
+            {
+                "kind": "bilibili",
+                "label_key": "video_search_bilibili",
+                "url": f"https://search.bilibili.com/all?keyword={encoded}",
+            },
+            {
+                "kind": "youtube",
+                "label_key": "video_search_youtube",
+                "url": f"https://www.youtube.com/results?search_query={encoded}",
+            },
+            {
+                "kind": "baidu",
+                "label_key": "video_search_baidu",
+                "url": f"https://www.baidu.com/sf/vsearch?pd=video&tn=vsearch&wd={encoded}",
+            },
+        ]
+    else:
+        links = [
+            {
+                "kind": "youtube",
+                "label_key": "video_search_youtube",
+                "url": f"https://www.youtube.com/results?search_query={encoded}",
+            },
+            {
+                "kind": "ddg",
+                "label_key": "video_search_ddg",
+                "url": f"https://duckduckgo.com/?q={encoded}&ia=videos&iax=videos",
+            },
+        ]
+
+    payload = {"ok": True, "query": query, "links": links}
+    _video_cache_set(cache_key, payload)
+    return payload
+
+
+@app.route("/api/video-lookup")
+def api_video_lookup():
+    message = (request.args.get("message") or request.args.get("q") or "").strip()
+    lang = (request.args.get("lang") or "en").strip().lower()
+    if not message:
+        return jsonify({"ok": False, "error": "message required"}), 400
+    return jsonify(build_video_lookup(message, lang))
 
 
 @app.route("/api/weather")

@@ -827,8 +827,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260621-2';</script>
-<script src="i18n-ui.js?v=20260621-2"></script>
+<script>window.BINAI_BUILD = '20260621-3';</script>
+<script src="i18n-ui.js?v=20260621-3"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -1477,7 +1477,7 @@ function isVisualLookup(msg) {
     || /长什么样|是什么样子|的样子|的图片|的照片/.test(m)
     || /^给我看/.test(m);
 }
-function appendVisualExtras(el, data) {
+function appendLookupExtras(el, data, disclaimerKey) {
   if (!el || !data || !data.ok || !(data.links || []).length) return;
   const wrap = document.createElement('div');
   wrap.className = 'msg-visual';
@@ -1503,21 +1503,43 @@ function appendVisualExtras(el, data) {
   wrap.appendChild(links);
   const note = document.createElement('div');
   note.className = 'msg-visual-note';
-  note.textContent = t('visual_disclaimer');
+  note.textContent = t(disclaimerKey || 'visual_disclaimer');
   wrap.appendChild(note);
   const actions = el.querySelector('.msg-actions');
   if (actions) el.insertBefore(wrap, actions);
   else el.appendChild(wrap);
 }
-async function maybeAttachVisualLookup(userMsg, botEl) {
-  if (!isVisualLookup(userMsg)) return;
+async function maybeAttachLookups(userMsg, botEl) {
+  const lang = currentLang();
+  const fetches = [];
+  if (isVisualLookup(userMsg)) {
+    fetches.push(
+      fetch(API + '/api/visual-lookup?' + new URLSearchParams({ message: userMsg, lang }))
+        .then(r => r.json()).then(d => ({ kind: 'visual', d }))
+    );
+  }
+  if (isVideoLookup(userMsg)) {
+    fetches.push(
+      fetch(API + '/api/video-lookup?' + new URLSearchParams({ message: userMsg, lang }))
+        .then(r => r.json()).then(d => ({ kind: 'video', d }))
+    );
+  }
+  if (!fetches.length) return;
   try {
-    const r = await fetch(API + '/api/visual-lookup?' + new URLSearchParams({
-      message: userMsg, lang: currentLang(),
-    }));
-    const d = await r.json();
-    if (d.ok) appendVisualExtras(botEl, d);
+    const results = await Promise.all(fetches);
+    for (const row of results) {
+      if (!row.d.ok) continue;
+      if (row.kind === 'video') appendLookupExtras(botEl, row.d, 'video_disclaimer');
+      else appendLookupExtras(botEl, row.d, 'visual_disclaimer');
+    }
   } catch (_) {}
+}
+function isVideoLookup(msg) {
+  const m = (msg || '').trim();
+  if (!m || m.length > 200) return false;
+  if (/video\s+call|call\s+.+\s+(?:on\s+)?lightchat|视频通话|打电话给/i.test(m)) return false;
+  return /\b(video|videos|youtube|clip|watch|play|bilibili|mv)\b/i.test(m)
+    || /视频|影片|播放|哔哩/.test(m);
 }
 let lastUserMsg = '';
 async function loadChatHistory() {
@@ -1736,7 +1758,7 @@ async function sendChat() {
         } else {
           think.remove();
           const replyEl = addBotMsg(result.reply);
-          maybeAttachVisualLookup(msg, replyEl);
+          maybeAttachLookups(msg, replyEl);
           speak(result.reply);
           updateUsage(result);
           loadMemories();
@@ -1744,7 +1766,7 @@ async function sendChat() {
       } else if (d.reply) {
         think.remove();
         const replyEl = addBotMsg(d.reply);
-        maybeAttachVisualLookup(msg, replyEl);
+        maybeAttachLookups(msg, replyEl);
         speak(d.reply);
         updateUsage(d);
         loadMemories();

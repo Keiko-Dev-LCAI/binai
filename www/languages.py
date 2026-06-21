@@ -1052,3 +1052,68 @@ def extract_visual_query(message):
 
 def is_visual_lookup(message):
     return bool(extract_visual_query(message))
+
+
+# ── Video lookup (free YouTube / Bilibili / search deep links) ─────────────────
+
+_VIDEO_EXTRACT_PATTERNS = [
+    re.compile(
+        r"(?:find|search|get)(?:\s+me)?\s+(?:a\s+)?(?:youtube\s+)?videos?\s+(?:of|about|for)\s+(.+)",
+        re.I,
+    ),
+    re.compile(
+        r"(?:play|watch|show)(?:\s+me)?\s+(?:a\s+)?(?:youtube\s+)?videos?\s+(?:of|about|for)?\s*(.+)",
+        re.I,
+    ),
+    re.compile(
+        r"(?:find|search)(?:\s+me)?\s+(?:a\s+)?(.+?)\s+(?:on\s+)?youtube",
+        re.I,
+    ),
+    re.compile(
+        r"(?:play|watch|show)(?:\s+me)?\s+(.+?)\s+(?:on\s+)?youtube",
+        re.I,
+    ),
+    re.compile(r"(.+?)\s+(?:youtube\s+)?videos?[\s?.!]*$", re.I),
+    re.compile(r"(?:找|搜索|播放|看)(?:一下|一个)?(.+?)(?:的)?(?:视频|影片)"),
+    re.compile(r"(.+?)(?:的视频|影片)"),
+]
+
+_VIDEO_SKIP_PAT = re.compile(
+    r"\b(remember|remind|weather|time|price|lcai|lightchat|kuaishou|"
+    r"video\s+call|call\s+.+\s+on)\b|记住|提醒|视频通话|打电话",
+    re.I,
+)
+
+
+def _clean_video_query(raw):
+    q = _clean_visual_query(raw)
+    q = re.sub(r"\b(on\s+)?youtube\b", "", q, flags=re.I)
+    q = re.sub(r"\b(bilibili|b站|快手|kuaishou)\b", "", q, flags=re.I)
+    q = re.sub(r"\b(video|videos|clip|clips|mv|music\s+video)\b", "", q, flags=re.I)
+    q = re.sub(r"(视频|影片)", "", q)
+    return q.strip()[:120]
+
+
+def extract_video_query(message):
+    msg = (message or "").strip()
+    if not msg or len(msg) > 200:
+        return None
+    if _VIDEO_SKIP_PAT.search(msg):
+        return None
+    if not re.search(
+        r"\b(video|videos|youtube|clip|watch|play|bilibili|mv)\b|视频|影片|播放|哔哩",
+        msg,
+        re.I,
+    ):
+        return None
+    for pat in _VIDEO_EXTRACT_PATTERNS:
+        m = pat.search(msg)
+        if m:
+            q = _clean_video_query(m.group(1))
+            if q and len(q) >= 2:
+                return q
+    return None
+
+
+def is_video_lookup(message):
+    return bool(extract_video_query(message))
