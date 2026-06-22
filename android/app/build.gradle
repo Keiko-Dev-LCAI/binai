@@ -16,10 +16,19 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            storeFile file("orcaguard-release.jks")
+            storePassword System.getenv("KEYSTORE_PASSWORD") ?: "changeme"
+            keyAlias "orcaguard"
+            keyPassword System.getenv("KEY_PASSWORD") ?: "changeme"
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
 }
