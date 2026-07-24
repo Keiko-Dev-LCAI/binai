@@ -5,6 +5,10 @@ window.BINAI_I18N = {
     nav_reminders: '⏰ Reminders', nav_memory: '🧠 Memory', nav_aboutme: '👤 About Me',
     nav_settings: '⚙️ Settings', tab_brief: '🌅 Brief', tab_remind: '⏰ Remind', tab_about: '👤 Me',
     connect_wallet: 'Connect wallet', beta_unlimited: 'Beta — unlimited',
+    log_off: '🚪 Log off',
+    logged_off: 'You are logged off. Enter your PIN (or connect wallet) to continue 💜',
+    wallet_locked: '🔒 Locked',
+    pin_skip_confirm: 'Skip PIN? Anyone with this phone can open Binai for this wallet. Set a PIN for better safety.',
     sidebar_tagline: 'The AI that remembers you — powered by Lightchain AIVM.',
     disclaimer: 'Disclaimer: Binai is beta software provided as-is. AI responses are not professional advice. The service may go offline or be discontinued at any time. No refunds.',
     beta_banner: '🧪 Community beta — everyone gets unlimited AI for testing',
@@ -216,6 +220,10 @@ window.BINAI_I18N = {
     tab_about: '👤 我',
     tab_brief: '🌅 简报', tab_remind: '⏰ 提醒',
     connect_wallet: '连接钱包', beta_unlimited: '测试版 — 无限使用',
+    log_off: '🚪 退出登录',
+    logged_off: '已退出。输入 PIN（或连接钱包）继续 💜',
+    wallet_locked: '🔒 已锁定',
+    pin_skip_confirm: '跳过 PIN？任何拿到此手机的人都能打开此钱包的 Binai。建议设置 PIN。',
     sidebar_tagline: '记住你的 AI 助手 — 由 Lightchain AIVM 驱动。',
     disclaimer: '免责声明：Binai 为测试版软件，按原样提供。AI 回复不构成专业建议。服务可能随时下线或终止。不退款。',
     beta_banner: '🧪 社区测试版 — 测试期间所有人无限使用 AI',
@@ -535,6 +543,7 @@ window.applyI18n = function() {
   set('settingsDataTitle', 'data_title');
   set('settingsDataSub', 'data_sub');
   set('settingsPinBtn', 'pin_btn');
+  set('settingsLogOffBtn', 'log_off');
   set('settingsSwitchWallet', 'switch_wallet');
   set('settingsExportBtn', 'export_data');
   set('settingsDeleteBtn', 'delete_data');

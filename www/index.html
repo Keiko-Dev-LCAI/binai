@@ -223,13 +223,28 @@ body::before {
   margin: auto 0 8px; padding: 8px 0;
 }
 .prompt-card {
-  background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
-  padding: 16px; cursor: pointer; text-align: left; transition: border-color 0.15s, background 0.15s;
+  background: linear-gradient(160deg, #1e1e42 0%, #161632 100%);
+  border: 1px solid rgba(155,127,232,0.40);
+  border-radius: 14px;
+  padding: 16px; cursor: pointer; text-align: left;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  color: #f4f4ff;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
 }
-.prompt-card:hover { border-color: var(--purple); background: var(--purple-glow); }
-.prompt-card .prompt-icon { font-size: 22px; margin-bottom: 8px; }
-.prompt-card .prompt-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
-.prompt-card .prompt-desc { color: var(--text2); font-size: 13px; line-height: 1.4; }
+.prompt-card:hover {
+  border-color: var(--purple);
+  background: linear-gradient(160deg, #2a2458 0%, #1c1a40 100%);
+  box-shadow: 0 4px 16px rgba(155,127,232,0.2);
+}
+.prompt-card .prompt-icon { font-size: 22px; margin-bottom: 8px; display: block; }
+.prompt-card .prompt-title {
+  font-weight: 800; font-size: 15px; margin-bottom: 6px;
+  color: #ffffff; letter-spacing: 0.01em;
+}
+.prompt-card .prompt-desc {
+  color: #c8c8e8; font-size: 13px; line-height: 1.45;
+  font-weight: 500;
+}
 .chat-footer { flex-shrink: 0; margin-top: auto; padding-top: 8px; }
 .chat-hint { color: var(--text2); font-size: 14px; margin-top: 10px; line-height: 1.45; }
 .beta-banner {
@@ -568,6 +583,7 @@ body::before {
       <div class="card-title" id="settingsDataTitle">Your data</div>
       <div class="card-sub" id="settingsDataSub">Wallet = your account. PIN is tied to your wallet on this device — each wallet has its own.</div>
       <button class="btn btn-ghost" id="settingsPinBtn" style="margin-top:10px;width:100%" onclick="openPinSetupModal(true)">🔒 Set or change PIN</button>
+      <button class="btn btn-primary" id="settingsLogOffBtn" style="margin-top:8px;width:100%" onclick="logOff()">🚪 Log off</button>
       <button class="btn btn-ghost" id="settingsSwitchWallet" style="margin-top:8px;width:100%" onclick="switchWallet()">🔄 Switch wallet (first-time setup again)</button>
       <button class="btn btn-ghost" id="settingsExportBtn" style="margin-top:8px;width:100%" onclick="exportMyData()">⬇️ Export my data</button>
       <button class="btn btn-ghost" id="settingsDeleteBtn" style="margin-top:8px;width:100%;color:var(--red)" onclick="deleteMyData()">🗑️ Delete all my data</button>
@@ -847,8 +863,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-2';</script>
-<script src="i18n-ui.js?v=20260724-2"></script>
+<script>window.BINAI_BUILD = '20260724-3';</script>
+<script src="i18n-ui.js?v=20260724-3"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -991,8 +1007,30 @@ function hidePrompts() {
   if (g) g.style.display = 'none';
 }
 function usePrompt(text) {
+  if (!requireWalletReady()) return;
   document.getElementById('chatInput').value = text;
   sendChat();
+}
+/** True only when wallet is saved AND (no PIN required OR session unlocked). */
+function isWalletReady() {
+  const w = (wallet || localStorage.getItem('binai_wallet') || '').toLowerCase();
+  if (!isValidWallet(w)) return false;
+  const pin = getWalletPin(w);
+  if (pin && !isSessionUnlocked(w)) return false;
+  return true;
+}
+/** Block chat/features until wallet setup (and PIN unlock) is complete. */
+function requireWalletReady() {
+  const w = (wallet || localStorage.getItem('binai_wallet') || '').toLowerCase();
+  if (!isValidWallet(w)) {
+    if (localStorage.getItem('binai_onboarded')) setupWalletFirstTime();
+    else initOnboarding();
+    if (typeof t === 'function') addBotMsg(t('finish_wallet'));
+    return false;
+  }
+  wallet = w;
+  if (!checkPinGate(w)) return false;
+  return true;
 }
 
 // ── Language ─────────────────────────────────────────────────────────────────
@@ -1312,7 +1350,41 @@ function switchWallet() {
   provider = null;
   localStorage.removeItem('binai_wallet');
   clearChat();
+  updateWalletPills();
   setupWalletFirstTime();
+}
+/** Log off: keep wallet+PIN on device, lock session — must unlock with PIN (or re-connect if no PIN). */
+function logOff() {
+  const w = (wallet || localStorage.getItem('binai_wallet') || '').toLowerCase();
+  if (isValidWallet(w)) clearSessionUnlocked(w);
+  provider = null;
+  clearChat();
+  // Clear visible session data from panels
+  const mem = document.getElementById('insightMemory');
+  if (mem) mem.textContent = (typeof t === 'function' ? t('insight_connect_mem') : 'Connect wallet to see what Binai remembers.');
+  const lc = document.getElementById('insightLightchat');
+  if (lc) lc.textContent = (typeof t === 'function' ? t('insight_lc_connect') : 'Connect wallet to see messages.');
+  if (isValidWallet(w)) {
+    wallet = w;
+    updateWalletPills();
+    if (getWalletPin(w)) {
+      showPinUnlock();
+    } else {
+      // No PIN set — force re-confirm wallet so refresh cannot leave you half-in
+      openWalletSetupModal();
+    }
+  } else {
+    wallet = '';
+    updateWalletPills();
+    setupWalletFirstTime();
+  }
+  if (typeof t === 'function') {
+    // brief note after UI clears
+    setTimeout(() => {
+      if (!document.getElementById('chatMessages')?.querySelector('.msg'))
+        addBotMsg(t('logged_off'));
+    }, 50);
+  }
 }
 
 function openPinSetupModal(fromSettings) {
@@ -1362,7 +1434,11 @@ async function savePinSetup() {
   await completeWalletSession();
 }
 async function skipPinSetup() {
+  // PIN strongly recommended — still allow skip but do not leave session half-open on next refresh
   if (!isValidWallet(wallet)) return;
+  if (!confirm((typeof t === 'function' ? t('pin_skip_confirm') : 'Skip PIN? Anyone with this phone can open Binai for this wallet. Set a PIN for better safety.'))) {
+    return;
+  }
   closePinSetupModal();
   setSessionUnlocked(wallet);
   await completeWalletSession();
@@ -1411,11 +1487,21 @@ function hidePrivacy() { document.getElementById('privacyOverlay').classList.add
 
 // ── Wallet ───────────────────────────────────────────────────────────────────
 function updateWalletPills() {
-  if (!wallet) return;
-  const wp = wallet.slice(0,6) + '…' + wallet.slice(-4);
-  document.getElementById('walletPill').textContent = wp;
+  const w = (wallet || localStorage.getItem('binai_wallet') || '').toLowerCase();
+  const pill = document.getElementById('walletPill');
   const wps = document.getElementById('walletPillSide');
-  if (wps) wps.textContent = wp;
+  if (!isValidWallet(w)) {
+    if (pill) pill.textContent = (typeof t === 'function' ? t('connect_wallet') : 'Connect wallet');
+    if (wps) wps.textContent = (typeof t === 'function' ? t('connect_wallet') : 'Connect wallet');
+    return;
+  }
+  const short = w.slice(0, 6) + '…' + w.slice(-4);
+  const locked = !!getWalletPin(w) && !isSessionUnlocked(w);
+  const label = locked
+    ? ((typeof t === 'function' ? t('wallet_locked') : '🔒 Locked') + ' · ' + short)
+    : short;
+  if (pill) pill.textContent = label;
+  if (wps) wps.textContent = label;
 }
 async function restoreSession() {
   if (!wallet) return;
@@ -2241,7 +2327,7 @@ async function tryInstantChatReply(msg) {
 }
 let thinkTimer = null;
 async function sendChat() {
-  if (!wallet) { connectWallet(); return; }
+  if (!requireWalletReady()) return;
   const input = document.getElementById('chatInput');
   const msg = input.value.trim();
   if (!msg) return;
@@ -3067,11 +3153,17 @@ async function boot() {
   startApp();
   const saved = localStorage.getItem('binai_wallet') || '';
   if (!isValidWallet(saved)) {
-    if (localStorage.getItem('binai_onboarded') && !document.getElementById('chatMessages').querySelector('.msg'))
-      addBotMsg(t('finish_wallet'));
+    // Do NOT leave main chat usable without wallet — refresh mid-setup used to bypass the modal
+    if (localStorage.getItem('binai_onboarded')) {
+      if (!document.getElementById('chatMessages').querySelector('.msg'))
+        addBotMsg(t('finish_wallet'));
+      setupWalletFirstTime();
+    }
+    updateWalletPills();
     return;
   }
   wallet = saved.toLowerCase();
+  updateWalletPills();
   if (!checkPinGate()) return;
   await restoreSession();
 }
