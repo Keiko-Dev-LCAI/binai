@@ -1172,8 +1172,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-22';</script>
-<script src="i18n-ui.js?v=20260724-22"></script>
+<script>window.BINAI_BUILD = '20260724-23';</script>
+<script src="i18n-ui.js?v=20260724-23"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -4077,17 +4077,33 @@ window.refreshCalendar = refreshCalendar;
 function isCalendarQuery(msg) {
   const m = String(msg || '').trim().toLowerCase();
   if (!m) return false;
-  if (/\b(what('?s| is)|show|list|see)\b.*\b(calendar|schedule|agenda)\b/.test(m)) return true;
+  const calWord = '(calendar|calandar|calender|schedule|agenda)';
+  if (new RegExp(`\\b(what('?s| is)|show|list|see)\\b.*\\b${calWord}\\b`).test(m)) return true;
   if (/\b(on my calendar|my schedule|what do i have)\b/.test(m)) return true;
-  if (/\b(add|schedule|set|create)\b.+\b(calendar|reminder|appointment|event)\b/.test(m)) return true;
+  if (new RegExp(`\\b(add|schedule|set|create|put|save)\\b.+\\b${calWord}\\b`).test(m)) return true;
+  if (new RegExp(`\\b${calWord}\\b`).test(m) && /\b(add|birthday|anniversary|event|appointment)\b/.test(m)) return true;
+  if (/\bbirthday\b/.test(m) && /\b(add|schedule|put|save|remind)\b/.test(m)) return true;
   if (/\b(remind me|reminder)\b/.test(m)) return true;
   if (/\b(add|schedule)\b.+\b(tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}(:\d{2})?\s*(am|pm)?)\b/.test(m)) return true;
-  if (/\b(cancel|delete|remove)\b.+\b(reminder|event|appointment|meeting)\b/.test(m)) return true;
-  if (/\b(move|reschedule|change)\b.+\b(to|at)\b/.test(m) && /\b(reminder|event|appointment|meeting|calendar)\b/.test(m)) return true;
+  // date-only adds: "add … 1 december" / "add … december 1"
+  if (/\b(add|schedule|create|put|save)\b/.test(m) && (
+    /\b\d{1,2}(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december)\b/.test(m)
+    || /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?\b/.test(m)
+  )) return true;
+  if (/\b(cancel|delete|remove)\b.+\b(reminder|event|appointment|meeting|birthday)\b/.test(m)) return true;
+  if (/\b(move|reschedule|change)\b.+\b(to|at)\b/.test(m) && /\b(reminder|event|appointment|meeting|calendar|birthday)\b/.test(m)) return true;
   if (/\b(move|reschedule)\b.+\b(to\s+)?(\d{1,2}(:\d{2})?\s*(am|pm)|tomorrow|monday|tuesday|wednesday|thursday|friday)\b/.test(m)) return true;
-  if (/打开日历|看日历|我的日程|添加日程|提醒我/.test(msg)) return true;
+  if (/打开日历|看日历|我的日程|添加日程|提醒我|生日/.test(msg)) return true;
   return false;
 }
+
+const CAL_MONTHS = {
+  january: 0, jan: 0, february: 1, feb: 1, march: 2, mar: 2,
+  april: 3, apr: 3, may: 4, june: 5, jun: 5, july: 6, jul: 6,
+  august: 7, aug: 7, september: 8, sept: 8, sep: 8,
+  october: 9, oct: 9, november: 10, nov: 10, december: 11, dec: 11,
+};
+const CAL_MONTH_RE = 'january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept|sep|oct|nov|dec';
 
 function parseClockInText(text) {
   const m = String(text || '').match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i)
@@ -4113,11 +4129,13 @@ function nextWeekday(name, fromDate) {
   d.setDate(d.getDate() + add);
   return d;
 }
+/** Parse date/time from chat. Returns { due_at, all_day } or null. Date-only → all-day (no time required). */
 function parseWhenFromText(text) {
-  const raw = String(text || '');
-  const lower = raw.toLowerCase();
+  const lower = String(text || '').toLowerCase();
   const clock = parseClockInText(lower);
   let day = null;
+  let yearSpecified = false;
+
   if (/\btoday\b/.test(lower)) {
     day = new Date();
   } else if (/\btomorrow\b/.test(lower)) {
@@ -4127,34 +4145,88 @@ function parseWhenFromText(text) {
     const wd = lower.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
     if (wd) day = nextWeekday(wd[1], new Date());
   }
+
   const iso = lower.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
-  if (iso) day = new Date(+iso[1], +iso[2] - 1, +iso[3], 12, 0, 0, 0);
+  if (iso) {
+    day = new Date(+iso[1], +iso[2] - 1, +iso[3], 12, 0, 0, 0);
+    yearSpecified = true;
+  }
+
+  // 1 december / 1st December 2026
+  const dmy = lower.match(new RegExp(
+    `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${CAL_MONTH_RE})(?:\\s*,?\\s*(20\\d{2}))?\\b`
+  ));
+  if (dmy) {
+    const dom = parseInt(dmy[1], 10);
+    const mon = CAL_MONTHS[dmy[2]];
+    const y = dmy[3] ? parseInt(dmy[3], 10) : new Date().getFullYear();
+    if (mon != null && dom >= 1 && dom <= 31) {
+      day = new Date(y, mon, dom, 12, 0, 0, 0);
+      yearSpecified = !!dmy[3];
+    }
+  }
+
+  // December 1 / December 1st, 2026
+  const mdy = lower.match(new RegExp(
+    `\\b(${CAL_MONTH_RE})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:\\s*,?\\s*(20\\d{2}))?\\b`
+  ));
+  if (!day && mdy) {
+    const mon = CAL_MONTHS[mdy[1]];
+    const dom = parseInt(mdy[2], 10);
+    const y = mdy[3] ? parseInt(mdy[3], 10) : new Date().getFullYear();
+    if (mon != null && dom >= 1 && dom <= 31) {
+      day = new Date(y, mon, dom, 12, 0, 0, 0);
+      yearSpecified = !!mdy[3];
+    }
+  }
+
   const md = lower.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(20\d{2}))?\b/);
   if (!day && md) {
     const y = md[3] ? +md[3] : new Date().getFullYear();
+    yearSpecified = !!md[3];
     day = new Date(y, +md[1] - 1, +md[2], 12, 0, 0, 0);
   }
+
   if (!day && clock) day = new Date(); // time only → today
   if (!day) return null;
-  const h = clock ? clock.h : 9;
-  const min = clock ? clock.min : 0;
-  day.setHours(h, min, 0, 0);
-  // if time already passed today for "today"/default, keep as-is (user intent)
-  return Math.floor(day.getTime() / 1000);
+
+  // Date-only past this year (e.g. birthday in Dec when it's July → this year; if already passed → next year)
+  if (!yearSpecified && !clock) {
+    const startToday = new Date();
+    startToday.setHours(0, 0, 0, 0);
+    const cand = new Date(day);
+    cand.setHours(0, 0, 0, 0);
+    if (cand < startToday) {
+      day.setFullYear(day.getFullYear() + 1);
+    }
+  }
+
+  const all_day = !clock;
+  if (clock) day.setHours(clock.h, clock.min, 0, 0);
+  else day.setHours(0, 0, 0, 0);
+
+  return { due_at: Math.floor(day.getTime() / 1000), all_day };
 }
 function extractEventTitle(text) {
   let t = String(text || '').trim();
   t = t.replace(/^(please\s+)?(can you|could you|would you)\s+/i, '');
-  t = t.replace(/^(add|schedule|create|set)\s+(a\s+|an\s+)?/i, '');
+  t = t.replace(/^(add|schedule|create|set|put|save)\s+(a\s+|an\s+)?/i, '');
   t = t.replace(/^(remind me to|remind me|reminder to|reminder:?)\s+/i, '');
-  t = t.replace(/\s+(to|on|in)\s+(my\s+)?(calendar|schedule)\s*/i, ' ');
+  t = t.replace(/\s+(to|on|in)\s+(my\s+)?(calendar|calandar|calender|schedule)\s*/gi, ' ');
   t = t.replace(/\b(appointment|event|reminder|meeting)\b/gi, ' ');
   // strip when phrases
   t = t.replace(/\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, ' ');
+  t = t.replace(new RegExp(
+    `\\b(\\d{1,2}(?:st|nd|rd|th)?\\s+(?:${CAL_MONTH_RE})|(?:${CAL_MONTH_RE})\\s+\\d{1,2}(?:st|nd|rd|th)?)(?:\\s*,?\\s*20\\d{2})?\\b`,
+    'gi'
+  ), ' ');
   t = t.replace(/\b(20\d{2}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}(?:\/20\d{2})?)\b/g, ' ');
-  t = t.replace(/\b\d{1,2}(?::\d{2})?\s*(am|pm)?\b/gi, ' ');
+  t = t.replace(/\b\d{1,2}(?::\d{2})?\s*(am|pm)\b/gi, ' ');
+  t = t.replace(/\b\d{1,2}:\d{2}\b/g, ' ');
   t = t.replace(/\b(at|on|for|to|the|a|an)\b/gi, ' ');
   t = t.replace(/\s+/g, ' ').trim();
+  // "my wife sherrys birthday" → tidy possessive
+  t = t.replace(/\bsherrys\b/gi, "Sherry's");
   return t.slice(0, 200);
 }
 function extractTargetName(text) {
@@ -4226,8 +4298,8 @@ async function tryCalendarChatAction(msg) {
     let name = extractTargetName(msg);
     // "move dentist to 4pm" → extractTargetName may leave "dentist"
     name = name.replace(/\bto\b.*$/i, '').trim();
-    if (!when) {
-      return { reply: 'When should I move it to? e.g. “move dentist to tomorrow 4pm”.' };
+    if (!when || !when.due_at) {
+      return { reply: 'When should I move it to? e.g. “move dentist to tomorrow 4pm” or “move birthday to December 1”.' };
     }
     if (!name || name.length < 2) {
       return { reply: 'Which event? e.g. “move dentist to Friday 2pm”.' };
@@ -4239,41 +4311,52 @@ async function tryCalendarChatAction(msg) {
     }
     await fetch(API + '/api/reminders/' + wallet + '/' + hit.id, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ due_at: when }),
+      body: JSON.stringify({ due_at: when.due_at, all_day: when.all_day ? 1 : 0 }),
     });
     if (typeof refreshCalendar === 'function') try { await refreshCalendar(); } catch (_) {}
     loadReminders();
-    const whenStr = new Date(when * 1000).toLocaleString();
+    const whenStr = when.all_day
+      ? new Date(when.due_at * 1000).toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })
+      : new Date(when.due_at * 1000).toLocaleString();
     return { reply: `Moved “${hit.content}” to ${whenStr}.` };
   }
 
-  // Add / schedule / remind me
-  if (/\b(add|schedule|create|set|remind me|reminder)\b/.test(lower)
+  // Add / schedule / remind me / birthday (date-only OK)
+  if (/\b(add|schedule|create|set|put|save|remind me|reminder|birthday)\b/.test(lower)
       || (/\b(tomorrow|today|monday|tuesday|wednesday|thursday|friday)\b/.test(lower)
-          && parseClockInText(lower))) {
+          && parseClockInText(lower))
+      || parseWhenFromText(msg)) {
     const when = parseWhenFromText(msg);
     let title = extractEventTitle(msg);
     if (!title || title.length < 2) {
-      return { reply: 'What should I add? e.g. “add dentist tomorrow 3pm”.' };
+      return { reply: 'What should I add? e.g. “add dentist tomorrow 3pm” or “add Sherry birthday 1 December”.' };
     }
-    if (!when) {
-      return { reply: `I need a day/time for “${title}”. e.g. “add ${title} tomorrow 3pm”.` };
+    if (!when || !when.due_at) {
+      return { reply: `I need a date for “${title}”. e.g. “add ${title} 1 December” or “add ${title} tomorrow 3pm”.` };
     }
     const res = await fetch(API + '/api/reminders/' + wallet, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: title, due_at: when }),
+      body: JSON.stringify({
+        content: title,
+        due_at: when.due_at,
+        all_day: when.all_day ? 1 : 0,
+      }),
     });
     const data = await res.json().catch(() => ({}));
-    if (localStorage.getItem('binai_notif') === '1')
-      scheduleReminderNotif(data.id || Date.now(), title, when);
+    if (!when.all_day && localStorage.getItem('binai_notif') === '1')
+      scheduleReminderNotif(data.id || Date.now(), title, when.due_at);
     if (typeof refreshCalendar === 'function') try { await refreshCalendar(); } catch (_) {}
     loadReminders();
-    const whenStr = new Date(when * 1000).toLocaleString();
-    return { reply: `Added “${title}” on ${whenStr}. Open 📅 Calendar to see day/week/month.` };
+    const whenStr = when.all_day
+      ? new Date(when.due_at * 1000).toLocaleDateString(undefined, {
+          weekday: 'short', month: 'long', day: 'numeric', year: 'numeric',
+        }) + ' (all day)'
+      : new Date(when.due_at * 1000).toLocaleString();
+    return { reply: `Added “${title}” on ${whenStr}. Open 📅 Calendar to see it.` };
   }
 
   return {
-    reply: 'Calendar tips: “show my calendar”, “add dentist Tuesday 3pm”, “move dentist to 4pm”, “cancel dentist”. Or open 📅 Calendar.',
+    reply: 'Calendar tips: “show my calendar”, “add Sherry birthday 1 December”, “add dentist Tuesday 3pm”, “cancel dentist”. Or open 📅 Calendar.',
   };
 }
 
