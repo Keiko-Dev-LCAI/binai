@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "apps": [
     {
       "id": "lightchat",
@@ -28,22 +28,7 @@
           "deep_link": "https://lightchat.chat?call={handle}"
         }
       ]
-    },
-    {
-      "id": "kuaishou",
-      "name": "Kuaishou",
-      "name_zh": "快手",
-      "url": "https://www.kuaishou.com",
-      "icon": "📱",
-      "enabled_by_default": true,
-      "actions": [
-        {
-          "id": "open",
-          "label": "Open Kuaishou",
-          "label_zh": "打开快手",
-          "deep_link": "https://www.kuaishou.com"
-        }
-      ]
     }
-  ]
+  ],
+  "notes": "Personal shortcuts (TikTok, YouTube, 快手, etc.) are user-added under Settings → Quick action shortcuts — not global defaults."
 }

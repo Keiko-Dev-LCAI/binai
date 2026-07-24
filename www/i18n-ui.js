@@ -21,27 +21,33 @@ window.BINAI_I18N = {
     prompt4_title: 'Plan my day', prompt4_desc: 'Get a friendly start-of-day nudge',
     chat_placeholder: 'Talk to {name}…', send: 'Send',
     catch_up_btn: '☀️ Catch Me Up', catch_up_err: 'Could not load catch-up.',
-    lightchat_btn: '💬 Messages', kuaishou_btn: '📱 快手',
+    lightchat_btn: '💬 Messages',
     settings_connected_title: 'Connected apps',
-    settings_connected_sub: 'Binai can read LightChat and open 快手 — same wallet everywhere.',
+    settings_connected_sub: 'LightChat is built-in. Add your own Quick Action links below (TikTok, YouTube, etc.).',
     lightchat_enabled_label: 'LightChat — show messages & memories in Catch Me Up',
     lightchat_memories_label: 'Show friend Memories feed',
     lightchat_handle_label: 'Primary contact @handle (e.g. spouse)',
     settings_lc_open: '💬 Open LightChat', settings_lc_call: '📹 Video call',
-    kuaishou_enabled_label: '快手 — open app & remember shared links',
-    settings_ks_open: '📱 Open Kuaishou',
+    settings_shortcuts_title: 'Quick action shortcuts',
+    settings_shortcuts_sub: 'Personal links only you see — TikTok, YouTube, 快手, anything. Empty by default.',
+    settings_shortcuts_presets: 'Quick add',
+    qa_label_ph: 'Label (e.g. TikTok)',
+    qa_url_ph: 'https://…',
+    qa_add: '➕ Add shortcut',
+    qa_empty: 'No personal shortcuts yet.',
+    qa_need_both: 'Need a label and a valid https link.',
+    qa_dup: 'That link is already added.',
+    qa_max: 'Max 8 shortcuts.',
     insight_lc_title: 'LightChat', insight_lc_connect: 'Connect wallet to see messages.',
     insight_lc_loading: 'Checking LightChat…', insight_lc_off: 'LightChat connector off in Settings.',
     insight_lc_clear: 'No new LightChat messages.', insight_lc_unread: '{n} new message(s)',
-    insight_lc_btn: '💬 LightChat', insight_ks_btn: '📱 快手',
+    insight_lc_btn: '💬 LightChat',
     welcome_lightchat: '💬 LightChat from {handle}: {preview}',
     connector_open_lightchat: 'Opening LightChat 💬 — same wallet as Binai.',
     connector_call_lightchat: 'Starting video call to {handle} on LightChat 📹',
-    connector_open_kuaishou: 'Opening 快手 in a new tab 📱',
     connector_lc_unread: 'LightChat messages waiting: {items}',
     connector_lc_memories: 'Recent friend memories: {items}',
     connector_lc_clear: 'No new LightChat messages since you last checked.',
-    connector_kuaishou_saved: 'Got it — I saved that 快手 link to your memories 🧠',
     visual_more_images: '🖼️ More pictures',
     visual_search_web: '🔍 Search the web',
     visual_wikipedia: '📖 Wikipedia',
@@ -226,27 +232,33 @@ window.BINAI_I18N = {
     prompt4_title: '规划今天', prompt4_desc: '友好的一天开始建议',
     chat_placeholder: '和 {name} 聊天…', send: '发送',
     catch_up_btn: '☀️ 帮我捋一下', catch_up_err: '无法加载汇总。',
-    lightchat_btn: '💬 消息', kuaishou_btn: '📱 快手',
+    lightchat_btn: '💬 消息',
     settings_connected_title: '已连接应用',
-    settings_connected_sub: 'Binai 可读取 LightChat、打开快手 — 同一钱包。',
+    settings_connected_sub: 'LightChat 内置。可在下方添加自己的快捷链接（抖音、YouTube 等）。',
     lightchat_enabled_label: 'LightChat — 在「帮我捋一下」里显示消息和动态',
     lightchat_memories_label: '显示好友 Memories 动态',
     lightchat_handle_label: '主要联系人 @昵称（如家人）',
     settings_lc_open: '💬 打开 LightChat', settings_lc_call: '📹 视频通话',
-    kuaishou_enabled_label: '快手 — 打开应用并记住分享的链接',
-    settings_ks_open: '📱 打开快手',
+    settings_shortcuts_title: '快捷操作链接',
+    settings_shortcuts_sub: '只有你能看到的个人链接 — 抖音、YouTube、快手等。默认空白。',
+    settings_shortcuts_presets: '一键添加',
+    qa_label_ph: '名称（如 TikTok）',
+    qa_url_ph: 'https://…',
+    qa_add: '➕ 添加快捷方式',
+    qa_empty: '还没有个人快捷方式。',
+    qa_need_both: '请填写名称和有效的 https 链接。',
+    qa_dup: '这个链接已经添加过了。',
+    qa_max: '最多 8 个快捷方式。',
     insight_lc_title: 'LightChat', insight_lc_connect: '连接钱包查看消息。',
     insight_lc_loading: '正在查看 LightChat…', insight_lc_off: '已在设置中关闭 LightChat 连接。',
     insight_lc_clear: '没有新的 LightChat 消息。', insight_lc_unread: '{n} 条新消息',
-    insight_lc_btn: '💬 LightChat', insight_ks_btn: '📱 快手',
+    insight_lc_btn: '💬 LightChat',
     welcome_lightchat: '💬 LightChat {handle}：{preview}',
     connector_open_lightchat: '正在打开 LightChat 💬 — 与 Binai 同一钱包。',
     connector_call_lightchat: '正在 LightChat 上呼叫 {handle} 📹',
-    connector_open_kuaishou: '正在新标签页打开快手 📱',
     connector_lc_unread: 'LightChat 待读消息：{items}',
     connector_lc_memories: '好友最新动态：{items}',
     connector_lc_clear: '上次查看后没有新的 LightChat 消息。',
-    connector_kuaishou_saved: '好的 — 已把快手链接存入记忆 🧠',
     visual_more_images: '🖼️ 百度图片',
     visual_search_web: '🔍 百度搜索',
     visual_wikipedia: '📖 维基百科',
@@ -457,9 +469,7 @@ window.applyI18n = function() {
   set('sendBtn', 'send');
   set('catchUpBtn', 'catch_up_btn');
   set('lightchatBtn', 'lightchat_btn');
-  set('kuaishouBtn', 'kuaishou_btn');
   set('insightLcBtn', 'insight_lc_btn');
-  set('insightKsBtn', 'insight_ks_btn');
   set('insightLightchatTitle', 'insight_lc_title');
   set('settingsPlacesTitle', 'settings_places_title');
   set('settingsPlacesSub', 'settings_places_sub');
@@ -471,8 +481,13 @@ window.applyI18n = function() {
   set('lightchatHandleLabel', 'lightchat_handle_label');
   set('settingsLcOpenBtn', 'settings_lc_open');
   set('settingsLcCallBtn', 'settings_lc_call');
-  set('kuaishouEnabledLabel', 'kuaishou_enabled_label');
-  set('settingsKsOpenBtn', 'settings_ks_open');
+  set('settingsShortcutsTitle', 'settings_shortcuts_title');
+  set('settingsShortcutsSub', 'settings_shortcuts_sub');
+  set('settingsShortcutsPresetsLabel', 'settings_shortcuts_presets');
+  setPh('qaLabelInput', 'qa_label_ph');
+  setPh('qaUrlInput', 'qa_url_ph');
+  set('qaAddBtn', 'qa_add');
+  if (typeof renderCustomQuickActions === 'function') renderCustomQuickActions();
   if (typeof updateVoiceMuteBtn === 'function') updateVoiceMuteBtn();
   set('chatHint', 'chat_hint');
   set('briefingIntro', 'briefing_intro');

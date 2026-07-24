@@ -418,7 +418,7 @@ body::before {
       <div class="chat-quick-actions" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
         <button class="btn btn-ghost" id="catchUpBtn" type="button" onclick="loadCatchUp(true)" style="font-size:15px">☀️ Catch Me Up</button>
         <button class="btn btn-ghost" id="lightchatBtn" type="button" onclick="openLightChat()" style="font-size:15px">💬 Messages</button>
-        <button class="btn btn-ghost" id="kuaishouBtn" type="button" onclick="openKuaishou()" style="font-size:15px">📱 快手</button>
+        <span id="chatCustomQuickActions" style="display:contents"></span>
       </div>
       <div class="input-row">
         <button class="btn btn-mic btn-ghost" id="micBtn" onclick="toggleMic()" title="Voice input">🎤</button>
@@ -535,7 +535,7 @@ body::before {
     </div>
     <div class="card">
       <div class="card-title" id="settingsConnectedTitle">Connected apps</div>
-      <div class="card-sub" id="settingsConnectedSub" style="margin-bottom:12px">Binai can read LightChat and open 快手 — same wallet everywhere.</div>
+      <div class="card-sub" id="settingsConnectedSub" style="margin-bottom:12px">LightChat is built-in. Add your own Quick Action links below (TikTok, YouTube, etc.).</div>
       <label class="setup-check">
         <input type="checkbox" id="lightchatEnabledToggle" checked onchange="if(wallet)saveProfile()">
         <span id="lightchatEnabledLabel">LightChat — show messages &amp; memories in Catch Me Up</span>
@@ -552,11 +552,17 @@ body::before {
         <button class="btn btn-ghost" type="button" id="settingsLcOpenBtn" onclick="openLightChat()" style="flex:1;min-width:120px">💬 Open LightChat</button>
         <button class="btn btn-ghost" type="button" id="settingsLcCallBtn" onclick="openLightChatCall()" style="flex:1;min-width:120px">📹 Video call</button>
       </div>
-      <label class="setup-check" style="margin-top:14px">
-        <input type="checkbox" id="kuaishouEnabledToggle" checked onchange="if(wallet)saveProfile()">
-        <span id="kuaishouEnabledLabel">快手 — open app &amp; remember shared links</span>
-      </label>
-      <button class="btn btn-ghost" type="button" id="settingsKsOpenBtn" onclick="openKuaishou()" style="margin-top:10px;width:100%">📱 Open Kuaishou</button>
+    </div>
+    <div class="card">
+      <div class="card-title" id="settingsShortcutsTitle">Quick action shortcuts</div>
+      <div class="card-sub" id="settingsShortcutsSub" style="margin-bottom:12px">Personal links only you see — TikTok, YouTube, 快手, anything. Empty by default for everyone.</div>
+      <div id="quickActionsList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+      <div class="card-sub" id="settingsShortcutsPresetsLabel" style="margin-bottom:8px">Quick add</div>
+      <div id="quickActionPresets" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"></div>
+      <input class="field" id="qaLabelInput" placeholder="Label (e.g. TikTok)" maxlength="24" style="margin-bottom:8px">
+      <input class="field" id="qaUrlInput" placeholder="https://…" maxlength="300" style="margin-bottom:8px">
+      <button class="btn btn-primary" type="button" id="qaAddBtn" style="width:100%" onclick="addCustomQuickAction()">➕ Add shortcut</button>
+      <p id="qaErr" style="font-size:13px;color:var(--red,#f66);margin:8px 0 0;min-height:1.2em"></p>
     </div>
     <div class="card">
       <div class="card-title" id="settingsDataTitle">Your data</div>
@@ -603,7 +609,7 @@ body::before {
     <button class="btn btn-primary" id="insightMorningBtn" style="width:100%;margin-bottom:8px" onclick="switchTab('briefing');loadBriefing(true)">🌅 Morning briefing</button>
     <button class="btn btn-ghost" id="insightMsgBtn" style="width:100%" onclick="document.getElementById('chatInput').focus();switchTab('chat')">💬 New message</button>
     <button class="btn btn-ghost" id="insightLcBtn" style="width:100%;margin-top:8px" onclick="openLightChat()">💬 LightChat</button>
-    <button class="btn btn-ghost" id="insightKsBtn" style="width:100%;margin-top:8px" onclick="openKuaishou()">📱 快手</button>
+    <div id="insightCustomQuickActions"></div>
   </div>
   <div class="insight-card" id="insightLightchatCard">
     <h3 id="insightLightchatTitle">LightChat</h3>
@@ -841,8 +847,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-1';</script>
-<script src="i18n-ui.js?v=20260724-1"></script>
+<script>window.BINAI_BUILD = '20260724-2';</script>
+<script src="i18n-ui.js?v=20260724-2"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -1836,8 +1842,16 @@ async function loadCatchUp(speakIt) {
   }
 }
 const LIGHTCHAT_URL = 'https://lightchat.chat';
-const KUAISHOU_URL = 'https://www.kuaishou.com';
-const KUAISHOU_LINK_RE = /https?:\/\/(?:www\.)?(?:kuaishou\.com|kwai\.com|v\.kuaishou\.com|gifshow\.com)\S*/i;
+const QUICK_ACTION_PRESETS = [
+  { label: 'TikTok', url: 'https://www.tiktok.com', icon: '🎵' },
+  { label: 'YouTube', url: 'https://www.youtube.com', icon: '▶️' },
+  { label: 'Instagram', url: 'https://www.instagram.com', icon: '📸' },
+  { label: 'X', url: 'https://x.com', icon: '𝕏' },
+  { label: '快手', url: 'https://www.kuaishou.com', icon: '📱' },
+  { label: 'Bilibili', url: 'https://www.bilibili.com', icon: '📺' },
+];
+const MAX_CUSTOM_QUICK_ACTIONS = 8;
+
 function primaryLightchatHandle() {
   const raw = (document.getElementById('lightchatHandleInput')?.value
     || localStorage.getItem('binai_lightchat_handle')
@@ -1852,14 +1866,154 @@ function openLightChatCall(handle) {
   const h = (handle || primaryLightchatHandle()).replace(/^@/, '');
   window.open(LIGHTCHAT_URL + '?call=' + encodeURIComponent(h), '_blank', 'noopener');
 }
-function openKuaishou() {
-  window.open(KUAISHOU_URL, '_blank', 'noopener');
+function normalizeExternalUrl(raw) {
+  let u = (raw || '').trim();
+  if (!u) return '';
+  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  try {
+    const parsed = new URL(u);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    return parsed.href;
+  } catch (_) {
+    return '';
+  }
+}
+function getCustomQuickActions() {
+  try {
+    const list = JSON.parse(localStorage.getItem('binai_quick_actions') || '[]');
+    return Array.isArray(list) ? list.filter(x => x && x.label && x.url).slice(0, MAX_CUSTOM_QUICK_ACTIONS) : [];
+  } catch (_) {
+    return [];
+  }
+}
+function setCustomQuickActions(list) {
+  const clean = (list || []).filter(x => x && x.label && x.url).slice(0, MAX_CUSTOM_QUICK_ACTIONS);
+  localStorage.setItem('binai_quick_actions', JSON.stringify(clean));
+  return clean;
+}
+function openCustomQuickAction(url) {
+  const href = normalizeExternalUrl(url);
+  if (!href) return;
+  window.open(href, '_blank', 'noopener');
+}
+function renderCustomQuickActions() {
+  const list = getCustomQuickActions();
+  const insight = document.getElementById('insightCustomQuickActions');
+  const chat = document.getElementById('chatCustomQuickActions');
+  const settingsList = document.getElementById('quickActionsList');
+  const presets = document.getElementById('quickActionPresets');
+
+  if (insight) {
+    insight.innerHTML = '';
+    list.forEach(item => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost';
+      b.style.cssText = 'width:100%;margin-top:8px';
+      b.textContent = `${item.icon || '🔗'} ${item.label}`;
+      b.onclick = () => openCustomQuickAction(item.url);
+      insight.appendChild(b);
+    });
+  }
+  if (chat) {
+    chat.innerHTML = '';
+    list.forEach(item => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost';
+      b.style.fontSize = '15px';
+      b.textContent = `${item.icon || '🔗'} ${item.label}`;
+      b.onclick = () => openCustomQuickAction(item.url);
+      chat.appendChild(b);
+    });
+  }
+  if (settingsList) {
+    settingsList.innerHTML = '';
+    if (!list.length) {
+      const empty = document.createElement('div');
+      empty.className = 'card-sub';
+      empty.id = 'qaEmptyHint';
+      empty.textContent = (typeof t === 'function' ? t('qa_empty') : 'No personal shortcuts yet.');
+      settingsList.appendChild(empty);
+    } else {
+      list.forEach(item => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px';
+        const label = document.createElement('div');
+        label.style.cssText = 'flex:1;font-size:14px;line-height:1.35';
+        label.textContent = `${item.icon || '🔗'} ${item.label}`;
+        const openBtn = document.createElement('button');
+        openBtn.type = 'button';
+        openBtn.className = 'btn btn-ghost';
+        openBtn.style.cssText = 'padding:6px 10px;font-size:13px';
+        openBtn.textContent = '↗';
+        openBtn.onclick = () => openCustomQuickAction(item.url);
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'btn btn-ghost';
+        del.style.cssText = 'padding:6px 10px;font-size:13px;color:var(--red,#f66)';
+        del.textContent = '✕';
+        del.onclick = () => removeCustomQuickAction(item.id);
+        row.appendChild(label);
+        row.appendChild(openBtn);
+        row.appendChild(del);
+        settingsList.appendChild(row);
+      });
+    }
+  }
+  if (presets) {
+    presets.innerHTML = '';
+    QUICK_ACTION_PRESETS.forEach(p => {
+      const already = list.some(x => (x.url || '').replace(/\/$/, '') === p.url.replace(/\/$/, ''));
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost';
+      b.style.cssText = 'font-size:13px;padding:6px 10px';
+      b.disabled = already || list.length >= MAX_CUSTOM_QUICK_ACTIONS;
+      b.textContent = `${p.icon} ${p.label}`;
+      b.onclick = () => addCustomQuickAction(p.label, p.url, p.icon);
+      presets.appendChild(b);
+    });
+  }
+}
+function addCustomQuickAction(presetLabel, presetUrl, presetIcon) {
+  const err = document.getElementById('qaErr');
+  if (err) err.textContent = '';
+  let list = getCustomQuickActions();
+  if (list.length >= MAX_CUSTOM_QUICK_ACTIONS) {
+    if (err) err.textContent = (typeof t === 'function' ? t('qa_max') : `Max ${MAX_CUSTOM_QUICK_ACTIONS} shortcuts.`);
+    return;
+  }
+  const label = (presetLabel || document.getElementById('qaLabelInput')?.value || '').trim().slice(0, 24);
+  const url = normalizeExternalUrl(presetUrl || document.getElementById('qaUrlInput')?.value || '');
+  const icon = (presetIcon || '🔗').slice(0, 4);
+  if (!label || !url) {
+    if (err) err.textContent = (typeof t === 'function' ? t('qa_need_both') : 'Need a label and a valid https link.');
+    return;
+  }
+  if (list.some(x => (x.url || '').replace(/\/$/, '') === url.replace(/\/$/, ''))) {
+    if (err) err.textContent = (typeof t === 'function' ? t('qa_dup') : 'That link is already added.');
+    return;
+  }
+  list.push({ id: 'qa_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), label, url, icon });
+  setCustomQuickActions(list);
+  const li = document.getElementById('qaLabelInput');
+  const ui = document.getElementById('qaUrlInput');
+  if (li && !presetLabel) li.value = '';
+  if (ui && !presetUrl) ui.value = '';
+  renderCustomQuickActions();
+  if (wallet) saveProfile();
+}
+function removeCustomQuickAction(id) {
+  const list = getCustomQuickActions().filter(x => x.id !== id);
+  setCustomQuickActions(list);
+  renderCustomQuickActions();
+  if (wallet) saveProfile();
 }
 function matchConnectorCommand(msg) {
   const m = (msg || '').trim().toLowerCase();
   if (/^(open\s+)?light\s*chat|打开\s*lightchat|打开\s*聊天/.test(m)) return 'lightchat';
   if (/call.+light\s*chat|light\s*chat.+call|视频.+lightchat|用\s*lightchat\s*打|打电话给/.test(m)) return 'lightchat_call';
-  if (/^(open\s+)?kuaishou|打开\s*快手|打开快手/.test(m)) return 'kuaishou';
   if (/did\s+.+\s+message|message\s+me\s+on\s+lightchat|lightchat\s+message/.test(m)) return 'lightchat_check';
   if (/发消息|谁给我发|lightchat.*消息/.test(msg)) return 'lightchat_check';
   return null;
@@ -1867,7 +2021,6 @@ function matchConnectorCommand(msg) {
 async function runConnectorCommand(kind) {
   if (kind === 'lightchat') { openLightChat(); addBotMsg(t('connector_open_lightchat')); return; }
   if (kind === 'lightchat_call') { openLightChatCall(); addBotMsg(t('connector_call_lightchat', { handle: primaryLightchatHandle() })); return; }
-  if (kind === 'kuaishou') { openKuaishou(); addBotMsg(t('connector_open_kuaishou')); return; }
   if (kind === 'lightchat_check') {
     if (!wallet) { connectWallet(); return; }
     try {
@@ -2111,9 +2264,7 @@ async function sendChat() {
     speak(instant.reply);
     return;
   }
-  if (KUAISHOU_LINK_RE.test(msg) && localStorage.getItem('binai_kuaishou_enabled') !== '0') {
-    setTimeout(() => addBotMsg(t('connector_kuaishou_saved')), 400);
-  }
+
   const think = addBotMsg(t('thinking'), { actions: false });
   think.classList.add('thinking');
   const t0 = Date.now();
@@ -2553,8 +2704,9 @@ async function loadProfile() {
       const hi = document.getElementById('lightchatHandleInput');
       if (hi) hi.value = prefs.lightchat_primary_handle;
     }
-    if (prefs.kuaishou_enabled === false) localStorage.setItem('binai_kuaishou_enabled', '0');
-    else localStorage.setItem('binai_kuaishou_enabled', '1');
+    if (Array.isArray(prefs.quick_actions)) {
+      setCustomQuickActions(prefs.quick_actions);
+    }
     window._binaiPlacesCache = prefs.frequent_places || {};
     populatePlacesUI(window._binaiPlacesCache);
     initLanguagePickers();
@@ -2562,6 +2714,7 @@ async function loadProfile() {
     initSettingsToggles();
     applyI18n();
     updateChatPlaceholder();
+    renderCustomQuickActions();
   } catch (_) {}
 }
 function readPersonalizePrefs() {
@@ -2579,11 +2732,9 @@ function readPersonalizePrefs() {
   const lcEn = document.getElementById('lightchatEnabledToggle')?.checked !== false;
   const lcMem = document.getElementById('lightchatMemoriesToggle')?.checked !== false;
   const lcHandle = (document.getElementById('lightchatHandleInput')?.value || '@bin1977').trim();
-  const ksEn = document.getElementById('kuaishouEnabledToggle')?.checked !== false;
   localStorage.setItem('binai_lightchat_enabled', lcEn ? '1' : '0');
   localStorage.setItem('binai_lightchat_memories', lcMem ? '1' : '0');
   localStorage.setItem('binai_lightchat_handle', lcHandle);
-  localStorage.setItem('binai_kuaishou_enabled', ksEn ? '1' : '0');
   return {
     assistant_name: assistant,
     friend_mode: friendMode,
@@ -2591,8 +2742,7 @@ function readPersonalizePrefs() {
     lightchat_enabled: lcEn,
     lightchat_show_memories: lcMem,
     lightchat_primary_handle: lcHandle,
-    kuaishou_enabled: ksEn,
-    kuaishou_remember_links: ksEn,
+    quick_actions: getCustomQuickActions(),
     frequent_places: readPlacesFromUI(),
   };
 }
@@ -2620,8 +2770,7 @@ async function saveProfile() {
         lightchat_enabled: personal.lightchat_enabled,
         lightchat_show_memories: personal.lightchat_show_memories,
         lightchat_primary_handle: personal.lightchat_primary_handle,
-        kuaishou_enabled: personal.kuaishou_enabled,
-        kuaishou_remember_links: personal.kuaishou_remember_links,
+        quick_actions: personal.quick_actions,
         frequent_places: personal.frequent_places,
       },
     }),
@@ -2830,7 +2979,6 @@ function initSettingsToggles() {
   const lce = document.getElementById('lightchatEnabledToggle');
   const lcm = document.getElementById('lightchatMemoriesToggle');
   const lch = document.getElementById('lightchatHandleInput');
-  const kse = document.getElementById('kuaishouEnabledToggle');
   if (n) n.checked = localStorage.getItem('binai_notif') === '1';
   if (d) d.checked = localStorage.getItem('binai_daily_briefing') === '1';
   if (ai) ai.value = localStorage.getItem('binai_assistant_name') || 'Binai';
@@ -2839,7 +2987,7 @@ function initSettingsToggles() {
   if (lce) lce.checked = localStorage.getItem('binai_lightchat_enabled') !== '0';
   if (lcm) lcm.checked = localStorage.getItem('binai_lightchat_memories') !== '0';
   if (lch) lch.value = localStorage.getItem('binai_lightchat_handle') || '@bin1977';
-  if (kse) kse.checked = localStorage.getItem('binai_kuaishou_enabled') !== '0';
+  if (typeof renderCustomQuickActions === 'function') renderCustomQuickActions();
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
@@ -2904,6 +3052,7 @@ function startApp() {
   initPreferencePickers();
   initSettingsToggles();
   applyI18n();
+  renderCustomQuickActions();
   updateVoiceMuteBtn();
   updateHero();
   if (localStorage.getItem('binai_name'))
