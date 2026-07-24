@@ -9,7 +9,7 @@ window.BINAI_I18N = {
     logged_off: 'You are logged off. Enter your PIN (or connect wallet) to continue 💜',
     wallet_locked: '🔒 Locked',
     pin_skip_confirm: 'Skip PIN? Anyone with this phone can open Binai for this wallet. Set a PIN for better safety.',
-    voice_stop: 'Stop speaking',
+    voice_stop: 'Stop',
     settings_apk: '📲 Download Android App',
     settings_apk_help: 'Download → open → Install. Allow unknown apps if asked.',
     sidebar_tagline: 'The AI that remembers you — powered by Lightchain AIVM.',

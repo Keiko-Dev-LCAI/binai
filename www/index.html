@@ -126,49 +126,82 @@ body::before {
   flex-shrink: 0; }
 .btn-mic.listening { background: var(--red); color: #fff; animation: pulse 1s infinite; }
 .btn-mic.muted { opacity: 0.55; border: 1px solid var(--border); }
-.btn-mic.speaking-active { background: rgba(232,75,106,0.25); border: 1px solid var(--red); color: #fff; }
+.voice-stop-btn {
+  flex-shrink: 0;
+  min-height: 46px;
+  padding: 10px 12px !important;
+  font-size: 14px !important;
+  font-weight: 800;
+  border-radius: 12px;
+  background: rgba(232, 75, 106, 0.22);
+  border: 1px solid var(--red);
+  color: #ffc0cb;
+}
+.voice-stop-btn[hidden] { display: none !important; }
 #sendBtn { flex-shrink: 0; padding: 12px 16px; }
 
-/* Mobile: full-bleed chat input edge-to-edge */
+/* Mobile: full-bleed chat input edge-to-edge + big type box */
 @media (max-width: 899px) {
   .main { padding-left: 0; padding-right: 0; padding-bottom: 0; }
   #panel-chat {
     display: flex; flex-direction: column;
-    min-height: calc(100dvh - 130px);
+    min-height: calc(100dvh - 120px);
+    height: calc(100dvh - 120px);
     padding: 0;
   }
-  #panel-chat .wait-banner { margin: 0 12px 8px; }
-  #panel-chat .chat-messages {
-    flex: 1; min-height: 0; overflow-y: auto;
-    padding: 8px 12px 12px; margin-bottom: 0;
-    display: flex; flex-direction: column;
-  }
+  #panel-chat .wait-banner { margin: 0 12px 8px; flex-shrink: 0; }
   #panel-chat .prompt-grid {
-    display: grid !important;
-    margin: 0 0 12px;
-    order: -1; /* keep starter cards at top */
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 0 12px 10px;
+    padding: 0;
+    flex-shrink: 0;
   }
-  #panel-chat .prompt-grid[hidden],
   #panel-chat .prompt-grid.is-hidden {
     display: none !important;
   }
+  #panel-chat .chat-messages {
+    flex: 1 1 auto;
+    min-height: 80px;
+    overflow-y: auto;
+    padding: 4px 12px 12px;
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+  }
   #panel-chat .chat-footer {
-    margin-top: 0;
-    padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+    margin-top: auto;
+    flex-shrink: 0;
+    padding: 12px 10px calc(12px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--border);
-    background: rgba(13,13,26,0.96);
+    background: rgba(13,13,26,0.98);
     backdrop-filter: blur(10px);
     width: 100%;
   }
   #panel-chat .chat-quick-actions { margin-bottom: 8px; }
-  #panel-chat .input-row { gap: 6px; width: 100%; }
+  #panel-chat .input-row {
+    gap: 6px;
+    width: 100%;
+    align-items: stretch;
+  }
   #panel-chat .chat-input {
-    min-height: 52px;
-    font-size: 16px; /* avoid iOS zoom */
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 88px;   /* much taller type box on phone */
+    max-height: 180px;
+    font-size: 16px;    /* avoid iOS zoom */
+    line-height: 1.4;
     padding: 14px 12px;
   }
-  #panel-chat .btn-mic { width: 46px; height: 46px; font-size: 20px; }
-  #panel-chat #sendBtn { padding: 12px 14px; font-size: 15px; min-height: 46px; }
+  #panel-chat .btn-mic { width: 46px; height: 46px; font-size: 20px; align-self: flex-end; }
+  #panel-chat .voice-stop-btn { align-self: flex-end; }
+  #panel-chat #sendBtn {
+    padding: 12px 14px;
+    font-size: 15px;
+    min-height: 46px;
+    align-self: flex-end;
+  }
   #panel-chat .chat-hint { margin: 8px 2px 0; font-size: 12px; }
   /* Other panels keep comfortable side padding */
   #panel-briefing, #panel-notes, #panel-reminders, #panel-memory,
@@ -273,6 +306,7 @@ body::before {
   width: 100%;
   flex-shrink: 0;
 }
+.prompt-grid.is-hidden { display: none !important; }
 .prompt-card {
   background: linear-gradient(160deg, #1e1e42 0%, #161632 100%);
   border: 1px solid rgba(155,127,232,0.40);
@@ -456,30 +490,30 @@ body::before {
   </div>
   <div class="panel active" id="panel-chat">
     <div class="wait-banner" id="waitBanner">⏳ Binai is thinking on Lightchain AIVM — beta can take up to 2 min. Feel free to check notes or reminders while you wait.</div>
-    <div class="chat-messages" id="chatMessages">
-      <div class="prompt-grid" id="promptGrid">
-        <button type="button" class="prompt-card" onclick="usePrompt(t('prompt1_title'))">
-          <div class="prompt-icon">☕</div>
-          <div class="prompt-title" id="prompt1Title">Save a memory</div>
-          <div class="prompt-desc" id="prompt1Desc">Tell Binai something to remember forever</div>
-        </button>
-        <button type="button" class="prompt-card" onclick="usePrompt(t('prompt2_title'))">
-          <div class="prompt-icon">🧠</div>
-          <div class="prompt-title" id="prompt2Title">Recall memories</div>
-          <div class="prompt-desc" id="prompt2Desc">See what Binai already knows about you</div>
-        </button>
-        <button type="button" class="prompt-card" onclick="switchTab('briefing');loadBriefing(true)">
-          <div class="prompt-icon">🌅</div>
-          <div class="prompt-title" id="prompt3Title">Morning briefing</div>
-          <div class="prompt-desc" id="prompt3Desc">Weather, reminders, and LCAI in one tap</div>
-        </button>
-        <button type="button" class="prompt-card" onclick="usePrompt(t('prompt4_title'))">
-          <div class="prompt-icon">📋</div>
-          <div class="prompt-title" id="prompt4Title">Plan my day</div>
-          <div class="prompt-desc" id="prompt4Desc">Get a friendly start-of-day nudge</div>
-        </button>
-      </div>
+    <!-- Starter cards live OUTSIDE the message list so login/welcome never wipes them -->
+    <div class="prompt-grid" id="promptGrid">
+      <button type="button" class="prompt-card" onclick="usePrompt(t('prompt1_title'))">
+        <div class="prompt-icon">☕</div>
+        <div class="prompt-title" id="prompt1Title">Save a memory</div>
+        <div class="prompt-desc" id="prompt1Desc">Tell Binai something to remember forever</div>
+      </button>
+      <button type="button" class="prompt-card" onclick="usePrompt(t('prompt2_title'))">
+        <div class="prompt-icon">🧠</div>
+        <div class="prompt-title" id="prompt2Title">Recall memories</div>
+        <div class="prompt-desc" id="prompt2Desc">See what Binai already knows about you</div>
+      </button>
+      <button type="button" class="prompt-card" onclick="switchTab('briefing');loadBriefing(true)">
+        <div class="prompt-icon">🌅</div>
+        <div class="prompt-title" id="prompt3Title">Morning briefing</div>
+        <div class="prompt-desc" id="prompt3Desc">Weather, reminders, and LCAI in one tap</div>
+      </button>
+      <button type="button" class="prompt-card" onclick="usePrompt(t('prompt4_title'))">
+        <div class="prompt-icon">📋</div>
+        <div class="prompt-title" id="prompt4Title">Plan my day</div>
+        <div class="prompt-desc" id="prompt4Desc">Get a friendly start-of-day nudge</div>
+      </button>
     </div>
+    <div class="chat-messages" id="chatMessages"></div>
     <div class="chat-footer">
       <div class="chat-quick-actions" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
         <button class="btn btn-ghost" id="catchUpBtn" type="button" onclick="loadCatchUp(true)" style="font-size:15px">☀️ Catch Me Up</button>
@@ -489,8 +523,8 @@ body::before {
       <div class="input-row">
         <button class="btn btn-mic btn-ghost" id="micBtn" onclick="toggleMic()" title="Voice input" type="button" aria-label="Voice input">🎤</button>
         <button class="btn btn-mic btn-ghost" id="voiceMuteBtn" onclick="toggleVoiceMute()" title="Mute Binai voice" type="button" aria-label="Mute voice">🔊</button>
-        <button class="btn btn-mic btn-ghost" id="voiceStopBtn" onclick="stopSpeaking()" title="Stop speaking" type="button" aria-label="Stop speaking">⏹</button>
-        <textarea class="chat-input" id="chatInput" rows="2" placeholder="Talk to Binai…"
+        <button class="btn btn-ghost voice-stop-btn" id="voiceStopBtn" onclick="stopSpeaking(); return false;" title="Stop speaking" type="button" aria-label="Stop speaking" hidden>Stop</button>
+        <textarea class="chat-input" id="chatInput" rows="3" placeholder="Talk to Binai…"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
         <button class="btn btn-primary" id="sendBtn" onclick="sendChat()">Send</button>
       </div>
@@ -917,8 +951,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-6';</script>
-<script src="i18n-ui.js?v=20260724-6"></script>
+<script>window.BINAI_BUILD = '20260724-8';</script>
+<script src="i18n-ui.js?v=20260724-8"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -1060,18 +1094,11 @@ function hidePrompts() {
   const g = document.getElementById('promptGrid');
   if (!g) return;
   g.classList.add('is-hidden');
-  g.style.display = 'none';
 }
 function showPrompts() {
   const g = document.getElementById('promptGrid');
   if (!g) return;
   g.classList.remove('is-hidden');
-  g.style.display = '';
-  g.style.removeProperty('display');
-  // ensure grid layout (mobile CSS uses display:grid !important when not hidden)
-  if (!g.classList.contains('is-hidden')) {
-    g.style.display = 'grid';
-  }
 }
 function usePrompt(text) {
   if (!requireWalletReady()) return;
@@ -1581,13 +1608,11 @@ async function restoreSession() {
   await refreshSub();
   await loadMemories();
   await refreshLightchatPanel();
+  // Same as finishSessionWelcome: never auto-load history on refresh
   clearChat();
-  const hadHistory = await loadChatHistory();
-  if (!hadHistory) {
-    showPrompts();
-    await showWelcomeBack();
-    showPrompts();
-  }
+  showPrompts();
+  await showWelcomeBack();
+  showPrompts();
   getBinaiLocation();
 }
 async function afterUnlock() {
@@ -2570,14 +2595,20 @@ function updateVoiceMuteBtn() {
 function updateVoiceStopBtn(active) {
   const btn = document.getElementById('voiceStopBtn');
   if (!btn) return;
-  const speaking = active === true || (window.speechSynthesis && speechSynthesis.speaking);
-  btn.classList.toggle('speaking-active', !!speaking);
+  const speaking = active === true
+    || !!(window.speechSynthesis && (speechSynthesis.speaking || speechSynthesis.pending));
+  btn.hidden = !speaking;
+  btn.textContent = (typeof t === 'function' ? t('voice_stop') : 'Stop');
   btn.title = (typeof t === 'function' ? t('voice_stop') : 'Stop speaking');
   btn.setAttribute('aria-pressed', speaking ? 'true' : 'false');
 }
 function stopSpeaking() {
   try {
-    if (window.speechSynthesis) speechSynthesis.cancel();
+    if (window.speechSynthesis) {
+      speechSynthesis.cancel();
+      // Some mobile browsers need a second cancel after a tick
+      setTimeout(() => { try { speechSynthesis.cancel(); } catch (_) {} }, 30);
+    }
   } catch (_) {}
   updateVoiceStopBtn(false);
 }
@@ -2620,15 +2651,29 @@ function toggleMic() {
 
 function speak(text) {
   if (!window.speechSynthesis || isVoiceMuted()) return;
-  const u = new SpeechSynthesisUtterance(text.slice(0, 800));
+  try { speechSynthesis.cancel(); } catch (_) {}
+  const u = new SpeechSynthesisUtterance(String(text || '').slice(0, 800));
   u.lang = speechLang();
   u.rate = 1;
   u.onstart = () => updateVoiceStopBtn(true);
   u.onend = () => updateVoiceStopBtn(false);
   u.onerror = () => updateVoiceStopBtn(false);
-  speechSynthesis.cancel();
   updateVoiceStopBtn(true);
-  speechSynthesis.speak(u);
+  try {
+    speechSynthesis.speak(u);
+    // Keep Stop visible while utterance is queued/speaking (mobile Safari quirks)
+    const poll = setInterval(() => {
+      if (!speechSynthesis.speaking && !speechSynthesis.pending) {
+        clearInterval(poll);
+        updateVoiceStopBtn(false);
+      } else {
+        updateVoiceStopBtn(true);
+      }
+    }, 250);
+    setTimeout(() => clearInterval(poll), 120000);
+  } catch (_) {
+    updateVoiceStopBtn(false);
+  }
 }
 
 // ── Briefing ─────────────────────────────────────────────────────────────────
