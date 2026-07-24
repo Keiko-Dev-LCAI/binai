@@ -4620,8 +4620,8 @@ function formatReminderLine(it) {
 /** today | tomorrow | week | month | upcoming */
 function detectCalendarListScope(lower) {
   const m = String(lower || '');
-  if (/\btomorrow\b/.test(m)) return 'tomorrow';
-  if (/\btoday\b/.test(m)) return 'today';
+  if (/\btomorrows?\b/.test(m)) return 'tomorrow';
+  if (/\btodays?\b/.test(m)) return 'today';
   if (/\bthis\s+weeks?\b|\bweek'?s\b|\bweekly\b/.test(m)) return 'week';
   if (/\bthis\s+months?\b|\bmonth'?s\b/.test(m)) return 'month';
   return 'upcoming';
