@@ -240,8 +240,14 @@ window.BINAI_I18N = {
     settings_apk: '📲 下载 Android 应用',
     settings_apk_help: '下载 → 打开 → 安装。如提示请允许未知来源应用。',
     home_btn: '🏠 主页',
+    quick_actions_btn: '⚡ 快捷操作',
+    qa_sheet_title: '⚡ 快捷操作',
+    qa_sheet_sub: '你的个人快捷方式 — 只有你能看到。',
+    qa_sheet_empty: '还没有快捷方式。点「管理」添加抖音、YouTube、快手等。',
+    qa_sheet_manage: '➕ 管理 / 添加快捷方式',
+    qa_sheet_close: '关闭',
     cancel_chat: '✕ 取消',
-    chat_cancelled: '已取消。点「主页」回卡片，或输入新问题。',
+    chat_cancelled: '已取消。点「主页」或输入新问题。',
     sidebar_tagline: '记住你的 AI 助手 — 由 Lightchain AIVM 驱动。',
     disclaimer: '免责声明：Binai 为测试版软件，按原样提供。AI 回复不构成专业建议。服务可能随时下线或终止。不退款。',
     beta_banner: '🧪 社区测试版 — 测试期间所有人无限使用 AI',
@@ -495,6 +501,11 @@ window.applyI18n = function() {
   set('sendBtn', 'send');
   set('catchUpBtn', 'catch_up_btn');
   set('homeBtn', 'home_btn');
+  set('quickActionsBtn', 'quick_actions_btn');
+  set('qaSheetTitle', 'qa_sheet_title');
+  set('qaSheetSub', 'qa_sheet_sub');
+  set('qaSheetManageBtn', 'qa_sheet_manage');
+  set('qaSheetCloseBtn', 'qa_sheet_close');
   set('cancelChatBtn', 'cancel_chat');
   set('lightchatBtn', 'lightchat_btn');
   const waitHome = document.getElementById('waitHomeBtn');

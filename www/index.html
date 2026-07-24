@@ -332,6 +332,7 @@ body::before {
 #termsOverlay { z-index: 600; }
 #onboardOverlay { z-index: 550; }
 #prefsSetupOverlay { z-index: 560; }
+#qaSheetOverlay { z-index: 800; }
 .setup-modal { max-width: 520px; }
 .setup-section-label { font-size: 15px; font-weight: 700; color: var(--text); margin: 14px 0 8px; }
 .setup-section-sub { font-size: 13px; color: var(--text2); margin: -2px 0 8px; line-height: 1.45; }
@@ -1060,8 +1061,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-14';</script>
-<script src="i18n-ui.js?v=20260724-14"></script>
+<script>window.BINAI_BUILD = '20260724-15';</script>
+<script src="i18n-ui.js?v=20260724-15"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -2196,12 +2197,67 @@ function openCustomQuickAction(url) {
   if (!href) return;
   window.open(href, '_blank', 'noopener');
 }
+function openQuickActionsSheet() {
+  try {
+    if (typeof renderQuickActionsSheet === 'function') renderQuickActionsSheet();
+    const el = document.getElementById('qaSheetOverlay');
+    if (!el) {
+      console.error('[Binai] qaSheetOverlay missing');
+      alert('Quick Actions panel missing — hard refresh the page.');
+      return;
+    }
+    el.classList.remove('hidden');
+    el.style.display = 'flex';
+    el.style.zIndex = '800';
+  } catch (e) {
+    console.error('[Binai] openQuickActionsSheet', e);
+    alert('Quick Actions error: ' + (e && e.message ? e.message : e));
+  }
+}
+function closeQuickActionsSheet() {
+  const el = document.getElementById('qaSheetOverlay');
+  if (!el) return;
+  el.classList.add('hidden');
+  el.style.removeProperty('display');
+}
+function renderQuickActionsSheet() {
+  const list = (typeof getCustomQuickActions === 'function') ? getCustomQuickActions() : [];
+  const box = document.getElementById('qaSheetList');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!list.length) {
+    const empty = document.createElement('div');
+    empty.className = 'card-sub';
+    empty.style.lineHeight = '1.5';
+    empty.textContent = (typeof t === 'function' ? t('qa_sheet_empty') : 'No shortcuts yet. Tap Manage to add TikTok, YouTube, 快手, etc.');
+    box.appendChild(empty);
+    return;
+  }
+  list.forEach(item => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn btn-ghost';
+    b.style.cssText = 'width:100%;text-align:left;font-size:16px;padding:14px 16px';
+    b.textContent = `${item.icon || '🔗'} ${item.label}`;
+    b.onclick = () => {
+      openCustomQuickAction(item.url);
+      closeQuickActionsSheet();
+    };
+    box.appendChild(b);
+  });
+}
+// Expose for inline onclick (and older cached HTML)
+window.openQuickActionsSheet = openQuickActionsSheet;
+window.closeQuickActionsSheet = closeQuickActionsSheet;
+window.renderQuickActionsSheet = renderQuickActionsSheet;
 function renderCustomQuickActions() {
   const list = getCustomQuickActions();
   const insight = document.getElementById('insightCustomQuickActions');
-  const chat = document.getElementById('chatCustomQuickActions');
   const settingsList = document.getElementById('quickActionsList');
   const presets = document.getElementById('quickActionPresets');
+  // Keep sheet in sync if open
+  const sheet = document.getElementById('qaSheetOverlay');
+  if (sheet && !sheet.classList.contains('hidden')) renderQuickActionsSheet();
 
   if (insight) {
     insight.innerHTML = '';
@@ -2213,18 +2269,6 @@ function renderCustomQuickActions() {
       b.textContent = `${item.icon || '🔗'} ${item.label}`;
       b.onclick = () => openCustomQuickAction(item.url);
       insight.appendChild(b);
-    });
-  }
-  if (chat) {
-    chat.innerHTML = '';
-    list.forEach(item => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'btn btn-ghost';
-      b.style.fontSize = '15px';
-      b.textContent = `${item.icon || '🔗'} ${item.label}`;
-      b.onclick = () => openCustomQuickAction(item.url);
-      chat.appendChild(b);
     });
   }
   if (settingsList) {
@@ -3500,6 +3544,16 @@ function startApp() {
   if (localStorage.getItem('binai_name'))
     document.getElementById('nameInput').value = localStorage.getItem('binai_name');
   scheduleDailyBriefing();
+  // Hard-wire Quick Actions (inline onclick can fail if script load order/cache is weird)
+  const qab = document.getElementById('quickActionsBtn');
+  if (qab) {
+    qab.onclick = function (e) {
+      if (e) e.preventDefault();
+      openQuickActionsSheet();
+    };
+  }
+  window.openQuickActionsSheet = openQuickActionsSheet;
+  window.closeQuickActionsSheet = closeQuickActionsSheet;
 }
 async function boot() {
   initServiceWorker();
@@ -3524,6 +3578,77 @@ async function boot() {
   await restoreSession();
 }
 boot();
+</script>
+<script>
+/* Fallback Quick Actions — works even if main script errors earlier */
+(function () {
+  function listActions() {
+    try {
+      var list = JSON.parse(localStorage.getItem('binai_quick_actions') || '[]');
+      return Array.isArray(list) ? list : [];
+    } catch (e) { return []; }
+  }
+  function openUrl(url) {
+    var u = (url || '').trim();
+    if (!u) return;
+    if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+    window.open(u, '_blank', 'noopener');
+  }
+  function renderSheet() {
+    var box = document.getElementById('qaSheetList');
+    if (!box) return;
+    var list = listActions();
+    box.innerHTML = '';
+    if (!list.length) {
+      var empty = document.createElement('div');
+      empty.className = 'card-sub';
+      empty.style.lineHeight = '1.5';
+      empty.textContent = 'No shortcuts yet. Tap Manage to add TikTok, YouTube, 快手, etc.';
+      box.appendChild(empty);
+      return;
+    }
+    list.forEach(function (item) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost';
+      b.style.cssText = 'width:100%;text-align:left;font-size:16px;padding:14px 16px';
+      b.textContent = (item.icon || '🔗') + ' ' + (item.label || 'Link');
+      b.onclick = function () {
+        openUrl(item.url);
+        closeSheet();
+      };
+      box.appendChild(b);
+    });
+  }
+  function openSheet() {
+    renderSheet();
+    var el = document.getElementById('qaSheetOverlay');
+    if (!el) { alert('Quick Actions panel missing — fully close and reopen Binai.'); return; }
+    el.classList.remove('hidden');
+    el.style.display = 'flex';
+    el.style.zIndex = '800';
+  }
+  function closeSheet() {
+    var el = document.getElementById('qaSheetOverlay');
+    if (!el) return;
+    el.classList.add('hidden');
+    el.style.removeProperty('display');
+  }
+  window.openQuickActionsSheet = openSheet;
+  window.closeQuickActionsSheet = closeSheet;
+  function wire() {
+    var btn = document.getElementById('quickActionsBtn');
+    if (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openSheet();
+      }, true);
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+  else wire();
+})();
 </script>
 </body>
 </html>
