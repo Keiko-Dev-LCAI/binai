@@ -593,11 +593,6 @@ body::before {
         <div class="prompt-title" id="prompt3Title">Morning briefing</div>
         <div class="prompt-desc" id="prompt3Desc">Weather, reminders, and LCAI in one tap</div>
       </button>
-      <button type="button" class="prompt-card" onclick="usePrompt(t('prompt4_title'))">
-        <div class="prompt-icon">📋</div>
-        <div class="prompt-title" id="prompt4Title">Plan my day</div>
-        <div class="prompt-desc" id="prompt4Desc">Get a friendly start-of-day nudge</div>
-      </button>
     </div>
     <div class="chat-messages" id="chatMessages"></div>
     <div class="chat-footer">
@@ -2592,12 +2587,14 @@ async function sendChat() {
   }
   chatAbort = new AbortController();
   const signal = chatAbort.signal;
+  const gen = chatGeneration;
 
   const think = addBotMsg(t('thinking'), { actions: false });
   think.classList.add('thinking');
   const t0 = Date.now();
   if (thinkTimer) clearInterval(thinkTimer);
   thinkTimer = setInterval(() => {
+    if (gen !== chatGeneration) return;
     const s = Math.floor((Date.now() - t0) / 1000);
     const body = think.querySelector('.msg-body');
     if (body) body.textContent = t('status_thinking', { s });
@@ -2617,20 +2614,20 @@ async function sendChat() {
         local_hour: new Date().getHours(),
       }),
     });
-    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+    if (gen !== chatGeneration || signal.aborted) throw new DOMException('Aborted', 'AbortError');
     const d = await r.json();
     if (!r.ok) {
       think.remove();
-      addBotMsg(d.error || t('err_generic'));
+      if (gen === chatGeneration) addBotMsg(d.error || t('err_generic'));
       if (d.code === 'limit_reached') switchTab('settings');
     } else {
       let result = d;
       if (d.job_id) {
         const deadline = Date.now() + 180000;
         while (Date.now() < deadline) {
-          if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+          if (gen !== chatGeneration || signal.aborted) throw new DOMException('Aborted', 'AbortError');
           await new Promise(res => setTimeout(res, 4000));
-          if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+          if (gen !== chatGeneration || signal.aborted) throw new DOMException('Aborted', 'AbortError');
           const pr = await fetch(
             API + '/api/chat/status/' + d.job_id + '?wallet=' + encodeURIComponent(wallet),
             { signal }
@@ -2640,12 +2637,13 @@ async function sendChat() {
           if (pd.status === 'done') { result = pd; break; }
           if (pd.status === 'error') throw new Error(pd.error || t('err_generic'));
         }
-        if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        if (gen !== chatGeneration || signal.aborted) throw new DOMException('Aborted', 'AbortError');
         if (!result.reply) {
           think.remove();
-          addBotMsg(t('err_timeout'));
+          if (gen === chatGeneration) addBotMsg(t('err_timeout'));
         } else {
           think.remove();
+          if (gen !== chatGeneration) return;
           const replyEl = addBotMsg(result.reply);
           maybeAttachLookups(msg, replyEl);
           maybeSuggestSavePlace(msg, replyEl);
@@ -2656,6 +2654,7 @@ async function sendChat() {
         }
       } else if (d.reply) {
         think.remove();
+        if (gen !== chatGeneration) return;
         const replyEl = addBotMsg(d.reply);
         maybeAttachLookups(msg, replyEl);
         maybeSuggestSavePlace(msg, replyEl);
@@ -2665,21 +2664,25 @@ async function sendChat() {
         loadMemories();
       } else {
         think.remove();
-        addBotMsg(t('err_generic'));
+        if (gen === chatGeneration) addBotMsg(t('err_generic'));
       }
     }
   } catch (e) {
     if (think && think.parentNode) think.remove();
-    if (e && (e.name === 'AbortError' || e.message === 'Aborted')) {
+    if (gen !== chatGeneration) {
+      /* Home/cancel already cleaned UI */
+    } else if (e && (e.name === 'AbortError' || e.message === 'Aborted')) {
       addBotMsg(t('chat_cancelled'));
     } else {
       const hint = (e && e.message === 'Load failed') ? t('err_load_failed') : (e && e.message) || '';
       addBotMsg(t('err_connection') + ' ' + hint);
     }
   }
-  if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null; }
-  chatAbort = null;
-  setThinkingUI(false);
+  if (gen === chatGeneration) {
+    if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null; }
+    chatAbort = null;
+    setThinkingUI(false);
+  }
 }
 
 function updateUsage(d) {
