@@ -132,20 +132,45 @@ body::before {
 .place-row label { display: block; font-size: 14px; color: var(--text2); margin-bottom: 4px; }
 .place-row .field { margin: 0; }
 .wait-banner {
-  display: none; background: rgba(155,127,232,0.12); border: 1px solid rgba(155,127,232,0.25);
-  border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; font-size: 14px; color: var(--text2);
+  display: none; background: rgba(18,18,42,0.98); border: 1px solid rgba(155,127,232,0.45);
+  border-radius: 12px; padding: 12px 12px; margin: 0 0 10px; font-size: 14px; color: var(--text);
   align-items: center; gap: 10px; flex-wrap: wrap;
+  position: sticky; top: 0; z-index: 50;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35);
 }
 .wait-banner.visible { display: flex; }
-.wait-banner #waitBannerText { flex: 1; min-width: 140px; line-height: 1.4; }
-.wait-banner .wait-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.wait-banner #waitBannerText { flex: 1; min-width: 120px; line-height: 1.4; color: var(--text); font-weight: 600; }
+.wait-banner .wait-actions { display: flex; gap: 8px; flex-shrink: 0; width: 100%; }
 .wait-banner .btn-cancel {
-  background: rgba(232,75,106,0.2); border: 1px solid var(--red); color: #ffc0cb;
-  font-weight: 800; font-size: 14px; padding: 8px 12px; border-radius: 10px; cursor: pointer;
+  flex: 1;
+  background: rgba(232,75,106,0.25); border: 1px solid var(--red); color: #ffc0cb;
+  font-weight: 800; font-size: 15px; padding: 12px 12px; border-radius: 10px; cursor: pointer;
+  min-height: 44px;
+}
+.wait-banner .btn-home-escape {
+  flex: 1;
+  background: var(--purple); border: 1px solid var(--purple); color: #fff;
+  font-weight: 800; font-size: 15px; padding: 12px 12px; border-radius: 10px; cursor: pointer;
+  min-height: 44px;
 }
 .chat-home-btn {
   font-size: 13px !important; padding: 8px 10px !important;
 }
+/* Always-reachable escape while thinking (in case sticky banner is off-screen) */
+#thinkingEscapeBar {
+  display: none;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 900;
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: rgba(10,10,24,0.96);
+  border-top: 1px solid rgba(155,127,232,0.4);
+  gap: 10px;
+}
+#thinkingEscapeBar.visible { display: flex; }
+#thinkingEscapeBar button {
+  flex: 1; min-height: 48px; font-weight: 800; font-size: 16px; border-radius: 12px; cursor: pointer; border: none;
+}
+#thinkingEscapeBar .esc-cancel { background: rgba(232,75,106,0.3); color: #ffc0cb; border: 1px solid var(--red); }
+#thinkingEscapeBar .esc-home { background: var(--purple); color: #fff; }
 .pin-hint { font-size: 13px; color: var(--text2); margin-bottom: 12px; line-height: 1.5; }
 @keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
 
@@ -570,10 +595,10 @@ body::before {
   </div>
   <div class="panel active" id="panel-chat">
     <div class="wait-banner" id="waitBanner">
-      <span id="waitBannerText">⏳ Binai is thinking on Lightchain AIVM — beta can take up to 2 min.</span>
+      <span id="waitBannerText">⏳ Binai is thinking… Tap Cancel or Home anytime.</span>
       <span class="wait-actions">
         <button type="button" class="btn-cancel" id="cancelChatBtn" onclick="cancelChat()">✕ Cancel</button>
-        <button type="button" class="btn-cancel" id="waitHomeBtn" onclick="goHome()" style="border-color:var(--purple);color:var(--purple);background:var(--purple-glow)">🏠 Home</button>
+        <button type="button" class="btn-home-escape" id="waitHomeBtn" onclick="goHome()">🏠 Home</button>
       </span>
     </div>
     <!-- Starter cards live OUTSIDE the message list so login/welcome never wipes them -->
@@ -783,6 +808,12 @@ body::before {
 </div>
 
 <div class="status-bar" id="statusBar">Binai 💜 — Lightchain community beta</div>
+</div>
+
+<!-- Fixed bottom escape while AI is thinking — always tappable -->
+<div id="thinkingEscapeBar" aria-live="polite">
+  <button type="button" class="esc-cancel" onclick="cancelChat()">✕ Cancel</button>
+  <button type="button" class="esc-home" onclick="goHome()">🏠 Home</button>
 </div>
 
 <aside class="insight-panel">
@@ -1034,8 +1065,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-10';</script>
-<script src="i18n-ui.js?v=20260724-10"></script>
+<script>window.BINAI_BUILD = '20260724-12';</script>
+<script src="i18n-ui.js?v=20260724-12"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -2517,20 +2548,37 @@ let thinkTimer = null;
 let chatAbort = null;
 let thinkingActive = false;
 let chatGeneration = 0; // bumped on Home/cancel so late replies are ignored
+let thinkingSafetyTimer = null;
 
 function setThinkingUI(on) {
   thinkingActive = !!on;
   const banner = document.getElementById('waitBanner');
   if (banner) banner.classList.toggle('visible', thinkingActive);
+  const esc = document.getElementById('thinkingEscapeBar');
+  if (esc) esc.classList.toggle('visible', thinkingActive);
   const sendBtn = document.getElementById('sendBtn');
   if (sendBtn) sendBtn.disabled = thinkingActive;
   const c2 = document.getElementById('cancelChatBtn2');
   if (c2) c2.hidden = !thinkingActive;
+  // Never disable tabs / Home — only Send is locked while thinking
   const status = document.getElementById('statusBar');
   if (status && !thinkingActive) status.textContent = (typeof t === 'function' ? t('status_default') : 'Binai 💜');
+  if (thinkingSafetyTimer) {
+    clearTimeout(thinkingSafetyTimer);
+    thinkingSafetyTimer = null;
+  }
+  if (thinkingActive) {
+    // Hard unlock after 90s so UI can never stay frozen forever
+    thinkingSafetyTimer = setTimeout(() => {
+      if (thinkingActive) {
+        cancelChat();
+        try { addBotMsg(t('chat_cancelled')); } catch (_) {}
+      }
+    }, 90000);
+  }
 }
 
-/** Stop an in-flight AI request (Plan my day, chat, etc.) */
+/** Stop an in-flight AI request — always unlocks UI */
 function cancelChat() {
   chatGeneration += 1;
   if (chatAbort) {
@@ -2541,9 +2589,15 @@ function cancelChat() {
     clearInterval(thinkTimer);
     thinkTimer = null;
   }
-  stopSpeaking();
+  if (thinkingSafetyTimer) {
+    clearTimeout(thinkingSafetyTimer);
+    thinkingSafetyTimer = null;
+  }
+  try { stopSpeaking(); } catch (_) {}
   document.querySelectorAll('.msg.thinking').forEach(el => el.remove());
   setThinkingUI(false);
+  const sendBtn = document.getElementById('sendBtn');
+  if (sendBtn) sendBtn.disabled = false;
 }
 
 /** Back to main starter cards (and stop anything in progress) */
@@ -2553,12 +2607,21 @@ function goHome() {
   showPrompts();
   switchTab('chat');
   const input = document.getElementById('chatInput');
-  if (input) input.value = '';
+  if (input) {
+    input.value = '';
+    input.disabled = false;
+  }
+  const sendBtn = document.getElementById('sendBtn');
+  if (sendBtn) sendBtn.disabled = false;
 }
 
 async function sendChat() {
   if (!requireWalletReady()) return;
-  if (thinkingActive) return; // already waiting — use Cancel
+  if (thinkingActive) {
+    // Don't freeze — if user hits Send while thinking, treat as Cancel
+    cancelChat();
+    return;
+  }
   const input = document.getElementById('chatInput');
   const msg = input.value.trim();
   if (!msg) return;
@@ -2601,7 +2664,7 @@ async function sendChat() {
     const status = document.getElementById('statusBar');
     if (status) status.textContent = t('thinking_status', { s });
     const wt = document.getElementById('waitBannerText');
-    if (wt) wt.textContent = t('status_thinking', { s });
+    if (wt) wt.textContent = t('status_thinking', { s }) + ' — Cancel / Home anytime';
   }, 1000);
   setThinkingUI(true);
   try {
@@ -2617,7 +2680,7 @@ async function sendChat() {
     if (gen !== chatGeneration || signal.aborted) throw new DOMException('Aborted', 'AbortError');
     const d = await r.json();
     if (!r.ok) {
-      think.remove();
+      if (think.parentNode) think.remove();
       if (gen === chatGeneration) addBotMsg(d.error || t('err_generic'));
       if (d.code === 'limit_reached') switchTab('settings');
     } else {
@@ -2638,12 +2701,10 @@ async function sendChat() {
           if (pd.status === 'error') throw new Error(pd.error || t('err_generic'));
         }
         if (gen !== chatGeneration || signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        if (think.parentNode) think.remove();
         if (!result.reply) {
-          think.remove();
           if (gen === chatGeneration) addBotMsg(t('err_timeout'));
-        } else {
-          think.remove();
-          if (gen !== chatGeneration) return;
+        } else if (gen === chatGeneration) {
           const replyEl = addBotMsg(result.reply);
           maybeAttachLookups(msg, replyEl);
           maybeSuggestSavePlace(msg, replyEl);
@@ -2653,35 +2714,40 @@ async function sendChat() {
           loadMemories();
         }
       } else if (d.reply) {
-        think.remove();
-        if (gen !== chatGeneration) return;
-        const replyEl = addBotMsg(d.reply);
-        maybeAttachLookups(msg, replyEl);
-        maybeSuggestSavePlace(msg, replyEl);
-        maybeAttachAdviceExtras(msg, replyEl, d.advice_meta);
-        speak(d.reply);
-        updateUsage(d);
-        loadMemories();
+        if (think.parentNode) think.remove();
+        if (gen === chatGeneration) {
+          const replyEl = addBotMsg(d.reply);
+          maybeAttachLookups(msg, replyEl);
+          maybeSuggestSavePlace(msg, replyEl);
+          maybeAttachAdviceExtras(msg, replyEl, d.advice_meta);
+          speak(d.reply);
+          updateUsage(d);
+          loadMemories();
+        }
       } else {
-        think.remove();
+        if (think.parentNode) think.remove();
         if (gen === chatGeneration) addBotMsg(t('err_generic'));
       }
     }
   } catch (e) {
     if (think && think.parentNode) think.remove();
-    if (gen !== chatGeneration) {
-      /* Home/cancel already cleaned UI */
-    } else if (e && (e.name === 'AbortError' || e.message === 'Aborted')) {
-      addBotMsg(t('chat_cancelled'));
-    } else {
-      const hint = (e && e.message === 'Load failed') ? t('err_load_failed') : (e && e.message) || '';
-      addBotMsg(t('err_connection') + ' ' + hint);
+    if (gen === chatGeneration) {
+      if (e && (e.name === 'AbortError' || e.message === 'Aborted')) {
+        addBotMsg(t('chat_cancelled'));
+      } else {
+        const hint = (e && e.message === 'Load failed') ? t('err_load_failed') : (e && e.message) || '';
+        addBotMsg(t('err_connection') + ' ' + hint);
+      }
     }
-  }
-  if (gen === chatGeneration) {
+  } finally {
+    // ALWAYS unlock UI — early returns used to leave Send disabled forever
     if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null; }
-    chatAbort = null;
-    setThinkingUI(false);
+    if (gen === chatGeneration) {
+      chatAbort = null;
+      setThinkingUI(false);
+    }
+    const sendBtn = document.getElementById('sendBtn');
+    if (sendBtn && gen === chatGeneration) sendBtn.disabled = false;
   }
 }
 
