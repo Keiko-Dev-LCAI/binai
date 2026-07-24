@@ -361,14 +361,31 @@ body::before {
 .cal-week-col.today { border-color: var(--purple); }
 .cal-week-col.selected { background: rgba(139,92,246,0.12); }
 .cal-week-col h4 { margin: 0 0 6px; font-size: 13px; }
-.cal-day-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.cal-day-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; flex: 1; min-height: 0; }
+.cal-day-fullscreen {
+  display: flex; flex-direction: column; gap: 12px;
+  min-height: min(70vh, 640px); flex: 1;
+}
+.cal-day-hero {
+  background: linear-gradient(135deg, rgba(139,92,246,0.22), rgba(139,92,246,0.06));
+  border: 1px solid rgba(139,92,246,0.35); border-radius: 16px; padding: 16px 18px;
+}
+.cal-day-hero h2 { margin: 0 0 4px; font-size: 22px; font-weight: 800; line-height: 1.25; }
+.cal-day-hero .cal-day-sub { color: var(--text2); font-size: 14px; margin: 0; }
+.cal-day-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .cal-event {
-  display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px;
-  border: 1px solid var(--border); border-radius: 12px; background: var(--bg2);
+  display: flex; align-items: flex-start; gap: 10px; padding: 14px 14px;
+  border: 1px solid var(--border); border-radius: 14px; background: var(--bg2);
 }
 .cal-event .cal-event-body { flex: 1; min-width: 0; }
-.cal-event .cal-event-time { font-size: 13px; color: var(--text2); }
-.cal-event .cal-event-title { font-size: 15px; font-weight: 600; }
+.cal-event .cal-event-time { font-size: 13px; color: var(--text2); margin-bottom: 2px; }
+.cal-event .cal-event-title { font-size: 16px; font-weight: 700; line-height: 1.35; }
+.cal-event .cal-event-rec { font-size: 12px; color: var(--text2); margin-top: 4px; }
+/* Day full-screen: hide month helper + keep form collapsible */
+#panel-calendar.cal-day-mode .cal-month-hint { display: none; }
+#panel-calendar.cal-day-mode #calForm { display: none; }
+#panel-calendar.cal-day-mode #calForm.cal-form-open { display: block; }
+#panel-calendar.cal-day-mode #calBody { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .cal-form {
   border: 1px solid var(--border); border-radius: 14px; padding: 12px;
   background: var(--bg2); margin-bottom: 14px;
@@ -709,9 +726,9 @@ body::before {
       </div>
       <button class="btn btn-ghost" type="button" onclick="switchTab('chat')">← Chat</button>
     </div>
-    <p style="color:var(--text2);font-size:13px;margin:0 0 10px;line-height:1.4">
-      Same events as <a class="footer-link" href="#" onclick="switchTab('reminders');return false">Reminders</a>.
-      Add here or say in chat: “add dentist Tuesday 3pm”.
+    <p class="cal-month-hint" style="color:var(--text2);font-size:13px;margin:0 0 10px;line-height:1.4">
+      Tap a day for full-screen day view with every event. Same data as
+      <a class="footer-link" href="#" onclick="switchTab('reminders');return false">Reminders</a>.
     </p>
     <div class="cal-form" id="calForm">
       <div class="card-title" id="calFormTitle" style="font-size:15px;margin-bottom:8px">Add event</div>
@@ -1184,8 +1201,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-24';</script>
-<script src="i18n-ui.js?v=20260724-24"></script>
+<script>window.BINAI_BUILD = '20260724-25';</script>
+<script src="i18n-ui.js?v=20260724-25"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -3700,12 +3717,54 @@ function setCalView(v) {
   document.querySelectorAll('[data-cal-view]').forEach(b => {
     b.classList.toggle('active', b.getAttribute('data-cal-view') === calView);
   });
-  renderCalendar();
+  syncCalDayModeUI();
+  refreshCalendar();
+}
+/** Open full-screen day view for a date (from month/week tap). */
+function openCalDay(date) {
+  const d = date instanceof Date ? new Date(date) : new Date(date);
+  if (Number.isNaN(d.getTime())) return;
+  d.setHours(12, 0, 0, 0);
+  calFocus = d;
+  calView = 'day';
+  localStorage.setItem('binai_cal_view', 'day');
+  document.querySelectorAll('[data-cal-view]').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-cal-view') === 'day');
+  });
+  syncCalDayModeUI();
+  // Prefill add form for this day
+  const di = document.getElementById('calDateInput');
+  if (di) di.value = toDateInputValue(Math.floor(calStartOfDay(calFocus).getTime() / 1000));
+  refreshCalendar().then(() => {
+    try {
+      document.getElementById('calBody')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (_) {}
+  });
+}
+function syncCalDayModeUI() {
+  const panel = document.getElementById('panel-calendar');
+  if (panel) panel.classList.toggle('cal-day-mode', calView === 'day');
+  const form = document.getElementById('calForm');
+  if (form && calView !== 'day') form.classList.remove('cal-form-open');
+}
+function showCalFormForDay() {
+  const form = document.getElementById('calForm');
+  if (form) {
+    form.classList.add('cal-form-open');
+    form.style.display = '';
+  }
+  const di = document.getElementById('calDateInput');
+  if (di) di.value = toDateInputValue(Math.floor(calStartOfDay(calFocus).getTime() / 1000));
+  try {
+    form?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (_) {}
+  document.getElementById('calTitleInput')?.focus();
 }
 function calGoToday() {
   calFocus = new Date();
   calFocus.setHours(12, 0, 0, 0);
-  renderCalendar();
+  if (calView === 'day') openCalDay(calFocus);
+  else refreshCalendar();
 }
 function calShift(dir) {
   const d = new Date(calFocus);
@@ -3714,7 +3773,8 @@ function calShift(dir) {
   else d.setMonth(d.getMonth() + dir);
   calFocus = d;
   calFocus.setHours(12, 0, 0, 0);
-  renderCalendar();
+  if (calView === 'day') openCalDay(calFocus);
+  else refreshCalendar();
 }
 function calYmd(d) {
   const y = d.getFullYear();
@@ -3922,11 +3982,12 @@ function renderCalendar() {
   document.querySelectorAll('[data-cal-view]').forEach(b => {
     b.classList.toggle('active', b.getAttribute('data-cal-view') === calView);
   });
+  syncCalDayModeUI();
   const title = document.getElementById('calTitle');
   if (title) {
     if (calView === 'day') {
       title.textContent = calFocus.toLocaleDateString(undefined, {
-        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+        weekday: 'short', month: 'short', day: 'numeric',
       });
     } else if (calView === 'week') {
       const a = calStartOfWeek(calFocus);
@@ -3968,12 +4029,10 @@ function renderCalMonth(body) {
       + (ymd === todayYmd ? ' today' : '')
       + (ymd === focusYmd ? ' selected' : '');
     const day = new Date(cur);
-    cell.onclick = () => {
-      calFocus = day;
-      calFocus.setHours(12, 0, 0, 0);
-      setCalView('day');
-      refreshCalendar();
-    };
+    cell.onclick = () => openCalDay(day);
+    cell.setAttribute('role', 'button');
+    cell.setAttribute('tabindex', '0');
+    cell.setAttribute('aria-label', 'Open ' + ymd);
     const num = document.createElement('div');
     num.className = 'day-num';
     num.textContent = String(cur.getDate());
@@ -4012,10 +4071,7 @@ function renderCalWeek(body) {
     const day = new Date(cur);
     col.onclick = (e) => {
       if (e.target.closest && e.target.closest('.cal-event')) return;
-      calFocus = day;
-      calFocus.setHours(12, 0, 0, 0);
-      setCalView('day');
-      refreshCalendar();
+      openCalDay(day);
     };
     const h = document.createElement('h4');
     h.textContent = cur.toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' });
@@ -4036,31 +4092,89 @@ function renderCalWeek(body) {
 }
 
 function renderCalDay(body) {
+  const wrap = document.createElement('div');
+  wrap.className = 'cal-day-fullscreen';
+
+  const hero = document.createElement('div');
+  hero.className = 'cal-day-hero';
+  const h2 = document.createElement('h2');
+  h2.textContent = calFocus.toLocaleDateString(undefined, {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  });
+  const items = itemsOnDay(calFocus).sort((a, b) => {
+    // all-day first, then by time
+    if (a.all_day && !b.all_day) return -1;
+    if (!a.all_day && b.all_day) return 1;
+    return (a.due_at || 0) - (b.due_at || 0);
+  });
+  const sub = document.createElement('p');
+  sub.className = 'cal-day-sub';
+  sub.textContent = items.length
+    ? (items.length === 1 ? '1 event' : items.length + ' events')
+    : 'No events yet';
+  const actions = document.createElement('div');
+  actions.className = 'cal-day-actions';
+  const backBtn = document.createElement('button');
+  backBtn.type = 'button';
+  backBtn.className = 'btn btn-ghost';
+  backBtn.textContent = '← Month';
+  backBtn.onclick = () => setCalView('month');
+  const weekBtn = document.createElement('button');
+  weekBtn.type = 'button';
+  weekBtn.className = 'btn btn-ghost';
+  weekBtn.textContent = 'Week';
+  weekBtn.onclick = () => setCalView('week');
+  const prevBtn = document.createElement('button');
+  prevBtn.type = 'button';
+  prevBtn.className = 'btn btn-ghost';
+  prevBtn.textContent = '‹ Prev day';
+  prevBtn.onclick = () => {
+    const d = new Date(calFocus);
+    d.setDate(d.getDate() - 1);
+    openCalDay(d);
+  };
+  const nextBtn = document.createElement('button');
+  nextBtn.type = 'button';
+  nextBtn.className = 'btn btn-ghost';
+  nextBtn.textContent = 'Next day ›';
+  nextBtn.onclick = () => {
+    const d = new Date(calFocus);
+    d.setDate(d.getDate() + 1);
+    openCalDay(d);
+  };
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'btn btn-primary';
+  addBtn.textContent = '➕ Add for this day';
+  addBtn.onclick = () => showCalFormForDay();
+  actions.append(backBtn, weekBtn, prevBtn, nextBtn, addBtn);
+  hero.append(h2, sub, actions);
+  wrap.appendChild(hero);
+
   const list = document.createElement('div');
   list.className = 'cal-day-list';
-  const items = itemsOnDay(calFocus).sort((a, b) => (a.due_at || 0) - (b.due_at || 0));
+  const listHead = document.createElement('div');
+  listHead.style.cssText = 'font-weight:700;font-size:15px;margin-bottom:2px';
+  listHead.textContent = 'Events';
+  list.appendChild(listHead);
+
   if (!items.length) {
-    const empty = document.createElement('p');
-    empty.style.color = 'var(--text2)';
-    empty.textContent = 'No events this day. Add one above, or say “add dentist 3pm” in chat.';
+    const empty = document.createElement('div');
+    empty.className = 'cal-event';
+    empty.style.flexDirection = 'column';
+    empty.innerHTML = '<div class="cal-event-title" style="font-weight:600">Nothing scheduled</div>'
+      + '<div class="cal-event-time">Tap “Add for this day”, or say in chat: remind me to … next Tuesday</div>';
     list.appendChild(empty);
   } else {
     items.forEach(it => list.appendChild(makeCalEventRow(it, false)));
   }
-  // undated open reminders
-  const undated = (calItems || []).filter(it => !it.due_at);
-  if (undated.length) {
-    const h = document.createElement('p');
-    h.style.cssText = 'color:var(--text2);font-size:13px;margin-top:12px';
-    h.textContent = 'Reminders without a date:';
-    list.appendChild(h);
-    undated.forEach(it => list.appendChild(makeCalEventRow(it, false)));
-  }
-  body.appendChild(list);
-  // prefill form date for this day if not editing
+  wrap.appendChild(list);
+  body.appendChild(wrap);
+
+  // Always bind form date to this day
   if (!calEditingId) {
     const di = document.getElementById('calDateInput');
-    if (di && !di.value) di.value = toDateInputValue(Math.floor(calStartOfDay(calFocus).getTime() / 1000));
+    if (di) di.value = toDateInputValue(Math.floor(calStartOfDay(calFocus).getTime() / 1000));
   }
 }
 
@@ -4077,6 +4191,12 @@ function makeCalEventRow(it, compact) {
   title.className = 'cal-event-title';
   title.textContent = it.content || '(untitled)';
   body.append(time, title);
+  if (!compact && it.recurrence) {
+    const rec = document.createElement('div');
+    rec.className = 'cal-event-rec';
+    rec.textContent = formatRecurrenceLabel(it.recurrence);
+    body.appendChild(rec);
+  }
   const edit = document.createElement('button');
   edit.type = 'button';
   edit.className = 'btn btn-ghost';
@@ -4211,6 +4331,8 @@ async function saveCalendarEvent() {
         scheduleReminderNotif(data.id || Date.now(), title, start);
     }
     cancelCalendarEdit();
+    const form = document.getElementById('calForm');
+    if (form) form.classList.remove('cal-form-open');
     await refreshCalendar();
     loadReminders();
   } catch (e) {
@@ -4218,6 +4340,8 @@ async function saveCalendarEvent() {
   }
 }
 window.setCalView = setCalView;
+window.openCalDay = openCalDay;
+window.showCalFormForDay = showCalFormForDay;
 window.calShift = calShift;
 window.calGoToday = calGoToday;
 window.saveCalendarEvent = saveCalendarEvent;
