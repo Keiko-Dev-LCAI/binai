@@ -133,9 +133,19 @@ body::before {
 .place-row .field { margin: 0; }
 .wait-banner {
   display: none; background: rgba(155,127,232,0.12); border: 1px solid rgba(155,127,232,0.25);
-  border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; font-size: 14px; color: var(--text2);
+  border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; font-size: 14px; color: var(--text2);
+  align-items: center; gap: 10px; flex-wrap: wrap;
 }
-.wait-banner.visible { display: block; }
+.wait-banner.visible { display: flex; }
+.wait-banner #waitBannerText { flex: 1; min-width: 140px; line-height: 1.4; }
+.wait-banner .wait-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.wait-banner .btn-cancel {
+  background: rgba(232,75,106,0.2); border: 1px solid var(--red); color: #ffc0cb;
+  font-weight: 800; font-size: 14px; padding: 8px 12px; border-radius: 10px; cursor: pointer;
+}
+.chat-home-btn {
+  font-size: 13px !important; padding: 8px 10px !important;
+}
 .pin-hint { font-size: 13px; color: var(--text2); margin-bottom: 12px; line-height: 1.5; }
 @keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
 
@@ -167,73 +177,116 @@ body::before {
 .voice-stop-btn[hidden] { display: none !important; }
 #sendBtn { flex-shrink: 0; padding: 12px 16px; }
 
-/* Mobile: full-bleed chat input edge-to-edge + big type box */
+/* Mobile chat: fill remaining space under header/tabs — NO page scroll */
 @media (max-width: 899px) {
-  .main { padding-left: 0; padding-right: 0; padding-bottom: 0; }
-  #panel-chat {
-    display: flex; flex-direction: column;
-    min-height: calc(100dvh - 120px);
-    height: calc(100dvh - 120px);
+  .header { padding: 10px 12px; }
+  .logo { font-size: 22px; }
+  .tabs .tab { padding: 10px 4px; font-size: 13px; min-width: 56px; }
+  .main {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden; /* page does not scroll; only message list does */
+    display: flex;
+    flex-direction: column;
+  }
+  /* Settings/notes/etc. may need to scroll inside main */
+  .main:has(.panel.active:not(#panel-chat)) {
+    overflow-y: auto;
+  }
+  #panel-chat.active {
+    display: flex !important;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
     padding: 0;
   }
-  #panel-chat .wait-banner { margin: 0 12px 8px; flex-shrink: 0; }
+  #panel-chat .wait-banner {
+    margin: 6px 10px 0;
+    flex-shrink: 0;
+    font-size: 12px;
+    padding: 8px 10px;
+  }
   #panel-chat .prompt-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin: 0 12px 10px;
+    gap: 6px;
+    margin: 8px 10px 6px;
     padding: 0;
     flex-shrink: 0;
   }
   #panel-chat .prompt-grid.is-hidden {
     display: none !important;
   }
+  #panel-chat .prompt-card {
+    padding: 10px 10px;
+  }
+  #panel-chat .prompt-card .prompt-icon { font-size: 18px; margin-bottom: 4px; }
+  #panel-chat .prompt-card .prompt-title { font-size: 13px; margin-bottom: 2px; }
+  #panel-chat .prompt-card .prompt-desc {
+    font-size: 11px;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  /* ONLY the message list scrolls */
   #panel-chat .chat-messages {
     flex: 1 1 auto;
-    min-height: 80px;
+    min-height: 0;
     overflow-y: auto;
-    padding: 4px 12px 12px;
-    margin-bottom: 0;
-    display: flex;
-    flex-direction: column;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 10px 8px;
+    margin: 0;
+    gap: 8px;
   }
   #panel-chat .chat-footer {
-    margin-top: auto;
     flex-shrink: 0;
-    padding: 12px 10px calc(12px + env(safe-area-inset-bottom, 0px));
+    margin: 0;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--border);
     background: rgba(13,13,26,0.98);
     backdrop-filter: blur(10px);
     width: 100%;
   }
-  #panel-chat .chat-quick-actions { margin-bottom: 8px; }
+  #panel-chat .chat-quick-actions {
+    margin-bottom: 6px;
+    gap: 6px;
+  }
+  #panel-chat .chat-quick-actions .btn {
+    font-size: 13px !important;
+    padding: 8px 10px;
+  }
   #panel-chat .input-row {
     gap: 6px;
     width: 100%;
-    align-items: stretch;
+    align-items: flex-end;
   }
   #panel-chat .chat-input {
     flex: 1 1 auto;
     min-width: 0;
-    min-height: 88px;   /* much taller type box on phone */
-    max-height: 180px;
-    font-size: 16px;    /* avoid iOS zoom */
-    line-height: 1.4;
-    padding: 14px 12px;
+    min-height: 56px;
+    max-height: 96px;
+    font-size: 16px;
+    line-height: 1.35;
+    padding: 12px 10px;
   }
-  #panel-chat .btn-mic { width: 46px; height: 46px; font-size: 20px; align-self: flex-end; }
-  #panel-chat .voice-stop-btn { align-self: flex-end; }
+  #panel-chat .btn-mic { width: 44px; height: 44px; font-size: 18px; }
+  #panel-chat .voice-stop-btn { min-height: 44px; padding: 8px 10px !important; font-size: 13px !important; }
   #panel-chat #sendBtn {
-    padding: 12px 14px;
-    font-size: 15px;
-    min-height: 46px;
-    align-self: flex-end;
+    padding: 10px 12px;
+    font-size: 14px;
+    min-height: 44px;
   }
-  #panel-chat .chat-hint { margin: 8px 2px 0; font-size: 12px; }
+  #panel-chat .chat-hint { display: none; } /* no extra footer clutter */
   /* Other panels keep comfortable side padding */
   #panel-briefing, #panel-notes, #panel-reminders, #panel-memory,
   #panel-aboutme, #panel-settings { padding: 0 16px 20px; }
-  .hero-strip { margin-left: 16px; margin-right: 16px; }
+  .hero-strip { display: none !important; } /* never take space on phone chat */
 }
 
 .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
@@ -516,7 +569,13 @@ body::before {
     </div>
   </div>
   <div class="panel active" id="panel-chat">
-    <div class="wait-banner" id="waitBanner">⏳ Binai is thinking on Lightchain AIVM — beta can take up to 2 min. Feel free to check notes or reminders while you wait.</div>
+    <div class="wait-banner" id="waitBanner">
+      <span id="waitBannerText">⏳ Binai is thinking on Lightchain AIVM — beta can take up to 2 min.</span>
+      <span class="wait-actions">
+        <button type="button" class="btn-cancel" id="cancelChatBtn" onclick="cancelChat()">✕ Cancel</button>
+        <button type="button" class="btn-cancel" id="waitHomeBtn" onclick="goHome()" style="border-color:var(--purple);color:var(--purple);background:var(--purple-glow)">🏠 Home</button>
+      </span>
+    </div>
     <!-- Starter cards live OUTSIDE the message list so login/welcome never wipes them -->
     <div class="prompt-grid" id="promptGrid">
       <button type="button" class="prompt-card" onclick="usePrompt(t('prompt1_title'))">
@@ -543,6 +602,7 @@ body::before {
     <div class="chat-messages" id="chatMessages"></div>
     <div class="chat-footer">
       <div class="chat-quick-actions" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="btn btn-ghost chat-home-btn" id="homeBtn" type="button" onclick="goHome()">🏠 Home</button>
         <button class="btn btn-ghost" id="catchUpBtn" type="button" onclick="loadCatchUp(true)" style="font-size:15px">☀️ Catch Me Up</button>
         <button class="btn btn-ghost" id="lightchatBtn" type="button" onclick="openLightChat()" style="font-size:15px">💬 Messages</button>
         <span id="chatCustomQuickActions" style="display:contents"></span>
@@ -554,6 +614,7 @@ body::before {
         <textarea class="chat-input" id="chatInput" rows="3" placeholder="Talk to Binai…"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
         <button class="btn btn-primary" id="sendBtn" onclick="sendChat()">Send</button>
+        <button class="btn btn-ghost voice-stop-btn" id="cancelChatBtn2" type="button" onclick="cancelChat()" hidden>✕</button>
       </div>
       <p class="chat-hint"><span id="chatHint"></span> <span id="usageText"></span></p>
     </div>
@@ -978,8 +1039,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-8';</script>
-<script src="i18n-ui.js?v=20260724-8"></script>
+<script>window.BINAI_BUILD = '20260724-10';</script>
+<script src="i18n-ui.js?v=20260724-10"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -2458,8 +2519,51 @@ async function tryInstantChatReply(msg) {
   return null;
 }
 let thinkTimer = null;
+let chatAbort = null;
+let thinkingActive = false;
+let chatGeneration = 0; // bumped on Home/cancel so late replies are ignored
+
+function setThinkingUI(on) {
+  thinkingActive = !!on;
+  const banner = document.getElementById('waitBanner');
+  if (banner) banner.classList.toggle('visible', thinkingActive);
+  const sendBtn = document.getElementById('sendBtn');
+  if (sendBtn) sendBtn.disabled = thinkingActive;
+  const c2 = document.getElementById('cancelChatBtn2');
+  if (c2) c2.hidden = !thinkingActive;
+  const status = document.getElementById('statusBar');
+  if (status && !thinkingActive) status.textContent = (typeof t === 'function' ? t('status_default') : 'Binai 💜');
+}
+
+/** Stop an in-flight AI request (Plan my day, chat, etc.) */
+function cancelChat() {
+  chatGeneration += 1;
+  if (chatAbort) {
+    try { chatAbort.abort(); } catch (_) {}
+    chatAbort = null;
+  }
+  if (thinkTimer) {
+    clearInterval(thinkTimer);
+    thinkTimer = null;
+  }
+  stopSpeaking();
+  document.querySelectorAll('.msg.thinking').forEach(el => el.remove());
+  setThinkingUI(false);
+}
+
+/** Back to main starter cards (and stop anything in progress) */
+function goHome() {
+  cancelChat();
+  clearChat();
+  showPrompts();
+  switchTab('chat');
+  const input = document.getElementById('chatInput');
+  if (input) input.value = '';
+}
+
 async function sendChat() {
   if (!requireWalletReady()) return;
+  if (thinkingActive) return; // already waiting — use Cancel
   const input = document.getElementById('chatInput');
   const msg = input.value.trim();
   if (!msg) return;
@@ -2483,26 +2587,37 @@ async function sendChat() {
     return;
   }
 
+  if (chatAbort) {
+    try { chatAbort.abort(); } catch (_) {}
+  }
+  chatAbort = new AbortController();
+  const signal = chatAbort.signal;
+
   const think = addBotMsg(t('thinking'), { actions: false });
   think.classList.add('thinking');
   const t0 = Date.now();
+  if (thinkTimer) clearInterval(thinkTimer);
   thinkTimer = setInterval(() => {
     const s = Math.floor((Date.now() - t0) / 1000);
     const body = think.querySelector('.msg-body');
     if (body) body.textContent = t('status_thinking', { s });
-    document.getElementById('statusBar').textContent = t('thinking_status', { s });
+    const status = document.getElementById('statusBar');
+    if (status) status.textContent = t('thinking_status', { s });
+    const wt = document.getElementById('waitBannerText');
+    if (wt) wt.textContent = t('status_thinking', { s });
   }, 1000);
-  document.getElementById('waitBanner').classList.add('visible');
-  document.getElementById('sendBtn').disabled = true;
+  setThinkingUI(true);
   try {
     const r = await fetch(API + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal,
       body: JSON.stringify({
         wallet, message: msg, language: currentLang(),
         local_hour: new Date().getHours(),
       }),
     });
+    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
     const d = await r.json();
     if (!r.ok) {
       think.remove();
@@ -2513,15 +2628,19 @@ async function sendChat() {
       if (d.job_id) {
         const deadline = Date.now() + 180000;
         while (Date.now() < deadline) {
+          if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
           await new Promise(res => setTimeout(res, 4000));
+          if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
           const pr = await fetch(
-            API + '/api/chat/status/' + d.job_id + '?wallet=' + encodeURIComponent(wallet)
+            API + '/api/chat/status/' + d.job_id + '?wallet=' + encodeURIComponent(wallet),
+            { signal }
           );
           const pd = await pr.json();
           if (!pr.ok) throw new Error(pd.error || t('err_generic'));
           if (pd.status === 'done') { result = pd; break; }
           if (pd.status === 'error') throw new Error(pd.error || t('err_generic'));
         }
+        if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
         if (!result.reply) {
           think.remove();
           addBotMsg(t('err_timeout'));
@@ -2550,14 +2669,17 @@ async function sendChat() {
       }
     }
   } catch (e) {
-    think.remove();
-    const hint = (e.message === 'Load failed') ? t('err_load_failed') : e.message;
-    addBotMsg(t('err_connection') + ' ' + hint);
+    if (think && think.parentNode) think.remove();
+    if (e && (e.name === 'AbortError' || e.message === 'Aborted')) {
+      addBotMsg(t('chat_cancelled'));
+    } else {
+      const hint = (e && e.message === 'Load failed') ? t('err_load_failed') : (e && e.message) || '';
+      addBotMsg(t('err_connection') + ' ' + hint);
+    }
   }
-  clearInterval(thinkTimer);
-  document.getElementById('waitBanner').classList.remove('visible');
-  document.getElementById('sendBtn').disabled = false;
-  document.getElementById('statusBar').textContent = t('status_default');
+  if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null; }
+  chatAbort = null;
+  setThinkingUI(false);
 }
 
 function updateUsage(d) {

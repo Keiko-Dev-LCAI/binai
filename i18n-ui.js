@@ -12,6 +12,9 @@ window.BINAI_I18N = {
     voice_stop: 'Stop',
     settings_apk: '📲 Download Android App',
     settings_apk_help: 'Download → open → Install. Allow unknown apps if asked.',
+    home_btn: '🏠 Home',
+    cancel_chat: '✕ Cancel',
+    chat_cancelled: 'Cancelled. Tap Home for the main cards, or type something new.',
     sidebar_tagline: 'The AI that remembers you — powered by Lightchain AIVM.',
     disclaimer: 'Disclaimer: Binai is beta software provided as-is. AI responses are not professional advice. The service may go offline or be discontinued at any time. No refunds.',
     beta_banner: '🧪 Community beta — everyone gets unlimited AI for testing',
@@ -230,6 +233,9 @@ window.BINAI_I18N = {
     voice_stop: '停止朗读',
     settings_apk: '📲 下载 Android 应用',
     settings_apk_help: '下载 → 打开 → 安装。如提示请允许未知来源应用。',
+    home_btn: '🏠 主页',
+    cancel_chat: '✕ 取消',
+    chat_cancelled: '已取消。点「主页」回卡片，或输入新问题。',
     sidebar_tagline: '记住你的 AI 助手 — 由 Lightchain AIVM 驱动。',
     disclaimer: '免责声明：Binai 为测试版软件，按原样提供。AI 回复不构成专业建议。服务可能随时下线或终止。不退款。',
     beta_banner: '🧪 社区测试版 — 测试期间所有人无限使用 AI',
@@ -482,7 +488,11 @@ window.applyI18n = function() {
   else setPh('chatInput', 'chat_placeholder');
   set('sendBtn', 'send');
   set('catchUpBtn', 'catch_up_btn');
+  set('homeBtn', 'home_btn');
+  set('cancelChatBtn', 'cancel_chat');
   set('lightchatBtn', 'lightchat_btn');
+  const waitHome = document.getElementById('waitHomeBtn');
+  if (waitHome) waitHome.textContent = '🏠 ' + (t('home_btn').replace(/^🏠\s*/, '') || 'Home');
   set('insightLcBtn', 'insight_lc_btn');
   set('insightLightchatTitle', 'insight_lc_title');
   set('settingsPlacesTitle', 'settings_places_title');
