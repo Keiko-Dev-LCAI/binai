@@ -35,7 +35,7 @@ _test_flag = os.environ.get("TEST_MODE", "true").lower()
 TEST_MODE = _test_flag not in ("0", "false", "no", "off")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
-BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-23")
+BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-24")
 LIGHTCHAT_API = os.environ.get(
     "LIGHTCHAT_API", "https://web-production-bc64f.up.railway.app"
 ).rstrip("/")
@@ -433,6 +433,7 @@ def init_db():
             due_at INTEGER,
             end_at INTEGER,
             all_day INTEGER DEFAULT 0,
+            recurrence TEXT DEFAULT '',
             done INTEGER DEFAULT 0,
             created_at INTEGER NOT NULL
         );
@@ -616,6 +617,8 @@ def _migrate_db():
         conn.execute("ALTER TABLE reminders ADD COLUMN end_at INTEGER")
     if "all_day" not in rcols:
         conn.execute("ALTER TABLE reminders ADD COLUMN all_day INTEGER DEFAULT 0")
+    if "recurrence" not in rcols:
+        conn.execute("ALTER TABLE reminders ADD COLUMN recurrence TEXT DEFAULT ''")
     conn.commit()
     conn.close()
 
@@ -1567,17 +1570,26 @@ def api_reminders(wallet):
         to_ts = request.args.get("to", type=int)
         include_done = request.args.get("include_done", "0") == "1"
         conn = get_db()
-        sql = """SELECT id, content, due_at, end_at, all_day, done, created_at
+        sql = """SELECT id, content, due_at, end_at, all_day, recurrence, done, created_at
                  FROM reminders WHERE wallet = ?"""
         params = [w]
         if not include_done:
             sql += " AND done = 0"
-        if from_ts is not None:
-            sql += " AND (due_at IS NULL OR due_at >= ?)"
-            params.append(from_ts)
-        if to_ts is not None:
-            sql += " AND (due_at IS NULL OR due_at < ?)"
-            params.append(to_ts)
+        # Recurring rows always return (client expands). One-shot filtered by range.
+        if from_ts is not None or to_ts is not None:
+            sql += " AND ("
+            sql += " (recurrence IS NOT NULL AND TRIM(recurrence) != '')"
+            sql += " OR (due_at IS NULL)"
+            if from_ts is not None and to_ts is not None:
+                sql += " OR (due_at >= ? AND due_at < ?)"
+                params.extend([from_ts, to_ts])
+            elif from_ts is not None:
+                sql += " OR (due_at >= ?)"
+                params.append(from_ts)
+            elif to_ts is not None:
+                sql += " OR (due_at < ?)"
+                params.append(to_ts)
+            sql += ")"
         sql += " ORDER BY done ASC, due_at IS NULL, due_at ASC"
         rows = conn.execute(sql, params).fetchall()
         conn.close()
@@ -1589,16 +1601,21 @@ def api_reminders(wallet):
     due_at = data.get("due_at")
     end_at = data.get("end_at")
     all_day = 1 if data.get("all_day") else 0
+    recurrence = (data.get("recurrence") or "").strip()[:40]
     conn = get_db()
     cur = conn.execute(
-        """INSERT INTO reminders (wallet, content, due_at, end_at, all_day, created_at)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (w, content, due_at, end_at, all_day, int(time.time())),
+        """INSERT INTO reminders
+           (wallet, content, due_at, end_at, all_day, recurrence, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (w, content, due_at, end_at, all_day, recurrence, int(time.time())),
     )
     conn.commit()
     rid = cur.lastrowid
     conn.close()
-    return jsonify({"id": rid, "content": content, "due_at": due_at, "end_at": end_at, "all_day": all_day})
+    return jsonify({
+        "id": rid, "content": content, "due_at": due_at, "end_at": end_at,
+        "all_day": all_day, "recurrence": recurrence,
+    })
 
 
 @app.route("/api/reminders/<wallet>/<int:rid>", methods=["PATCH", "DELETE"])
@@ -1629,6 +1646,9 @@ def patch_reminder(wallet, rid):
         if "all_day" in data:
             sets.append("all_day = ?")
             vals.append(1 if data.get("all_day") else 0)
+        if "recurrence" in data:
+            sets.append("recurrence = ?")
+            vals.append(str(data.get("recurrence") or "").strip()[:40])
         if not sets:
             # default: mark done (legacy)
             sets.append("done = ?")

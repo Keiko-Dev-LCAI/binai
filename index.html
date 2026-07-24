@@ -715,15 +715,27 @@ body::before {
     </p>
     <div class="cal-form" id="calForm">
       <div class="card-title" id="calFormTitle" style="font-size:15px;margin-bottom:8px">Add event</div>
-      <input class="field" id="calTitleInput" placeholder="Title (e.g. Dentist)" maxlength="200">
+      <input class="field" id="calTitleInput" placeholder="Title (e.g. Dentist, Sherry birthday)" maxlength="200">
       <div class="cal-form-row" style="margin-bottom:8px">
-        <input class="field" type="datetime-local" id="calStartInput" title="Start">
-        <input class="field" type="datetime-local" id="calEndInput" title="End (optional)">
+        <input class="field" type="date" id="calDateInput" title="Date">
+        <input class="field" type="time" id="calTimeInput" title="Time (optional — leave blank for all-day)">
       </div>
-      <label class="setup-check" style="margin-bottom:10px">
-        <input type="checkbox" id="calAllDayInput">
-        <span>All day</span>
+      <label class="setup-check" style="margin-bottom:8px">
+        <input type="checkbox" id="calAllDayInput" checked>
+        <span>All day (no time needed)</span>
       </label>
+      <select class="field" id="calRecurInput" style="margin-bottom:10px">
+        <option value="">Does not repeat</option>
+        <option value="daily">Every day</option>
+        <option value="weekly:1">Every Monday</option>
+        <option value="weekly:2">Every Tuesday</option>
+        <option value="weekly:3">Every Wednesday</option>
+        <option value="weekly:4">Every Thursday</option>
+        <option value="weekly:5">Every Friday</option>
+        <option value="weekly:6">Every Saturday</option>
+        <option value="weekly:0">Every Sunday</option>
+        <option value="yearly">Every year (birthday)</option>
+      </select>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-primary" type="button" id="calSaveBtn" onclick="saveCalendarEvent()">➕ Add event</button>
         <button class="btn btn-ghost" type="button" id="calCancelBtn" style="display:none" onclick="cancelCalendarEdit()">Cancel</button>
@@ -1172,8 +1184,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-23';</script>
-<script src="i18n-ui.js?v=20260724-23"></script>
+<script>window.BINAI_BUILD = '20260724-24';</script>
+<script src="i18n-ui.js?v=20260724-24"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -3616,11 +3628,16 @@ async function loadReminders() {
   const el = document.getElementById('remindersList');
   el.innerHTML = items.length ? '' : '<p style="color:var(--text2)">' + esc(t('no_reminders')) + '</p>';
   items.forEach(n => {
-    const due = n.due_at ? new Date(n.due_at * 1000).toLocaleString() : 'no date';
+    const due = n.due_at
+      ? (n.all_day
+        ? new Date(n.due_at * 1000).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+        : new Date(n.due_at * 1000).toLocaleString())
+      : 'no date';
+    const rec = formatRecurrenceLabel(n.recurrence);
     const d = document.createElement('div');
     d.className = 'list-item';
     d.innerHTML = `<div class="list-text">${n.done ? '✅ ' : ''}${esc(n.content)}<br>
-      <span style="color:var(--text2);font-size:13px">${due}</span></div>
+      <span style="color:var(--text2);font-size:13px">${esc(due)}${rec ? ' · ' + esc(rec) : ''}</span></div>
       <button class="btn btn-ghost" style="padding:4px 8px;font-size:13px" onclick="editReminderFromList(${n.id})">Edit</button>
       <button class="list-del" onclick="deleteRem(${n.id})">×</button>`;
     el.appendChild(d);
@@ -3722,29 +3739,146 @@ function calStartOfWeek(d) {
   x.setDate(x.getDate() + diff);
   return x;
 }
-function toDatetimeLocalValue(ts) {
+function toDateInputValue(ts) {
   if (!ts) return '';
   const d = new Date(ts * 1000);
   const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
-function fromDatetimeLocalValue(v) {
-  if (!v) return null;
-  const t = new Date(v).getTime();
-  if (Number.isNaN(t)) return null;
-  return Math.floor(t / 1000);
+function toTimeInputValue(ts) {
+  if (!ts) return '';
+  const d = new Date(ts * 1000);
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function formatRecurrenceLabel(rec) {
+  const r = String(rec || '').trim();
+  if (!r) return '';
+  if (r === 'daily') return 'Every day';
+  if (r === 'yearly') return 'Every year';
+  const w = r.match(/^weekly:([0-6])$/);
+  if (w) {
+    const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return 'Every ' + names[+w[1]];
+  }
+  const m = r.match(/^monthly:(\d{1,2})$/);
+  if (m) return 'Monthly on day ' + m[1];
+  return r;
+}
+/** Expand series into concrete occurrences in [from,to) unix seconds. */
+function expandRemindersForRange(items, fromTs, toTs) {
+  const out = [];
+  const list = Array.isArray(items) ? items : [];
+  for (const it of list) {
+    if (it.done) continue;
+    const rec = String(it.recurrence || '').trim();
+    if (!rec) {
+      if (it.due_at != null && it.due_at >= fromTs && it.due_at < toTs) out.push(it);
+      else if (it.due_at == null) out.push(it);
+      continue;
+    }
+    const occs = listRecurrenceOccurrences(it, fromTs, toTs);
+    occs.forEach(ts => {
+      out.push({
+        ...it,
+        due_at: ts,
+        _occurrence: true,
+        _series_id: it.id,
+      });
+    });
+  }
+  return out;
+}
+function listRecurrenceOccurrences(it, fromTs, toTs) {
+  const rec = String(it.recurrence || '').trim();
+  const out = [];
+  if (!rec) return out;
+  const max = 120;
+  let cursor;
+  if (it.due_at) cursor = new Date(it.due_at * 1000);
+  else cursor = new Date(fromTs * 1000);
+  cursor.setHours(it.all_day || !it.due_at ? 0 : cursor.getHours(), it.all_day ? 0 : cursor.getMinutes(), 0, 0);
+
+  if (rec === 'daily') {
+    // start at max(anchor day, range start)
+    let d = calStartOfDay(cursor);
+    const start = new Date(fromTs * 1000);
+    if (d < calStartOfDay(start)) d = calStartOfDay(start);
+    let n = 0;
+    while (d.getTime() / 1000 < toTs && n < max) {
+      const ts = Math.floor(d.getTime() / 1000);
+      if (ts >= fromTs) out.push(ts);
+      d.setDate(d.getDate() + 1);
+      n++;
+    }
+    return out;
+  }
+  const weekly = rec.match(/^weekly:([0-6])$/);
+  if (weekly) {
+    const want = +weekly[1];
+    let d = calStartOfDay(cursor);
+    // move to first wanted weekday on/after anchor
+    while (d.getDay() !== want) d.setDate(d.getDate() + 1);
+    const rangeStart = calStartOfDay(new Date(fromTs * 1000));
+    while (d < rangeStart) d.setDate(d.getDate() + 7);
+    let n = 0;
+    while (d.getTime() / 1000 < toTs && n < max) {
+      const ts = Math.floor(d.getTime() / 1000);
+      if (ts >= fromTs) out.push(ts);
+      d.setDate(d.getDate() + 7);
+      n++;
+    }
+    return out;
+  }
+  if (rec === 'yearly') {
+    const mon = cursor.getMonth();
+    const dom = cursor.getDate();
+    const h = it.all_day ? 0 : cursor.getHours();
+    const mi = it.all_day ? 0 : cursor.getMinutes();
+    let y = new Date(fromTs * 1000).getFullYear() - 1;
+    let n = 0;
+    while (n < 40) {
+      const d = new Date(y, mon, dom, h, mi, 0, 0);
+      const ts = Math.floor(d.getTime() / 1000);
+      if (ts >= toTs) break;
+      if (ts >= fromTs) out.push(ts);
+      y++;
+      n++;
+    }
+    return out;
+  }
+  const monthly = rec.match(/^monthly:(\d{1,2})$/);
+  if (monthly) {
+    const dom = +monthly[1];
+    let y = new Date(fromTs * 1000).getFullYear();
+    let m = new Date(fromTs * 1000).getMonth() - 1;
+    let n = 0;
+    while (n < max) {
+      const d = new Date(y, m, dom, 0, 0, 0, 0);
+      const ts = Math.floor(d.getTime() / 1000);
+      if (ts >= toTs) break;
+      if (ts >= fromTs && d.getDate() === dom) out.push(ts);
+      m++;
+      if (m > 11) { m = 0; y++; }
+      n++;
+    }
+    return out;
+  }
+  // unknown rule — fall back to anchor if in range
+  if (it.due_at != null && it.due_at >= fromTs && it.due_at < toTs) out.push(it.due_at);
+  return out;
 }
 function itemsOnDay(dayDate) {
-  const a = calStartOfDay(dayDate).getTime() / 1000;
-  const b = calEndOfDay(dayDate).getTime() / 1000;
+  const a = Math.floor(calStartOfDay(dayDate).getTime() / 1000);
+  const b = Math.floor(calEndOfDay(dayDate).getTime() / 1000);
   return (calItems || []).filter(it => {
     if (!it.due_at) return false;
     return it.due_at >= a && it.due_at <= b;
   });
 }
 function formatCalTime(it) {
-  if (!it.due_at) return 'No time';
-  if (it.all_day) return 'All day';
+  if (!it.due_at) return 'No date';
+  if (it.all_day) return it.recurrence ? (formatRecurrenceLabel(it.recurrence) || 'All day') : 'All day';
   return new Date(it.due_at * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
@@ -3752,12 +3886,13 @@ async function refreshCalendar() {
   if (!wallet) return;
   const range = calFetchRange();
   try {
+    // fetch open items (incl. recurring) — expand client-side for the view
     const r = await fetch(
       API + '/api/reminders/' + wallet
       + `?from=${range.from}&to=${range.to}&include_done=0`
     );
-    calItems = await r.json();
-    if (!Array.isArray(calItems)) calItems = [];
+    const raw = await r.json();
+    calItems = expandRemindersForRange(Array.isArray(raw) ? raw : [], range.from, range.to);
   } catch (_) {
     calItems = [];
   }
@@ -3924,12 +4059,8 @@ function renderCalDay(body) {
   body.appendChild(list);
   // prefill form date for this day if not editing
   if (!calEditingId) {
-    const start = document.getElementById('calStartInput');
-    if (start && !start.value) {
-      const d = new Date(calFocus);
-      d.setHours(9, 0, 0, 0);
-      start.value = toDatetimeLocalValue(Math.floor(d.getTime() / 1000));
-    }
+    const di = document.getElementById('calDateInput');
+    if (di && !di.value) di.value = toDateInputValue(Math.floor(calStartOfDay(calFocus).getTime() / 1000));
   }
 }
 
@@ -3982,18 +4113,24 @@ function startEditCalendarEvent(id) {
   if (it) fillCalendarEdit(it);
 }
 function fillCalendarEdit(it) {
-  calEditingId = it.id;
+  calEditingId = it._series_id || it.id;
   const ti = document.getElementById('calTitleInput');
-  const si = document.getElementById('calStartInput');
-  const ei = document.getElementById('calEndInput');
+  const di = document.getElementById('calDateInput');
+  const ti2 = document.getElementById('calTimeInput');
   const ad = document.getElementById('calAllDayInput');
+  const ri = document.getElementById('calRecurInput');
   const ft = document.getElementById('calFormTitle');
   const sb = document.getElementById('calSaveBtn');
   const cb = document.getElementById('calCancelBtn');
   if (ti) ti.value = it.content || '';
-  if (si) si.value = toDatetimeLocalValue(it.due_at);
-  if (ei) ei.value = toDatetimeLocalValue(it.end_at);
-  if (ad) ad.checked = !!it.all_day;
+  if (di) di.value = toDateInputValue(it.due_at);
+  if (ti2) ti2.value = it.all_day ? '' : toTimeInputValue(it.due_at);
+  if (ad) ad.checked = it.all_day !== 0 && it.all_day !== false;
+  if (ri) {
+    const rec = String(it.recurrence || '');
+    const opt = [...ri.options].some(o => o.value === rec);
+    ri.value = opt ? rec : '';
+  }
   if (ft) ft.textContent = 'Edit event';
   if (sb) sb.textContent = '💾 Save changes';
   if (cb) cb.style.display = '';
@@ -4004,17 +4141,19 @@ function fillCalendarEdit(it) {
 function cancelCalendarEdit() {
   calEditingId = null;
   const ti = document.getElementById('calTitleInput');
-  const si = document.getElementById('calStartInput');
-  const ei = document.getElementById('calEndInput');
+  const di = document.getElementById('calDateInput');
+  const ti2 = document.getElementById('calTimeInput');
   const ad = document.getElementById('calAllDayInput');
+  const ri = document.getElementById('calRecurInput');
   const ft = document.getElementById('calFormTitle');
   const sb = document.getElementById('calSaveBtn');
   const cb = document.getElementById('calCancelBtn');
   const err = document.getElementById('calFormErr');
   if (ti) ti.value = '';
-  if (si) si.value = '';
-  if (ei) ei.value = '';
-  if (ad) ad.checked = false;
+  if (di) di.value = '';
+  if (ti2) ti2.value = '';
+  if (ad) ad.checked = true;
+  if (ri) ri.value = '';
   if (ft) ft.textContent = 'Add event';
   if (sb) sb.textContent = '➕ Add event';
   if (cb) cb.style.display = 'none';
@@ -4025,24 +4164,37 @@ async function saveCalendarEvent() {
   const err = document.getElementById('calFormErr');
   if (err) err.textContent = '';
   const title = (document.getElementById('calTitleInput')?.value || '').trim();
-  const due_at = fromDatetimeLocalValue(document.getElementById('calStartInput')?.value);
-  const end_at = fromDatetimeLocalValue(document.getElementById('calEndInput')?.value);
-  const all_day = !!document.getElementById('calAllDayInput')?.checked;
+  const dateStr = document.getElementById('calDateInput')?.value || '';
+  const timeStr = document.getElementById('calTimeInput')?.value || '';
+  let all_day = !!document.getElementById('calAllDayInput')?.checked;
+  const recurrence = (document.getElementById('calRecurInput')?.value || '').trim();
   if (!title) {
     if (err) err.textContent = 'Need a title.';
     return;
   }
-  if (!due_at && !all_day) {
-    if (err) err.textContent = 'Pick a start date/time (or All day with a date).';
+  if (!dateStr) {
+    if (err) err.textContent = 'Pick a date (time is optional).';
     return;
   }
-  let start = due_at;
-  if (all_day && start) {
-    const d = new Date(start * 1000);
-    d.setHours(0, 0, 0, 0);
-    start = Math.floor(d.getTime() / 1000);
+  if (timeStr) all_day = false;
+  if (!timeStr) all_day = true;
+  let start;
+  if (all_day || !timeStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    start = Math.floor(new Date(y, m - 1, d, 0, 0, 0, 0).getTime() / 1000);
+    all_day = true;
+  } else {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const [hh, mm] = timeStr.split(':').map(Number);
+    start = Math.floor(new Date(y, m - 1, d, hh, mm || 0, 0, 0).getTime() / 1000);
   }
-  const payload = { content: title, due_at: start, end_at: end_at || null, all_day: all_day ? 1 : 0 };
+  const payload = {
+    content: title,
+    due_at: start,
+    end_at: null,
+    all_day: all_day ? 1 : 0,
+    recurrence: recurrence || '',
+  };
   try {
     if (calEditingId) {
       await fetch(API + '/api/reminders/' + wallet + '/' + calEditingId, {
@@ -4055,7 +4207,7 @@ async function saveCalendarEvent() {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (start && localStorage.getItem('binai_notif') === '1')
+      if (start && !all_day && localStorage.getItem('binai_notif') === '1')
         scheduleReminderNotif(data.id || Date.now(), title, start);
     }
     cancelCalendarEdit();
@@ -4084,6 +4236,9 @@ function isCalendarQuery(msg) {
   if (new RegExp(`\\b${calWord}\\b`).test(m) && /\b(add|birthday|anniversary|event|appointment)\b/.test(m)) return true;
   if (/\bbirthday\b/.test(m) && /\b(add|schedule|put|save|remind)\b/.test(m)) return true;
   if (/\b(remind me|reminder)\b/.test(m)) return true;
+  if (/\b(every|each)\s+(day|week|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)\b/.test(m)
+      && /\b(add|schedule|remind|put|set)\b/.test(m)) return true;
+  if (/\b(add|schedule|remind me)\b.+\b(next|this)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/.test(m)) return true;
   if (/\b(add|schedule)\b.+\b(tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}(:\d{2})?\s*(am|pm)?)\b/.test(m)) return true;
   // date-only adds: "add … 1 december" / "add … december 1"
   if (/\b(add|schedule|create|put|save)\b/.test(m) && (
@@ -4129,21 +4284,73 @@ function nextWeekday(name, fromDate) {
   d.setDate(d.getDate() + add);
   return d;
 }
-/** Parse date/time from chat. Returns { due_at, all_day } or null. Date-only → all-day (no time required). */
+/** Parse recurrence from chat: every monday, daily, yearly, etc. */
+function parseRecurrenceFromText(text) {
+  const lower = String(text || '').toLowerCase();
+  if (/\b(every|each)\s+day\b/.test(lower) || /\bdaily\b/.test(lower)) return 'daily';
+  if (/\b(every|each)\s+year\b/.test(lower) || /\byearly\b/.test(lower) || /\bannually\b/.test(lower)) return 'yearly';
+  if (/\bbirthday\b/.test(lower) && !/\b(once|this year only)\b/.test(lower)) return 'yearly';
+  const wmap = {
+    sunday: 0, sun: 0, monday: 1, mon: 1, tuesday: 2, tue: 2, tues: 2,
+    wednesday: 3, wed: 3, thursday: 4, thu: 4, thur: 4, thurs: 4,
+    friday: 5, fri: 5, saturday: 6, sat: 6,
+  };
+  const everyWd = lower.match(/\b(every|each)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)\b/);
+  if (everyWd) return 'weekly:' + wmap[everyWd[2]];
+  if (/\b(every|each)\s+week\b/.test(lower)) {
+    // "every week on tuesday" / default next weekday mentioned
+    const onWd = lower.match(/\b(on\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/);
+    if (onWd) return 'weekly:' + wmap[onWd[2]];
+    return 'weekly:' + new Date().getDay();
+  }
+  return '';
+}
+
+/**
+ * Parse when from chat. Time is NEVER required.
+ * Returns { due_at, all_day, recurrence } or null.
+ */
 function parseWhenFromText(text) {
   const lower = String(text || '').toLowerCase();
   const clock = parseClockInText(lower);
+  const recurrence = parseRecurrenceFromText(lower);
   let day = null;
   let yearSpecified = false;
+
+  // next tuesday / this friday
+  const nextWd = lower.match(/\b(next|this)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)\b/);
+  const wmap = {
+    sunday: 'sunday', sun: 'sunday', monday: 'monday', mon: 'monday',
+    tuesday: 'tuesday', tue: 'tuesday', tues: 'tuesday',
+    wednesday: 'wednesday', wed: 'wednesday',
+    thursday: 'thursday', thu: 'thursday', thur: 'thursday', thurs: 'thursday',
+    friday: 'friday', fri: 'friday', saturday: 'saturday', sat: 'saturday',
+  };
+  if (nextWd) {
+    const full = wmap[nextWd[2]] || nextWd[2];
+    if (nextWd[1] === 'this') {
+      // this week's weekday (if today is that day, use today)
+      const map = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+      const target = map[full];
+      const d = new Date();
+      d.setHours(12, 0, 0, 0);
+      let add = (target - d.getDay() + 7) % 7;
+      d.setDate(d.getDate() + add);
+      day = d;
+    } else {
+      day = nextWeekday(full, new Date());
+    }
+  }
 
   if (/\btoday\b/.test(lower)) {
     day = new Date();
   } else if (/\btomorrow\b/.test(lower)) {
     day = new Date();
     day.setDate(day.getDate() + 1);
-  } else {
+  } else if (!day) {
+    // bare weekday without "every" → next that day
     const wd = lower.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
-    if (wd) day = nextWeekday(wd[1], new Date());
+    if (wd && !recurrence) day = nextWeekday(wd[1], new Date());
   }
 
   const iso = lower.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
@@ -4187,25 +4394,41 @@ function parseWhenFromText(text) {
     day = new Date(y, +md[1] - 1, +md[2], 12, 0, 0, 0);
   }
 
+  // every Monday with no date → next Monday
+  if (!day && recurrence && recurrence.startsWith('weekly:')) {
+    const want = +recurrence.split(':')[1];
+    const names = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    day = nextWeekday(names[want], new Date());
+  }
+  if (!day && recurrence === 'daily') day = new Date();
+  if (!day && recurrence === 'yearly') {
+    // birthday without date can't schedule — leave null
+  }
+
   if (!day && clock) day = new Date(); // time only → today
   if (!day) return null;
 
-  // Date-only past this year (e.g. birthday in Dec when it's July → this year; if already passed → next year)
+  // Date-only past this year → next year
   if (!yearSpecified && !clock) {
     const startToday = new Date();
     startToday.setHours(0, 0, 0, 0);
     const cand = new Date(day);
     cand.setHours(0, 0, 0, 0);
-    if (cand < startToday) {
+    if (cand < startToday && !recurrence.startsWith('weekly') && recurrence !== 'daily') {
       day.setFullYear(day.getFullYear() + 1);
     }
   }
 
+  // Time never required — default all-day
   const all_day = !clock;
   if (clock) day.setHours(clock.h, clock.min, 0, 0);
   else day.setHours(0, 0, 0, 0);
 
-  return { due_at: Math.floor(day.getTime() / 1000), all_day };
+  return {
+    due_at: Math.floor(day.getTime() / 1000),
+    all_day,
+    recurrence: recurrence || '',
+  };
 }
 function extractEventTitle(text) {
   let t = String(text || '').trim();
@@ -4214,6 +4437,8 @@ function extractEventTitle(text) {
   t = t.replace(/^(remind me to|remind me|reminder to|reminder:?)\s+/i, '');
   t = t.replace(/\s+(to|on|in)\s+(my\s+)?(calendar|calandar|calender|schedule)\s*/gi, ' ');
   t = t.replace(/\b(appointment|event|reminder|meeting)\b/gi, ' ');
+  t = t.replace(/\b(every|each)\s+(day|week|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)\b/gi, ' ');
+  t = t.replace(/\b(next|this)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)\b/gi, ' ');
   // strip when phrases
   t = t.replace(/\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, ' ');
   t = t.replace(new RegExp(
@@ -4225,8 +4450,8 @@ function extractEventTitle(text) {
   t = t.replace(/\b\d{1,2}:\d{2}\b/g, ' ');
   t = t.replace(/\b(at|on|for|to|the|a|an)\b/gi, ' ');
   t = t.replace(/\s+/g, ' ').trim();
-  // "my wife sherrys birthday" → tidy possessive
   t = t.replace(/\bsherrys\b/gi, "Sherry's");
+  t = t.replace(/\bmom\b/gi, 'Mom');
   return t.slice(0, 200);
 }
 function extractTargetName(text) {
@@ -4311,35 +4536,42 @@ async function tryCalendarChatAction(msg) {
     }
     await fetch(API + '/api/reminders/' + wallet + '/' + hit.id, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ due_at: when.due_at, all_day: when.all_day ? 1 : 0 }),
+      body: JSON.stringify({
+        due_at: when.due_at,
+        all_day: when.all_day ? 1 : 0,
+        recurrence: when.recurrence || hit.recurrence || '',
+      }),
     });
     if (typeof refreshCalendar === 'function') try { await refreshCalendar(); } catch (_) {}
     loadReminders();
-    const whenStr = when.all_day
-      ? new Date(when.due_at * 1000).toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })
-      : new Date(when.due_at * 1000).toLocaleString();
+    const whenStr = formatWhenReply(when);
     return { reply: `Moved “${hit.content}” to ${whenStr}.` };
   }
 
-  // Add / schedule / remind me / birthday (date-only OK)
+  // Add / schedule / remind me / birthday / every Monday (date OK, time never required)
   if (/\b(add|schedule|create|set|put|save|remind me|reminder|birthday)\b/.test(lower)
-      || (/\b(tomorrow|today|monday|tuesday|wednesday|thursday|friday)\b/.test(lower)
-          && parseClockInText(lower))
+      || /\b(every|each)\s+(day|week|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/.test(lower)
       || parseWhenFromText(msg)) {
     const when = parseWhenFromText(msg);
     let title = extractEventTitle(msg);
     if (!title || title.length < 2) {
-      return { reply: 'What should I add? e.g. “add dentist tomorrow 3pm” or “add Sherry birthday 1 December”.' };
+      return { reply: 'What should I add? e.g. “remind me to call Mom next Tuesday” or “add Sherry birthday 1 December”.' };
     }
     if (!when || !when.due_at) {
-      return { reply: `I need a date for “${title}”. e.g. “add ${title} 1 December” or “add ${title} tomorrow 3pm”.` };
+      return {
+        reply: `I need a date for “${title}” (time is optional). `
+          + `e.g. “add ${title} 1 December”, “remind me to ${title} next Tuesday”, or “every Monday ${title}”.`,
+      };
     }
+    let recurrence = when.recurrence || '';
+    if (/\bbirthday\b/i.test(title) && !recurrence) recurrence = 'yearly';
     const res = await fetch(API + '/api/reminders/' + wallet, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         content: title,
         due_at: when.due_at,
         all_day: when.all_day ? 1 : 0,
+        recurrence,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -4347,17 +4579,24 @@ async function tryCalendarChatAction(msg) {
       scheduleReminderNotif(data.id || Date.now(), title, when.due_at);
     if (typeof refreshCalendar === 'function') try { await refreshCalendar(); } catch (_) {}
     loadReminders();
-    const whenStr = when.all_day
-      ? new Date(when.due_at * 1000).toLocaleDateString(undefined, {
-          weekday: 'short', month: 'long', day: 'numeric', year: 'numeric',
-        }) + ' (all day)'
-      : new Date(when.due_at * 1000).toLocaleString();
-    return { reply: `Added “${title}” on ${whenStr}. Open 📅 Calendar to see it.` };
+    const whenStr = formatWhenReply({ ...when, recurrence });
+    return { reply: `Added “${title}” — ${whenStr}. Shows on 📅 Calendar and ⏰ Reminders.` };
   }
 
   return {
-    reply: 'Calendar tips: “show my calendar”, “add Sherry birthday 1 December”, “add dentist Tuesday 3pm”, “cancel dentist”. Or open 📅 Calendar.',
+    reply: 'Calendar tips: “remind me to call Mom next Tuesday”, “add Sherry birthday 1 December”, “every Monday gym”, “show my calendar”. Time is optional — date is enough.',
   };
+}
+function formatWhenReply(when) {
+  if (!when || !when.due_at) return '';
+  const rec = formatRecurrenceLabel(when.recurrence);
+  const datePart = when.all_day
+    ? new Date(when.due_at * 1000).toLocaleDateString(undefined, {
+        weekday: 'short', month: 'long', day: 'numeric', year: 'numeric',
+      })
+    : new Date(when.due_at * 1000).toLocaleString();
+  if (rec) return `${rec} (next: ${datePart})`;
+  return when.all_day ? `${datePart} (all day)` : datePart;
 }
 
 let aboutMeMaxChars = 12000;
