@@ -794,7 +794,11 @@ body::before {
 <div class="overlay hidden" id="prefsSetupOverlay">
   <div class="modal setup-modal">
     <h2 id="setupTitle">Set up your Binai</h2>
-    <p id="setupIntro">Choose how Binai talks to you and which reminders you want. Takes 30 seconds.</p>
+    <p id="setupIntro">Takes about 30 seconds — tell Binai your name, language, and how you like to chat. You can change everything later in Settings.</p>
+    <div class="setup-section-label" id="setupNameTitle">Your name</div>
+    <p class="setup-section-sub" id="setupNameSub">So Binai can greet you and remember you. Required.</p>
+    <input class="field" id="setupDisplayName" placeholder="What should Binai call you?" maxlength="40" autocomplete="name">
+    <p id="setupNameErr" style="font-size:13px;color:var(--red,#f66);margin:6px 0 0;min-height:1.2em"></p>
     <div class="setup-section-label" id="setupLangTitle">Language</div>
     <p class="setup-section-sub" id="setupLangSub">Binai replies in this language.</p>
     <div class="lang-grid" id="setupLangGrid"></div>
@@ -837,8 +841,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260621-8';</script>
-<script src="i18n-ui.js?v=20260621-8"></script>
+<script>window.BINAI_BUILD = '20260724-1';</script>
+<script src="i18n-ui.js?v=20260724-1"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -903,7 +907,8 @@ let lastBriefing = '';
 let userHasChatted = false;
 let testMode = false;
 const TERMS_VERSION = '1';
-const PREFS_SETUP_VERSION = '1';
+/* v2: name-first setup wizard (was easy to skip — only buried in Settings) */
+const PREFS_SETUP_VERSION = '2';
 
 function prefsSetupKey(w) {
   return `binai_prefs_setup_v${PREFS_SETUP_VERSION}_${(w || '').toLowerCase()}`;
@@ -1073,6 +1078,15 @@ function openPrefsSetupModal() {
   const asn = document.getElementById('setupAssistantName');
   const fm = document.getElementById('setupFriendMode');
   const gs = document.getElementById('setupGentleSuggestions');
+  const nameEl = document.getElementById('setupDisplayName');
+  const nameErr = document.getElementById('setupNameErr');
+  if (nameErr) nameErr.textContent = '';
+  if (nameEl) {
+    const existing = (document.getElementById('nameInput')?.value || '').trim()
+      || localStorage.getItem('binai_name')
+      || '';
+    nameEl.value = existing;
+  }
   if (d) d.checked = localStorage.getItem('binai_daily_briefing') === '1';
   if (n) n.checked = localStorage.getItem('binai_notif') === '1';
   if (v) v.checked = isVoiceMuted();
@@ -1080,13 +1094,43 @@ function openPrefsSetupModal() {
   if (fm) fm.checked = localStorage.getItem('binai_friend_mode') !== '0';
   if (gs) gs.checked = localStorage.getItem('binai_gentle_suggestions') !== '0';
   document.getElementById('prefsSetupOverlay').classList.remove('hidden');
+  setTimeout(() => {
+    const el = document.getElementById('setupDisplayName');
+    if (el && !el.value.trim()) el.focus();
+  }, 80);
 }
 async function finishPrefsSetup() {
+  const nameEl = document.getElementById('setupDisplayName');
+  const nameErr = document.getElementById('setupNameErr');
+  const name = (nameEl?.value || '').trim();
+  if (!name) {
+    if (nameErr) nameErr.textContent = (typeof t === 'function' ? t('setup_name_required') : 'Please enter your name so Binai knows what to call you.');
+    if (nameEl) nameEl.focus();
+    return;
+  }
+  if (nameErr) nameErr.textContent = '';
+  localStorage.setItem('binai_name', name);
+  const settingsName = document.getElementById('nameInput');
+  if (settingsName) settingsName.value = name;
+
+  const asn = document.getElementById('setupAssistantName');
+  if (asn) {
+    const an = asn.value.trim().slice(0, 20) || 'Binai';
+    localStorage.setItem('binai_assistant_name', an);
+    const asnSettings = document.getElementById('assistantNameInput');
+    if (asnSettings) asnSettings.value = an;
+  }
+  const fm = document.getElementById('setupFriendMode');
+  const gs = document.getElementById('setupGentleSuggestions');
+  if (fm) localStorage.setItem('binai_friend_mode', fm.checked ? '1' : '0');
+  if (gs) localStorage.setItem('binai_gentle_suggestions', gs.checked ? '1' : '0');
+
   toggleDailyBriefing(!!document.getElementById('setupDailyBriefing')?.checked);
   await toggleNotifications(!!document.getElementById('setupNotif')?.checked);
   localStorage.setItem('binai_voice_muted', document.getElementById('setupVoiceMute')?.checked ? '1' : '0');
   updateVoiceMuteBtn();
   initSettingsToggles();
+  if (typeof updateChatPlaceholder === 'function') updateChatPlaceholder();
   await saveProfile();
   markPrefsSetupDone(wallet);
   document.getElementById('prefsSetupOverlay').classList.add('hidden');
@@ -1102,10 +1146,13 @@ function initOnboarding() {
 
 function finishOnboarding() {
   const name = document.getElementById('onboardName').value.trim();
-  if (name) localStorage.setItem('binai_name', name);
+  if (name) {
+    localStorage.setItem('binai_name', name);
+    const ni = document.getElementById('nameInput');
+    if (ni) ni.value = name;
+  }
   localStorage.setItem('binai_onboarded', '1');
   document.getElementById('onboardOverlay').classList.add('hidden');
-  if (name) document.getElementById('nameInput').value = name;
   setupWalletFirstTime();
 }
 

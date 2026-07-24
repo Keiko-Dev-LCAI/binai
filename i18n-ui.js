@@ -147,12 +147,16 @@ window.BINAI_I18N = {
     onboard_title: 'Welcome to Binai 💜',
     onboard_p1: 'The AI assistant that remembers you — without Big Tech watching. Built for the Lightchain community.',
     onboard_beta: 'Beta: unlimited AI for everyone while we test. Responses take 1–2 minutes — speed upgrade coming.',
-    onboard_lang: 'Your language', onboard_name_ph: 'Your name (optional)',
+    onboard_lang: 'Your language', onboard_name_ph: 'Your name (you can also set this after wallet connect)',
     onboard_pin_note: 'Wallet setup is once. After that, you\'ll set a PIN tied to your wallet — so two accounts can both use "1234" without mixing up.',
     onboard_terms: 'By continuing you confirm you accepted our Terms & Disclosures.',
     onboard_continue: 'Continue → Connect wallet',
     setup_title: 'Set up your Binai',
-    setup_intro: 'Choose how Binai talks to you and which reminders you want. Takes 30 seconds.',
+    setup_intro: 'Takes about 30 seconds — tell Binai your name, language, and how you like to chat. Change anything later in Settings.',
+    setup_name_title: 'Your name',
+    setup_name_sub: 'So Binai can greet you and remember you. Required.',
+    setup_name_ph: 'What should Binai call you?',
+    setup_name_required: 'Please enter your name so Binai knows what to call you.',
     setup_lang_sub: 'Binai replies in this language.',
     setup_reply_depth_sub: 'Short for quick GM-style pings. Chatty if you want questions back.',
     setup_political_sub: 'Optional — helps Binai understand your perspective.',
@@ -348,12 +352,16 @@ window.BINAI_I18N = {
     onboard_title: '欢迎使用 Binai 💜',
     onboard_p1: '记住你的 AI 助手 — 没有大公司监视。为 Lightchain 社区打造。',
     onboard_beta: '测试版：测试期间所有人无限 AI。回复需 1–2 分钟 — 提速即将到来。',
-    onboard_lang: '你的语言', onboard_name_ph: '你的名字（可选）',
+    onboard_lang: '你的语言', onboard_name_ph: '你的名字（连接钱包后也会再问一次）',
     onboard_pin_note: '钱包只需设置一次。之后会为该钱包设置 PIN — 不同账户可用相同数字。',
     onboard_terms: '继续即表示你已接受我们的条款与声明。',
     onboard_continue: '继续 → 连接钱包',
     setup_title: '设置你的 Binai',
-    setup_intro: '选择 Binai 的说话方式和提醒选项。约 30 秒。',
+    setup_intro: '大约 30 秒 — 告诉 Binai 你的名字、语言和聊天偏好。之后可在设置中随时修改。',
+    setup_name_title: '你的名字',
+    setup_name_sub: '方便 Binai 称呼你并记住你。必填。',
+    setup_name_ph: '希望 Binai 怎么称呼你？',
+    setup_name_required: '请输入你的名字，方便 Binai 称呼你。',
     setup_lang_sub: 'Binai 将用此语言回复。',
     setup_reply_depth_sub: '简短适合打招呼。健谈会让 Binai 追问你。',
     setup_political_sub: '可选 — 帮助 Binai 理解你的视角。',
@@ -552,6 +560,9 @@ window.applyI18n = function() {
   set('onboardContinueBtn', 'onboard_continue');
   set('setupTitle', 'setup_title');
   set('setupIntro', 'setup_intro');
+  set('setupNameTitle', 'setup_name_title');
+  set('setupNameSub', 'setup_name_sub');
+  setPh('setupDisplayName', 'setup_name_ph');
   set('setupLangTitle', 'lang_title');
   set('setupLangSub', 'setup_lang_sub');
   set('setupReplyDepthTitle', 'reply_depth_title');
