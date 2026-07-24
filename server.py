@@ -35,7 +35,7 @@ _test_flag = os.environ.get("TEST_MODE", "true").lower()
 TEST_MODE = _test_flag not in ("0", "false", "no", "off")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
-BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-8")
+BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-9")
 LIGHTCHAT_API = os.environ.get(
     "LIGHTCHAT_API", "https://web-production-bc64f.up.railway.app"
 ).rstrip("/")
