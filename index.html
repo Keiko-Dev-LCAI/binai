@@ -1201,8 +1201,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-25';</script>
-<script src="i18n-ui.js?v=20260724-25"></script>
+<script>window.BINAI_BUILD = '20260724-26';</script>
+<script src="i18n-ui.js?v=20260724-26"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -4355,6 +4355,11 @@ function isCalendarQuery(msg) {
   if (!m) return false;
   const calWord = '(calendar|calandar|calender|schedule|agenda)';
   if (new RegExp(`\\b(what('?s| is)|show|list|see)\\b.*\\b${calWord}\\b`).test(m)) return true;
+  // "show me today's calendar" / "this week's schedule" / "what's on today"
+  if (/\b(today|tomorrow|this\s+week|this\s+month)'?s?\b/.test(m)
+      && /\b(calendar|calandar|calender|schedule|agenda|events?|reminders?)\b/.test(m)) return true;
+  if (/\b(what('?s| is)|show|list|see)\b.+\b(today|tomorrow|this week|this month)\b/.test(m)) return true;
+  if (/\b(what('?s| is)\s+on)\b.+\b(today|tomorrow|this week)\b/.test(m)) return true;
   if (/\b(on my calendar|my schedule|what do i have)\b/.test(m)) return true;
   if (new RegExp(`\\b(add|schedule|set|create|put|save)\\b.+\\b${calWord}\\b`).test(m)) return true;
   if (new RegExp(`\\b${calWord}\\b`).test(m) && /\b(add|birthday|anniversary|event|appointment)\b/.test(m)) return true;
@@ -4599,27 +4604,131 @@ async function fetchAllOpenReminders() {
   }
 }
 function formatReminderLine(it) {
-  const when = it.due_at
-    ? new Date(it.due_at * 1000).toLocaleString(undefined, {
-        weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-      })
-    : 'no date';
-  return `• ${it.content} — ${when}`;
+  if (!it.due_at) return `• ${it.content || '(untitled)'} — no date`;
+  if (it.all_day) {
+    const d = new Date(it.due_at * 1000).toLocaleDateString(undefined, {
+      weekday: 'short', month: 'short', day: 'numeric',
+    });
+    const rec = formatRecurrenceLabel(it.recurrence);
+    return `• ${it.content || '(untitled)'} — ${d} (all day)${rec ? ' · ' + rec : ''}`;
+  }
+  const when = new Date(it.due_at * 1000).toLocaleString(undefined, {
+    weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+  return `• ${it.content || '(untitled)'} — ${when}`;
+}
+/** today | tomorrow | week | month | upcoming */
+function detectCalendarListScope(lower) {
+  const m = String(lower || '');
+  if (/\btomorrow\b/.test(m)) return 'tomorrow';
+  if (/\btoday\b/.test(m)) return 'today';
+  if (/\bthis\s+weeks?\b|\bweek'?s\b|\bweekly\b/.test(m)) return 'week';
+  if (/\bthis\s+months?\b|\bmonth'?s\b/.test(m)) return 'month';
+  return 'upcoming';
+}
+function calendarRangeForScope(scope) {
+  const now = new Date();
+  if (scope === 'today') {
+    const a = calStartOfDay(now);
+    const b = calEndOfDay(now);
+    return {
+      from: Math.floor(a.getTime() / 1000),
+      to: Math.floor(b.getTime() / 1000) + 1,
+      label: 'today',
+    };
+  }
+  if (scope === 'tomorrow') {
+    const d = new Date(now);
+    d.setDate(d.getDate() + 1);
+    const a = calStartOfDay(d);
+    const b = calEndOfDay(d);
+    return {
+      from: Math.floor(a.getTime() / 1000),
+      to: Math.floor(b.getTime() / 1000) + 1,
+      label: 'tomorrow',
+    };
+  }
+  if (scope === 'week') {
+    const a = calStartOfWeek(now);
+    const b = new Date(a);
+    b.setDate(b.getDate() + 7);
+    return {
+      from: Math.floor(a.getTime() / 1000),
+      to: Math.floor(b.getTime() / 1000),
+      label: 'this week',
+    };
+  }
+  if (scope === 'month') {
+    const a = new Date(now.getFullYear(), now.getMonth(), 1);
+    const b = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return {
+      from: Math.floor(a.getTime() / 1000),
+      to: Math.floor(b.getTime() / 1000),
+      label: 'this month',
+    };
+  }
+  // upcoming 30 days
+  const a = calStartOfDay(now);
+  const b = new Date(a);
+  b.setDate(b.getDate() + 30);
+  return {
+    from: Math.floor(a.getTime() / 1000),
+    to: Math.floor(b.getTime() / 1000),
+    label: 'the next 30 days',
+  };
+}
+async function listEventsInRange(fromTs, toTs) {
+  const list = await fetchAllOpenReminders();
+  return expandRemindersForRange(list, fromTs, toTs)
+    .filter(x => x.due_at != null)
+    .sort((a, b) => (a.due_at || 0) - (b.due_at || 0));
+}
+function openCalendarForScope(scope) {
+  try {
+    if (typeof openCalendarPage === 'function') openCalendarPage();
+    if (scope === 'today') {
+      openCalDay(new Date());
+    } else if (scope === 'tomorrow') {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      openCalDay(d);
+    } else if (scope === 'week') {
+      calFocus = new Date();
+      calFocus.setHours(12, 0, 0, 0);
+      setCalView('week');
+    } else if (scope === 'month') {
+      calFocus = new Date();
+      calFocus.setHours(12, 0, 0, 0);
+      setCalView('month');
+    } else {
+      setCalView('month');
+    }
+  } catch (_) {}
 }
 async function tryCalendarChatAction(msg) {
   if (!wallet || !isCalendarQuery(msg)) return null;
   const lower = msg.toLowerCase();
 
-  // List
-  if (/\b(what|show|list|see|on my calendar|my schedule|what do i have|agenda)\b/.test(lower)
-      && !/\b(add|schedule|cancel|delete|remove|move|reschedule)\b/.test(lower)) {
-    const list = await fetchAllOpenReminders();
-    const dated = list.filter(x => x.due_at).sort((a, b) => a.due_at - b.due_at).slice(0, 20);
+  // List / show today / this week / this month / upcoming
+  if ((
+    /\b(what|show|list|see|on my calendar|my schedule|what do i have|agenda)\b/.test(lower)
+    || /\b(today|tomorrow|this\s+week|this\s+month)'?s?\s*(calendar|calandar|calender|schedule|agenda)?\b/.test(lower)
+  ) && !/\b(add|schedule|cancel|delete|remove|move|reschedule|remind me to)\b/.test(lower)) {
+    const scope = detectCalendarListScope(lower);
+    const range = calendarRangeForScope(scope);
+    const dated = await listEventsInRange(range.from, range.to);
+    openCalendarForScope(scope);
     if (!dated.length) {
-      return { reply: 'Your Binai calendar is empty. Open 📅 Calendar or say “add dentist tomorrow 3pm”.' };
+      return {
+        reply: `Nothing on your calendar for ${range.label}. `
+          + `I opened 📅 Calendar so you can check. `
+          + `Say “add dentist tomorrow” or “remind me to call Mom next Tuesday” to add something.`,
+      };
     }
+    const lines = dated.slice(0, 40).map(formatReminderLine);
+    const more = dated.length > 40 ? `\n…and ${dated.length - 40} more.` : '';
     return {
-      reply: `Here’s what’s on your calendar:\n${dated.map(formatReminderLine).join('\n')}\n\nOpen 📅 Calendar for day/week/month view.`,
+      reply: `Here’s what’s on your calendar for ${range.label}:\n${lines.join('\n')}${more}\n\nOpened 📅 Calendar so you can see it too.`,
     };
   }
 
