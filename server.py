@@ -681,13 +681,16 @@ def maybe_extract_memory(wallet, message):
             return
 
 
-def get_recent_chat(wallet, limit=6):
+def get_recent_chat(wallet, limit=6, max_age_hours=36):
+    """Last few turns for the model — only from a recent window so old chats don't resurface."""
     w = norm_wallet(wallet)
+    since = int(time.time()) - int(max_age_hours * 3600)
     conn = get_db()
     rows = conn.execute(
-        """SELECT role, content FROM chat_log WHERE wallet = ?
+        """SELECT role, content FROM chat_log
+           WHERE wallet = ? AND created_at >= ?
            ORDER BY id DESC LIMIT ?""",
-        (w, limit),
+        (w, since, limit),
     ).fetchall()
     conn.close()
     lines = []

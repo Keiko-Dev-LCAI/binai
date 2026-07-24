@@ -1866,9 +1866,11 @@ let lastUserMsg = '';
 async function loadChatHistory() {
   if (!wallet) return false;
   try {
-    const r = await fetch(API + '/api/chat-history/' + wallet + '?limit=40');
+    // Only show a current conversation (last 36h). Older chats (e.g. Father's Day months ago)
+    // must NOT dump into a new session on mobile/login — memories stay via /api/welcome.
+    const r = await fetch(API + '/api/chat-history/' + wallet + '?limit=40&max_age_hours=36');
     const rows = await r.json();
-    if (!rows.length) return false;
+    if (!Array.isArray(rows) || !rows.length) return false;
     hidePrompts();
     userHasChatted = true;
     rows.forEach(row => {
