@@ -238,7 +238,7 @@ LANG_PACKS = {
  ),
  "aivm_busy": (
  "Nach Wartezeit immer noch ausgelastet — zu viele Tester. "
- "Bitte in einer Minute erneut versuchen. (Keine Kosten für dich — Keiko zahlt.)"
+ "Bitte in einer Minute erneut versuchen. (Diese Anfrage zählt nicht zur kostenlosen KI.)"
  ),
  },
  "ja": {
@@ -283,7 +283,7 @@ LANG_PACKS = {
  ),
  "aivm_busy": (
  "順番待ちしてもまだ混雑しています。1分後にもう一度お試しください。"
- "（料金はかかりません — Keiko がベータ AI を支払います）"
+ "（このリクエストは無料AI回数から差し引かれません）"
  ),
  },
  "zh": {
