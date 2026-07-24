@@ -309,8 +309,9 @@ body::before {
   }
   #panel-chat .chat-hint { display: none; } /* no extra footer clutter */
   /* Other panels keep comfortable side padding */
-  #panel-briefing, #panel-notes, #panel-reminders, #panel-memory,
+  #panel-briefing, #panel-notes, #panel-reminders, #panel-calendar, #panel-memory,
   #panel-aboutme, #panel-settings { padding: 0 16px 20px; }
+  #panel-calendar { padding-bottom: 28px !important; }
   .hero-strip { display: none !important; } /* never take space on phone chat */
 }
 
@@ -323,6 +324,58 @@ body::before {
 .list-item:last-child { border-bottom: none; }
 .list-text { flex: 1; font-size: 16px; line-height: 1.45; }
 .list-del { color: var(--red); background: none; border: none; font-size: 20px; cursor: pointer; }
+
+/* ── Calendar (full-page panel) ─────────────────────────────────────────── */
+#panel-calendar.panel.active { display: flex !important; flex-direction: column; min-height: 0; }
+.cal-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-bottom: 12px; position: sticky; top: 0; z-index: 5;
+  background: var(--bg); padding: 8px 0 10px;
+}
+.cal-toolbar .cal-title { flex: 1; min-width: 140px; font-weight: 700; font-size: 17px; }
+.cal-view-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.cal-view-btns .btn.active { background: var(--purple); color: #fff; border-color: var(--purple); }
+.cal-month-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+  margin-bottom: 14px;
+}
+.cal-dow { text-align: center; font-size: 12px; color: var(--text2); font-weight: 600; padding: 4px 0; }
+.cal-cell {
+  min-height: 64px; border: 1px solid var(--border); border-radius: 10px;
+  padding: 4px 5px; cursor: pointer; background: var(--bg2); font-size: 12px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.cal-cell.other-month { opacity: 0.45; }
+.cal-cell.today { border-color: var(--purple); box-shadow: 0 0 0 1px rgba(139,92,246,0.35); }
+.cal-cell.selected { background: rgba(139,92,246,0.15); border-color: var(--purple); }
+.cal-cell .day-num { font-weight: 700; font-size: 13px; }
+.cal-dot {
+  font-size: 10px; line-height: 1.2; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; color: var(--text2);
+}
+.cal-week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 14px; }
+.cal-week-col {
+  border: 1px solid var(--border); border-radius: 10px; padding: 8px; min-height: 120px;
+  background: var(--bg2); cursor: pointer;
+}
+.cal-week-col.today { border-color: var(--purple); }
+.cal-week-col.selected { background: rgba(139,92,246,0.12); }
+.cal-week-col h4 { margin: 0 0 6px; font-size: 13px; }
+.cal-day-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.cal-event {
+  display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 12px; background: var(--bg2);
+}
+.cal-event .cal-event-body { flex: 1; min-width: 0; }
+.cal-event .cal-event-time { font-size: 13px; color: var(--text2); }
+.cal-event .cal-event-title { font-size: 15px; font-weight: 600; }
+.cal-form {
+  border: 1px solid var(--border); border-radius: 14px; padding: 12px;
+  background: var(--bg2); margin-bottom: 14px;
+}
+.cal-form .field { margin-bottom: 8px; }
+.cal-form-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.cal-form-row .field { flex: 1; min-width: 140px; margin-bottom: 0; }
 
 .briefing-box { background: var(--purple-glow); border: 1px solid rgba(155,127,232,0.3);
   border-radius: 14px; padding: 18px; line-height: 1.65; font-size: 17px; margin-bottom: 14px; }
@@ -549,6 +602,7 @@ body::before {
     <div class="side-nav-item active" data-tab="chat" onclick="switchTab('chat')">💬 Chat</div>
     <div class="side-nav-item" data-tab="briefing" onclick="switchTab('briefing')">🌅 Morning Brief</div>
     <div class="side-nav-item" data-tab="notes" onclick="switchTab('notes')">📝 Notes</div>
+    <div class="side-nav-item" data-tab="calendar" onclick="switchTab('calendar')">📅 Calendar</div>
     <div class="side-nav-item" data-tab="reminders" onclick="switchTab('reminders')">⏰ Reminders</div>
     <div class="side-nav-item" data-tab="memory" onclick="switchTab('memory')">🧠 Memory</div>
     <div class="side-nav-item" data-tab="aboutme" onclick="switchTab('aboutme')">👤 About Me</div>
@@ -578,6 +632,7 @@ body::before {
   <div class="tab active" data-tab="chat" onclick="switchTab('chat')">💬 Chat</div>
   <div class="tab" data-tab="briefing" onclick="switchTab('briefing')">🌅 Brief</div>
   <div class="tab" data-tab="notes" onclick="switchTab('notes')">📝 Notes</div>
+  <div class="tab" data-tab="calendar" onclick="switchTab('calendar')">📅 Cal</div>
   <div class="tab" data-tab="reminders" onclick="switchTab('reminders')">⏰ Remind</div>
   <div class="tab" data-tab="memory" onclick="switchTab('memory')">🧠 Memory</div>
   <div class="tab" data-tab="aboutme" onclick="switchTab('aboutme')">👤 Me</div>
@@ -608,6 +663,7 @@ body::before {
     <div class="chat-footer">
       <div class="chat-quick-actions" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
         <button class="btn btn-ghost chat-home-btn" id="homeBtn" type="button" onclick="goHome()">🏠 Home</button>
+        <button class="btn btn-primary" id="calendarBtn" type="button" onclick="openCalendarPage()" style="font-size:15px">📅 Calendar</button>
         <button class="btn btn-primary" id="quickActionsBtn" type="button" onclick="openQuickActionsSheet()" style="font-size:15px">⚡ Quick Actions</button>
         <button class="btn btn-ghost" id="catchUpBtn" type="button" onclick="loadCatchUp(true)" style="font-size:15px">☀️ Catch Me Up</button>
         <button class="btn btn-ghost" id="lightchatBtn" type="button" onclick="openLightChat()" style="font-size:15px">💬 Messages</button>
@@ -640,7 +696,48 @@ body::before {
     <div id="notesList"></div>
   </div>
 
+  <div class="panel" id="panel-calendar">
+    <div class="cal-toolbar">
+      <button class="btn btn-ghost" type="button" onclick="calShift(-1)">‹</button>
+      <button class="btn btn-ghost" type="button" onclick="calGoToday()">Today</button>
+      <button class="btn btn-ghost" type="button" onclick="calShift(1)">›</button>
+      <div class="cal-title" id="calTitle">Calendar</div>
+      <div class="cal-view-btns">
+        <button class="btn btn-ghost" type="button" data-cal-view="day" onclick="setCalView('day')">Day</button>
+        <button class="btn btn-ghost" type="button" data-cal-view="week" onclick="setCalView('week')">Week</button>
+        <button class="btn btn-ghost active" type="button" data-cal-view="month" onclick="setCalView('month')">Month</button>
+      </div>
+      <button class="btn btn-ghost" type="button" onclick="switchTab('chat')">← Chat</button>
+    </div>
+    <p style="color:var(--text2);font-size:13px;margin:0 0 10px;line-height:1.4">
+      Same events as <a class="footer-link" href="#" onclick="switchTab('reminders');return false">Reminders</a>.
+      Add here or say in chat: “add dentist Tuesday 3pm”.
+    </p>
+    <div class="cal-form" id="calForm">
+      <div class="card-title" id="calFormTitle" style="font-size:15px;margin-bottom:8px">Add event</div>
+      <input class="field" id="calTitleInput" placeholder="Title (e.g. Dentist)" maxlength="200">
+      <div class="cal-form-row" style="margin-bottom:8px">
+        <input class="field" type="datetime-local" id="calStartInput" title="Start">
+        <input class="field" type="datetime-local" id="calEndInput" title="End (optional)">
+      </div>
+      <label class="setup-check" style="margin-bottom:10px">
+        <input type="checkbox" id="calAllDayInput">
+        <span>All day</span>
+      </label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" type="button" id="calSaveBtn" onclick="saveCalendarEvent()">➕ Add event</button>
+        <button class="btn btn-ghost" type="button" id="calCancelBtn" style="display:none" onclick="cancelCalendarEdit()">Cancel</button>
+      </div>
+      <p id="calFormErr" style="font-size:13px;color:var(--red,#f66);margin:8px 0 0;min-height:1.2em"></p>
+    </div>
+    <div id="calBody"></div>
+  </div>
+
   <div class="panel" id="panel-reminders">
+    <p style="color:var(--text2);font-size:13px;margin:0 0 10px">
+      List view of calendar events.
+      <a class="footer-link" href="#" onclick="openCalendarPage();return false">Open full calendar →</a>
+    </p>
     <div class="input-row" style="margin-bottom:12px;flex-wrap:wrap">
       <input class="field" style="margin:0;flex:1;min-width:140px" id="remInput" placeholder="Reminder…">
       <input class="field" style="margin:0;width:160px" type="datetime-local" id="remDue">
@@ -1075,8 +1172,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-21';</script>
-<script src="i18n-ui.js?v=20260724-21"></script>
+<script>window.BINAI_BUILD = '20260724-22';</script>
+<script src="i18n-ui.js?v=20260724-22"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -1801,6 +1898,7 @@ function switchTab(name) {
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
   if (name === 'notes') loadNotes();
   if (name === 'reminders') loadReminders();
+  if (name === 'calendar') openCalendarPage(false);
   if (name === 'memory') loadMemories();
   if (name === 'aboutme') loadAboutMe();
   if (name === 'settings') {
@@ -3028,6 +3126,10 @@ async function tryInstantChatReply(msg) {
       try { await ensurePhoneContactsFresh(); } catch (_) {}
       return { reply: formatPhoneContactsListReply() };
     }
+    if (typeof tryCalendarChatAction === 'function' && isCalendarQuery(msg)) {
+      const cal = await tryCalendarChatAction(msg);
+      if (cal && cal.reply) return cal;
+    }
     if (isSavePlaceQuery(msg)) {
       const d = await fetchSavePlaceChat(msg);
       if (d.ok && d.reply) {
@@ -3509,7 +3611,7 @@ async function deleteNote(id) {
 
 async function loadReminders() {
   if (!wallet) return;
-  const r = await fetch(API + '/api/reminders/' + wallet);
+  const r = await fetch(API + '/api/reminders/' + wallet + '?include_done=1');
   const items = await r.json();
   const el = document.getElementById('remindersList');
   el.innerHTML = items.length ? '' : '<p style="color:var(--text2)">' + esc(t('no_reminders')) + '</p>';
@@ -3519,6 +3621,7 @@ async function loadReminders() {
     d.className = 'list-item';
     d.innerHTML = `<div class="list-text">${n.done ? '✅ ' : ''}${esc(n.content)}<br>
       <span style="color:var(--text2);font-size:13px">${due}</span></div>
+      <button class="btn btn-ghost" style="padding:4px 8px;font-size:13px" onclick="editReminderFromList(${n.id})">Edit</button>
       <button class="list-del" onclick="deleteRem(${n.id})">×</button>`;
     el.appendChild(d);
   });
@@ -3538,10 +3641,640 @@ async function addReminder() {
   if (due_at && localStorage.getItem('binai_notif') === '1')
     scheduleReminderNotif(data.id || Date.now(), c, due_at);
   loadReminders();
+  if (typeof calItems !== 'undefined') calItems = null;
 }
 async function deleteRem(id) {
   await fetch(API + '/api/reminders/' + wallet + '/' + id, { method: 'DELETE' });
   loadReminders();
+  if (typeof refreshCalendar === 'function') refreshCalendar();
+}
+async function editReminderFromList(id) {
+  openCalendarPage();
+  await refreshCalendar();
+  startEditCalendarEvent(id);
+}
+
+// ── Calendar (full page; same data as reminders) ─────────────────────────────
+let calView = localStorage.getItem('binai_cal_view') || 'month'; // day | week | month
+let calFocus = new Date();
+calFocus.setHours(12, 0, 0, 0);
+let calItems = [];
+let calEditingId = null;
+
+function openCalendarPage(doSwitch) {
+  if (doSwitch !== false) {
+    document.querySelectorAll('.tab, .side-nav-item').forEach(t =>
+      t.classList.toggle('active', t.dataset.tab === 'calendar'));
+    document.querySelectorAll('.panel').forEach(p =>
+      p.classList.toggle('active', p.id === 'panel-calendar'));
+  }
+  if (!requireWalletReady()) {
+    const body = document.getElementById('calBody');
+    if (body) body.innerHTML = '<p style="color:var(--text2)">Connect wallet to use your calendar.</p>';
+    return;
+  }
+  refreshCalendar();
+}
+window.openCalendarPage = openCalendarPage;
+
+function setCalView(v) {
+  calView = v === 'day' || v === 'week' ? v : 'month';
+  localStorage.setItem('binai_cal_view', calView);
+  document.querySelectorAll('[data-cal-view]').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-cal-view') === calView);
+  });
+  renderCalendar();
+}
+function calGoToday() {
+  calFocus = new Date();
+  calFocus.setHours(12, 0, 0, 0);
+  renderCalendar();
+}
+function calShift(dir) {
+  const d = new Date(calFocus);
+  if (calView === 'day') d.setDate(d.getDate() + dir);
+  else if (calView === 'week') d.setDate(d.getDate() + 7 * dir);
+  else d.setMonth(d.getMonth() + dir);
+  calFocus = d;
+  calFocus.setHours(12, 0, 0, 0);
+  renderCalendar();
+}
+function calYmd(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function calStartOfDay(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+function calEndOfDay(d) {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+}
+function calStartOfWeek(d) {
+  const x = calStartOfDay(d);
+  const day = x.getDay(); // 0 Sun
+  const diff = day === 0 ? -6 : 1 - day; // Monday start
+  x.setDate(x.getDate() + diff);
+  return x;
+}
+function toDatetimeLocalValue(ts) {
+  if (!ts) return '';
+  const d = new Date(ts * 1000);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fromDatetimeLocalValue(v) {
+  if (!v) return null;
+  const t = new Date(v).getTime();
+  if (Number.isNaN(t)) return null;
+  return Math.floor(t / 1000);
+}
+function itemsOnDay(dayDate) {
+  const a = calStartOfDay(dayDate).getTime() / 1000;
+  const b = calEndOfDay(dayDate).getTime() / 1000;
+  return (calItems || []).filter(it => {
+    if (!it.due_at) return false;
+    return it.due_at >= a && it.due_at <= b;
+  });
+}
+function formatCalTime(it) {
+  if (!it.due_at) return 'No time';
+  if (it.all_day) return 'All day';
+  return new Date(it.due_at * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+async function refreshCalendar() {
+  if (!wallet) return;
+  const range = calFetchRange();
+  try {
+    const r = await fetch(
+      API + '/api/reminders/' + wallet
+      + `?from=${range.from}&to=${range.to}&include_done=0`
+    );
+    calItems = await r.json();
+    if (!Array.isArray(calItems)) calItems = [];
+  } catch (_) {
+    calItems = [];
+  }
+  renderCalendar();
+}
+function calFetchRange() {
+  if (calView === 'day') {
+    const a = calStartOfDay(calFocus);
+    const b = calEndOfDay(calFocus);
+    return { from: Math.floor(a.getTime() / 1000), to: Math.floor(b.getTime() / 1000) + 1 };
+  }
+  if (calView === 'week') {
+    const a = calStartOfWeek(calFocus);
+    const b = new Date(a);
+    b.setDate(b.getDate() + 7);
+    return { from: Math.floor(a.getTime() / 1000), to: Math.floor(b.getTime() / 1000) };
+  }
+  // month: pad full grid
+  const first = new Date(calFocus.getFullYear(), calFocus.getMonth(), 1);
+  const start = calStartOfWeek(first);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 42);
+  return { from: Math.floor(start.getTime() / 1000), to: Math.floor(end.getTime() / 1000) };
+}
+
+function renderCalendar() {
+  document.querySelectorAll('[data-cal-view]').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-cal-view') === calView);
+  });
+  const title = document.getElementById('calTitle');
+  if (title) {
+    if (calView === 'day') {
+      title.textContent = calFocus.toLocaleDateString(undefined, {
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+      });
+    } else if (calView === 'week') {
+      const a = calStartOfWeek(calFocus);
+      const b = new Date(a);
+      b.setDate(b.getDate() + 6);
+      title.textContent = a.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+        + ' – ' + b.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    } else {
+      title.textContent = calFocus.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    }
+  }
+  const body = document.getElementById('calBody');
+  if (!body) return;
+  body.innerHTML = '';
+  if (calView === 'month') renderCalMonth(body);
+  else if (calView === 'week') renderCalWeek(body);
+  else renderCalDay(body);
+}
+
+function renderCalMonth(body) {
+  const grid = document.createElement('div');
+  grid.className = 'cal-month-grid';
+  ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'cal-dow';
+    h.textContent = d;
+    grid.appendChild(h);
+  });
+  const first = new Date(calFocus.getFullYear(), calFocus.getMonth(), 1);
+  let cur = calStartOfWeek(first);
+  const todayYmd = calYmd(new Date());
+  const focusYmd = calYmd(calFocus);
+  for (let i = 0; i < 42; i++) {
+    const cell = document.createElement('div');
+    const ymd = calYmd(cur);
+    const inMonth = cur.getMonth() === calFocus.getMonth();
+    cell.className = 'cal-cell'
+      + (inMonth ? '' : ' other-month')
+      + (ymd === todayYmd ? ' today' : '')
+      + (ymd === focusYmd ? ' selected' : '');
+    const day = new Date(cur);
+    cell.onclick = () => {
+      calFocus = day;
+      calFocus.setHours(12, 0, 0, 0);
+      setCalView('day');
+      refreshCalendar();
+    };
+    const num = document.createElement('div');
+    num.className = 'day-num';
+    num.textContent = String(cur.getDate());
+    cell.appendChild(num);
+    const items = itemsOnDay(cur).slice(0, 3);
+    items.forEach(it => {
+      const dot = document.createElement('div');
+      dot.className = 'cal-dot';
+      dot.textContent = (it.all_day ? '' : formatCalTime(it) + ' ') + (it.content || '');
+      cell.appendChild(dot);
+    });
+    if (itemsOnDay(cur).length > 3) {
+      const more = document.createElement('div');
+      more.className = 'cal-dot';
+      more.textContent = '+' + (itemsOnDay(cur).length - 3) + ' more';
+      cell.appendChild(more);
+    }
+    grid.appendChild(cell);
+    cur.setDate(cur.getDate() + 1);
+  }
+  body.appendChild(grid);
+}
+
+function renderCalWeek(body) {
+  const wrap = document.createElement('div');
+  wrap.className = 'cal-week-grid';
+  let cur = calStartOfWeek(calFocus);
+  const todayYmd = calYmd(new Date());
+  const focusYmd = calYmd(calFocus);
+  for (let i = 0; i < 7; i++) {
+    const col = document.createElement('div');
+    const ymd = calYmd(cur);
+    col.className = 'cal-week-col'
+      + (ymd === todayYmd ? ' today' : '')
+      + (ymd === focusYmd ? ' selected' : '');
+    const day = new Date(cur);
+    col.onclick = (e) => {
+      if (e.target.closest && e.target.closest('.cal-event')) return;
+      calFocus = day;
+      calFocus.setHours(12, 0, 0, 0);
+      setCalView('day');
+      refreshCalendar();
+    };
+    const h = document.createElement('h4');
+    h.textContent = cur.toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' });
+    col.appendChild(h);
+    itemsOnDay(cur).forEach(it => {
+      col.appendChild(makeCalEventRow(it, true));
+    });
+    if (!itemsOnDay(cur).length) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'font-size:12px;color:var(--text2)';
+      empty.textContent = '—';
+      col.appendChild(empty);
+    }
+    wrap.appendChild(col);
+    cur.setDate(cur.getDate() + 1);
+  }
+  body.appendChild(wrap);
+}
+
+function renderCalDay(body) {
+  const list = document.createElement('div');
+  list.className = 'cal-day-list';
+  const items = itemsOnDay(calFocus).sort((a, b) => (a.due_at || 0) - (b.due_at || 0));
+  if (!items.length) {
+    const empty = document.createElement('p');
+    empty.style.color = 'var(--text2)';
+    empty.textContent = 'No events this day. Add one above, or say “add dentist 3pm” in chat.';
+    list.appendChild(empty);
+  } else {
+    items.forEach(it => list.appendChild(makeCalEventRow(it, false)));
+  }
+  // undated open reminders
+  const undated = (calItems || []).filter(it => !it.due_at);
+  if (undated.length) {
+    const h = document.createElement('p');
+    h.style.cssText = 'color:var(--text2);font-size:13px;margin-top:12px';
+    h.textContent = 'Reminders without a date:';
+    list.appendChild(h);
+    undated.forEach(it => list.appendChild(makeCalEventRow(it, false)));
+  }
+  body.appendChild(list);
+  // prefill form date for this day if not editing
+  if (!calEditingId) {
+    const start = document.getElementById('calStartInput');
+    if (start && !start.value) {
+      const d = new Date(calFocus);
+      d.setHours(9, 0, 0, 0);
+      start.value = toDatetimeLocalValue(Math.floor(d.getTime() / 1000));
+    }
+  }
+}
+
+function makeCalEventRow(it, compact) {
+  const row = document.createElement('div');
+  row.className = 'cal-event';
+  if (compact) row.style.padding = '6px 8px';
+  const body = document.createElement('div');
+  body.className = 'cal-event-body';
+  const time = document.createElement('div');
+  time.className = 'cal-event-time';
+  time.textContent = formatCalTime(it);
+  const title = document.createElement('div');
+  title.className = 'cal-event-title';
+  title.textContent = it.content || '(untitled)';
+  body.append(time, title);
+  const edit = document.createElement('button');
+  edit.type = 'button';
+  edit.className = 'btn btn-ghost';
+  edit.style.cssText = 'padding:4px 8px;font-size:12px';
+  edit.textContent = 'Edit';
+  edit.onclick = (e) => { e.stopPropagation(); startEditCalendarEvent(it.id); };
+  const del = document.createElement('button');
+  del.type = 'button';
+  del.className = 'btn btn-ghost';
+  del.style.cssText = 'padding:4px 8px;font-size:12px;color:var(--red,#f66)';
+  del.textContent = '✕';
+  del.onclick = async (e) => {
+    e.stopPropagation();
+    if (!wallet) return;
+    await fetch(API + '/api/reminders/' + wallet + '/' + it.id, { method: 'DELETE' });
+    if (calEditingId === it.id) cancelCalendarEdit();
+    await refreshCalendar();
+    loadReminders();
+  };
+  row.append(body, edit, del);
+  return row;
+}
+
+function startEditCalendarEvent(id) {
+  const it = (calItems || []).find(x => x.id === id);
+  if (!it && wallet) {
+    // may be outside current range — fetch all open
+    fetch(API + '/api/reminders/' + wallet).then(r => r.json()).then(list => {
+      const hit = (list || []).find(x => x.id === id);
+      if (hit) fillCalendarEdit(hit);
+    }).catch(() => {});
+    return;
+  }
+  if (it) fillCalendarEdit(it);
+}
+function fillCalendarEdit(it) {
+  calEditingId = it.id;
+  const ti = document.getElementById('calTitleInput');
+  const si = document.getElementById('calStartInput');
+  const ei = document.getElementById('calEndInput');
+  const ad = document.getElementById('calAllDayInput');
+  const ft = document.getElementById('calFormTitle');
+  const sb = document.getElementById('calSaveBtn');
+  const cb = document.getElementById('calCancelBtn');
+  if (ti) ti.value = it.content || '';
+  if (si) si.value = toDatetimeLocalValue(it.due_at);
+  if (ei) ei.value = toDatetimeLocalValue(it.end_at);
+  if (ad) ad.checked = !!it.all_day;
+  if (ft) ft.textContent = 'Edit event';
+  if (sb) sb.textContent = '💾 Save changes';
+  if (cb) cb.style.display = '';
+  try {
+    document.getElementById('calForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (_) {}
+}
+function cancelCalendarEdit() {
+  calEditingId = null;
+  const ti = document.getElementById('calTitleInput');
+  const si = document.getElementById('calStartInput');
+  const ei = document.getElementById('calEndInput');
+  const ad = document.getElementById('calAllDayInput');
+  const ft = document.getElementById('calFormTitle');
+  const sb = document.getElementById('calSaveBtn');
+  const cb = document.getElementById('calCancelBtn');
+  const err = document.getElementById('calFormErr');
+  if (ti) ti.value = '';
+  if (si) si.value = '';
+  if (ei) ei.value = '';
+  if (ad) ad.checked = false;
+  if (ft) ft.textContent = 'Add event';
+  if (sb) sb.textContent = '➕ Add event';
+  if (cb) cb.style.display = 'none';
+  if (err) err.textContent = '';
+}
+async function saveCalendarEvent() {
+  if (!requireWalletReady()) return;
+  const err = document.getElementById('calFormErr');
+  if (err) err.textContent = '';
+  const title = (document.getElementById('calTitleInput')?.value || '').trim();
+  const due_at = fromDatetimeLocalValue(document.getElementById('calStartInput')?.value);
+  const end_at = fromDatetimeLocalValue(document.getElementById('calEndInput')?.value);
+  const all_day = !!document.getElementById('calAllDayInput')?.checked;
+  if (!title) {
+    if (err) err.textContent = 'Need a title.';
+    return;
+  }
+  if (!due_at && !all_day) {
+    if (err) err.textContent = 'Pick a start date/time (or All day with a date).';
+    return;
+  }
+  let start = due_at;
+  if (all_day && start) {
+    const d = new Date(start * 1000);
+    d.setHours(0, 0, 0, 0);
+    start = Math.floor(d.getTime() / 1000);
+  }
+  const payload = { content: title, due_at: start, end_at: end_at || null, all_day: all_day ? 1 : 0 };
+  try {
+    if (calEditingId) {
+      await fetch(API + '/api/reminders/' + wallet + '/' + calEditingId, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } else {
+      const res = await fetch(API + '/api/reminders/' + wallet, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (start && localStorage.getItem('binai_notif') === '1')
+        scheduleReminderNotif(data.id || Date.now(), title, start);
+    }
+    cancelCalendarEdit();
+    await refreshCalendar();
+    loadReminders();
+  } catch (e) {
+    if (err) err.textContent = 'Save failed — try again.';
+  }
+}
+window.setCalView = setCalView;
+window.calShift = calShift;
+window.calGoToday = calGoToday;
+window.saveCalendarEvent = saveCalendarEvent;
+window.cancelCalendarEdit = cancelCalendarEdit;
+window.startEditCalendarEvent = startEditCalendarEvent;
+window.refreshCalendar = refreshCalendar;
+
+// ── Chat → calendar (add / move / cancel / list) ─────────────────────────────
+function isCalendarQuery(msg) {
+  const m = String(msg || '').trim().toLowerCase();
+  if (!m) return false;
+  if (/\b(what('?s| is)|show|list|see)\b.*\b(calendar|schedule|agenda)\b/.test(m)) return true;
+  if (/\b(on my calendar|my schedule|what do i have)\b/.test(m)) return true;
+  if (/\b(add|schedule|set|create)\b.+\b(calendar|reminder|appointment|event)\b/.test(m)) return true;
+  if (/\b(remind me|reminder)\b/.test(m)) return true;
+  if (/\b(add|schedule)\b.+\b(tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}(:\d{2})?\s*(am|pm)?)\b/.test(m)) return true;
+  if (/\b(cancel|delete|remove)\b.+\b(reminder|event|appointment|meeting)\b/.test(m)) return true;
+  if (/\b(move|reschedule|change)\b.+\b(to|at)\b/.test(m) && /\b(reminder|event|appointment|meeting|calendar)\b/.test(m)) return true;
+  if (/\b(move|reschedule)\b.+\b(to\s+)?(\d{1,2}(:\d{2})?\s*(am|pm)|tomorrow|monday|tuesday|wednesday|thursday|friday)\b/.test(m)) return true;
+  if (/打开日历|看日历|我的日程|添加日程|提醒我/.test(msg)) return true;
+  return false;
+}
+
+function parseClockInText(text) {
+  const m = String(text || '').match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i)
+    || String(text || '').match(/\b(\d{1,2}):(\d{2})\b/);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  let min = m[2] != null ? parseInt(m[2], 10) : 0;
+  const ap = (m[3] || '').toLowerCase();
+  if (ap === 'pm' && h < 12) h += 12;
+  if (ap === 'am' && h === 12) h = 0;
+  if (!ap && h <= 23) { /* 24h */ }
+  if (h > 23 || min > 59) return null;
+  return { h, min };
+}
+function nextWeekday(name, fromDate) {
+  const map = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+  const target = map[name];
+  if (target == null) return null;
+  const d = new Date(fromDate || Date.now());
+  d.setHours(12, 0, 0, 0);
+  let add = (target - d.getDay() + 7) % 7;
+  if (add === 0) add = 7; // next occurrence, not today
+  d.setDate(d.getDate() + add);
+  return d;
+}
+function parseWhenFromText(text) {
+  const raw = String(text || '');
+  const lower = raw.toLowerCase();
+  const clock = parseClockInText(lower);
+  let day = null;
+  if (/\btoday\b/.test(lower)) {
+    day = new Date();
+  } else if (/\btomorrow\b/.test(lower)) {
+    day = new Date();
+    day.setDate(day.getDate() + 1);
+  } else {
+    const wd = lower.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
+    if (wd) day = nextWeekday(wd[1], new Date());
+  }
+  const iso = lower.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
+  if (iso) day = new Date(+iso[1], +iso[2] - 1, +iso[3], 12, 0, 0, 0);
+  const md = lower.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(20\d{2}))?\b/);
+  if (!day && md) {
+    const y = md[3] ? +md[3] : new Date().getFullYear();
+    day = new Date(y, +md[1] - 1, +md[2], 12, 0, 0, 0);
+  }
+  if (!day && clock) day = new Date(); // time only → today
+  if (!day) return null;
+  const h = clock ? clock.h : 9;
+  const min = clock ? clock.min : 0;
+  day.setHours(h, min, 0, 0);
+  // if time already passed today for "today"/default, keep as-is (user intent)
+  return Math.floor(day.getTime() / 1000);
+}
+function extractEventTitle(text) {
+  let t = String(text || '').trim();
+  t = t.replace(/^(please\s+)?(can you|could you|would you)\s+/i, '');
+  t = t.replace(/^(add|schedule|create|set)\s+(a\s+|an\s+)?/i, '');
+  t = t.replace(/^(remind me to|remind me|reminder to|reminder:?)\s+/i, '');
+  t = t.replace(/\s+(to|on|in)\s+(my\s+)?(calendar|schedule)\s*/i, ' ');
+  t = t.replace(/\b(appointment|event|reminder|meeting)\b/gi, ' ');
+  // strip when phrases
+  t = t.replace(/\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, ' ');
+  t = t.replace(/\b(20\d{2}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}(?:\/20\d{2})?)\b/g, ' ');
+  t = t.replace(/\b\d{1,2}(?::\d{2})?\s*(am|pm)?\b/gi, ' ');
+  t = t.replace(/\b(at|on|for|to|the|a|an)\b/gi, ' ');
+  t = t.replace(/\s+/g, ' ').trim();
+  return t.slice(0, 200);
+}
+function extractTargetName(text) {
+  let t = String(text || '').trim();
+  t = t.replace(/^(please\s+)?(can you|could you)\s+/i, '');
+  t = t.replace(/^(cancel|delete|remove|move|reschedule|change)\s+/i, '');
+  t = t.replace(/\b(the\s+)?(reminder|event|appointment|meeting)\b/gi, ' ');
+  t = t.replace(/\s+(to|at|on)\s+.+$/i, ' ');
+  t = t.replace(/\s+/g, ' ').trim();
+  return t.slice(0, 120);
+}
+
+async function fetchAllOpenReminders() {
+  if (!wallet) return [];
+  try {
+    const r = await fetch(API + '/api/reminders/' + wallet);
+    const list = await r.json();
+    return Array.isArray(list) ? list.filter(x => !x.done) : [];
+  } catch (_) {
+    return [];
+  }
+}
+function formatReminderLine(it) {
+  const when = it.due_at
+    ? new Date(it.due_at * 1000).toLocaleString(undefined, {
+        weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+      })
+    : 'no date';
+  return `• ${it.content} — ${when}`;
+}
+async function tryCalendarChatAction(msg) {
+  if (!wallet || !isCalendarQuery(msg)) return null;
+  const lower = msg.toLowerCase();
+
+  // List
+  if (/\b(what|show|list|see|on my calendar|my schedule|what do i have|agenda)\b/.test(lower)
+      && !/\b(add|schedule|cancel|delete|remove|move|reschedule)\b/.test(lower)) {
+    const list = await fetchAllOpenReminders();
+    const dated = list.filter(x => x.due_at).sort((a, b) => a.due_at - b.due_at).slice(0, 20);
+    if (!dated.length) {
+      return { reply: 'Your Binai calendar is empty. Open 📅 Calendar or say “add dentist tomorrow 3pm”.' };
+    }
+    return {
+      reply: `Here’s what’s on your calendar:\n${dated.map(formatReminderLine).join('\n')}\n\nOpen 📅 Calendar for day/week/month view.`,
+    };
+  }
+
+  // Cancel / delete
+  if (/\b(cancel|delete|remove)\b/.test(lower)) {
+    const name = extractTargetName(msg);
+    if (!name || name.length < 2) {
+      return { reply: 'Which event should I cancel? e.g. “cancel dentist”.' };
+    }
+    const list = await fetchAllOpenReminders();
+    const hit = list.find(x => (x.content || '').toLowerCase().includes(name.toLowerCase()));
+    if (!hit) {
+      return { reply: `I couldn’t find an event matching “${name}”. Say “show my calendar” to list them.` };
+    }
+    await fetch(API + '/api/reminders/' + wallet + '/' + hit.id, { method: 'DELETE' });
+    calItems = null;
+    if (typeof refreshCalendar === 'function') try { await refreshCalendar(); } catch (_) {}
+    loadReminders();
+    return { reply: `Removed “${hit.content}” from your calendar.` };
+  }
+
+  // Move / reschedule
+  if (/\b(move|reschedule|change)\b/.test(lower)) {
+    const when = parseWhenFromText(msg);
+    let name = extractTargetName(msg);
+    // "move dentist to 4pm" → extractTargetName may leave "dentist"
+    name = name.replace(/\bto\b.*$/i, '').trim();
+    if (!when) {
+      return { reply: 'When should I move it to? e.g. “move dentist to tomorrow 4pm”.' };
+    }
+    if (!name || name.length < 2) {
+      return { reply: 'Which event? e.g. “move dentist to Friday 2pm”.' };
+    }
+    const list = await fetchAllOpenReminders();
+    const hit = list.find(x => (x.content || '').toLowerCase().includes(name.toLowerCase()));
+    if (!hit) {
+      return { reply: `I couldn’t find “${name}” on your calendar.` };
+    }
+    await fetch(API + '/api/reminders/' + wallet + '/' + hit.id, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ due_at: when }),
+    });
+    if (typeof refreshCalendar === 'function') try { await refreshCalendar(); } catch (_) {}
+    loadReminders();
+    const whenStr = new Date(when * 1000).toLocaleString();
+    return { reply: `Moved “${hit.content}” to ${whenStr}.` };
+  }
+
+  // Add / schedule / remind me
+  if (/\b(add|schedule|create|set|remind me|reminder)\b/.test(lower)
+      || (/\b(tomorrow|today|monday|tuesday|wednesday|thursday|friday)\b/.test(lower)
+          && parseClockInText(lower))) {
+    const when = parseWhenFromText(msg);
+    let title = extractEventTitle(msg);
+    if (!title || title.length < 2) {
+      return { reply: 'What should I add? e.g. “add dentist tomorrow 3pm”.' };
+    }
+    if (!when) {
+      return { reply: `I need a day/time for “${title}”. e.g. “add ${title} tomorrow 3pm”.` };
+    }
+    const res = await fetch(API + '/api/reminders/' + wallet, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: title, due_at: when }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (localStorage.getItem('binai_notif') === '1')
+      scheduleReminderNotif(data.id || Date.now(), title, when);
+    if (typeof refreshCalendar === 'function') try { await refreshCalendar(); } catch (_) {}
+    loadReminders();
+    const whenStr = new Date(when * 1000).toLocaleString();
+    return { reply: `Added “${title}” on ${whenStr}. Open 📅 Calendar to see day/week/month.` };
+  }
+
+  return {
+    reply: 'Calendar tips: “show my calendar”, “add dentist Tuesday 3pm”, “move dentist to 4pm”, “cancel dentist”. Or open 📅 Calendar.',
+  };
 }
 
 let aboutMeMaxChars = 12000;

@@ -35,7 +35,7 @@ _test_flag = os.environ.get("TEST_MODE", "true").lower()
 TEST_MODE = _test_flag not in ("0", "false", "no", "off")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
-BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-21")
+BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-22")
 LIGHTCHAT_API = os.environ.get(
     "LIGHTCHAT_API", "https://web-production-bc64f.up.railway.app"
 ).rstrip("/")
@@ -162,9 +162,14 @@ RULES:
   Dialing: the app opens the phone dialer when the user says "call Name" or "call +number" in chat.
   You cannot place the call yourself from this chat — if they want to dial, tell them to say "call Name"
   (or "call" + full number). Never invent numbers that are not in PHONE CONTACTS or the message.
-- Never claim to send SMS/texts, book appointments, or access other external services beyond the above.
-  If asked to book a doctor, restaurant, etc., explain kindly that you cannot do that yet
-  and give simple steps the user can follow themselves.
+- CALENDAR / REMINDERS: Binai has a built-in calendar (same data as Reminders). See CALENDAR below.
+  When the user asks what's on their calendar/schedule, list those items with dates/times.
+  When they ask to add, change, move, or cancel an event/reminder, acknowledge clearly.
+  Prefer phrases they can use: "add dentist Tuesday 3pm", "move dentist to 4pm", "cancel dentist",
+  or the Calendar tab. Do not invent events that are not listed. This is NOT Google/Apple calendar.
+- Never claim to send SMS/texts or access other external booking services (OpenTable, etc.).
+  For doctor/restaurant booking outside Binai calendar, explain you cannot book third-party systems
+  but can add a reminder/event on their Binai calendar if they want.
 - NEVER ask for private keys, seed phrases, passwords, or personal financial credentials.
 - NEVER mention LightNode SDK, job registries, blockchain submission, or internal infrastructure.
 - Reply directly in the user's language — do not say "here is a response in X language".
@@ -175,6 +180,8 @@ USER PROFILE:
 {profile}
 
 {phone_contacts_block}
+
+{calendar_block}
 
 PRIVATE ABOUT ME (confidential — only this user; never share or recite wholesale):
 {about_me}
@@ -424,6 +431,8 @@ def init_db():
             wallet TEXT NOT NULL,
             content TEXT NOT NULL,
             due_at INTEGER,
+            end_at INTEGER,
+            all_day INTEGER DEFAULT 0,
             done INTEGER DEFAULT 0,
             created_at INTEGER NOT NULL
         );
@@ -602,7 +611,12 @@ def _migrate_db():
     cols = {r[1] for r in conn.execute("PRAGMA table_info(profiles)").fetchall()}
     if "bio" not in cols:
         conn.execute("ALTER TABLE profiles ADD COLUMN bio TEXT DEFAULT ''")
-        conn.commit()
+    rcols = {r[1] for r in conn.execute("PRAGMA table_info(reminders)").fetchall()}
+    if "end_at" not in rcols:
+        conn.execute("ALTER TABLE reminders ADD COLUMN end_at INTEGER")
+    if "all_day" not in rcols:
+        conn.execute("ALTER TABLE reminders ADD COLUMN all_day INTEGER DEFAULT 0")
+    conn.commit()
     conn.close()
 
 
@@ -787,6 +801,43 @@ def build_prompt(wallet, user_message, language_override=None, local_hour=None):
             "If they ask for numbers, say none are saved yet and how to add one. "
             "Do not claim you cannot ever see contacts — only that the list is empty.)"
         )
+    # Upcoming calendar / reminders (same table)
+    try:
+        _migrate_db()
+        conn_cal = get_db()
+        now_ts = int(time.time())
+        cal_rows = conn_cal.execute(
+            """SELECT id, content, due_at, end_at, all_day, done FROM reminders
+               WHERE wallet = ? AND done = 0
+                 AND (due_at IS NULL OR due_at >= ?)
+               ORDER BY due_at IS NULL, due_at ASC LIMIT 40""",
+            (norm_wallet(wallet), now_ts - 86400),
+        ).fetchall()
+        conn_cal.close()
+    except Exception:
+        cal_rows = []
+    cal_lines = []
+    for r in cal_rows or []:
+        rd = dict(r)
+        due = rd.get("due_at")
+        if due:
+            try:
+                when = time.strftime("%Y-%m-%d %H:%M", time.localtime(int(due)))
+            except Exception:
+                when = str(due)
+        else:
+            when = "(no date)"
+        cal_lines.append(f"- [{rd.get('id')}] {when}: {rd.get('content') or ''}")
+    if cal_lines:
+        calendar_block = (
+            "CALENDAR / REMINDERS (Binai built-in — same as Calendar tab & Reminders; "
+            "list when asked about schedule):\n" + "\n".join(cal_lines)
+        )
+    else:
+        calendar_block = (
+            "CALENDAR / REMINDERS: (empty — no open dated items. "
+            "User can add via Calendar tab or chat: \"add dentist Tuesday 3pm\".)"
+        )
     bio_raw = (prof.get("bio") or "").strip()
     if len(bio_raw) > MAX_BIO_CHARS:
         bio_raw = bio_raw[:MAX_BIO_CHARS]
@@ -834,6 +885,7 @@ def build_prompt(wallet, user_message, language_override=None, local_hour=None):
         memory_confirm_block=memory_block,
         profile=profile_text,
         phone_contacts_block=phone_contacts_block,
+        calendar_block=calendar_block,
         about_me=about_me_text,
         memories=mem_text,
         recent_chat=get_recent_chat(wallet),
@@ -1502,43 +1554,84 @@ def delete_note(wallet, note_id):
 
 @app.route("/api/reminders/<wallet>", methods=["GET", "POST"])
 def api_reminders(wallet):
+    """Reminders = calendar events (same store). GET supports ?from=&to= unix range."""
+    _migrate_db()
     w = norm_wallet(wallet)
     if request.method == "GET":
+        from_ts = request.args.get("from", type=int)
+        to_ts = request.args.get("to", type=int)
+        include_done = request.args.get("include_done", "0") == "1"
         conn = get_db()
-        rows = conn.execute(
-            """SELECT id, content, due_at, done, created_at FROM reminders
-               WHERE wallet = ? ORDER BY done ASC, due_at ASC""",
-            (w,),
-        ).fetchall()
+        sql = """SELECT id, content, due_at, end_at, all_day, done, created_at
+                 FROM reminders WHERE wallet = ?"""
+        params = [w]
+        if not include_done:
+            sql += " AND done = 0"
+        if from_ts is not None:
+            sql += " AND (due_at IS NULL OR due_at >= ?)"
+            params.append(from_ts)
+        if to_ts is not None:
+            sql += " AND (due_at IS NULL OR due_at < ?)"
+            params.append(to_ts)
+        sql += " ORDER BY done ASC, due_at IS NULL, due_at ASC"
+        rows = conn.execute(sql, params).fetchall()
         conn.close()
         return jsonify([dict(r) for r in rows])
     data = request.json or {}
-    content = (data.get("content") or "").strip()
+    content = (data.get("content") or "").strip()[:500]
     if not content:
         return jsonify({"error": "content required"}), 400
     due_at = data.get("due_at")
+    end_at = data.get("end_at")
+    all_day = 1 if data.get("all_day") else 0
     conn = get_db()
     cur = conn.execute(
-        "INSERT INTO reminders (wallet, content, due_at, created_at) VALUES (?, ?, ?, ?)",
-        (w, content, due_at, int(time.time())),
+        """INSERT INTO reminders (wallet, content, due_at, end_at, all_day, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (w, content, due_at, end_at, all_day, int(time.time())),
     )
     conn.commit()
     rid = cur.lastrowid
     conn.close()
-    return jsonify({"id": rid})
+    return jsonify({"id": rid, "content": content, "due_at": due_at, "end_at": end_at, "all_day": all_day})
 
 
 @app.route("/api/reminders/<wallet>/<int:rid>", methods=["PATCH", "DELETE"])
 def patch_reminder(wallet, rid):
+    _migrate_db()
     w = norm_wallet(wallet)
     conn = get_db()
     if request.method == "DELETE":
         conn.execute("DELETE FROM reminders WHERE id = ? AND wallet = ?", (rid, w))
     else:
-        done = (request.json or {}).get("done", 1)
+        data = request.json or {}
+        sets = []
+        vals = []
+        if "done" in data:
+            sets.append("done = ?")
+            vals.append(1 if data.get("done") else 0)
+        if "content" in data:
+            c = str(data.get("content") or "").strip()[:500]
+            if c:
+                sets.append("content = ?")
+                vals.append(c)
+        if "due_at" in data:
+            sets.append("due_at = ?")
+            vals.append(data.get("due_at"))
+        if "end_at" in data:
+            sets.append("end_at = ?")
+            vals.append(data.get("end_at"))
+        if "all_day" in data:
+            sets.append("all_day = ?")
+            vals.append(1 if data.get("all_day") else 0)
+        if not sets:
+            # default: mark done (legacy)
+            sets.append("done = ?")
+            vals.append(1)
+        vals.extend([rid, w])
         conn.execute(
-            "UPDATE reminders SET done = ? WHERE id = ? AND wallet = ?",
-            (1 if done else 0, rid, w),
+            f"UPDATE reminders SET {', '.join(sets)} WHERE id = ? AND wallet = ?",
+            vals,
         )
     conn.commit()
     conn.close()
