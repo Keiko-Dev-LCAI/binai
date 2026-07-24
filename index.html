@@ -601,24 +601,8 @@ body::before {
         <button type="button" class="btn-home-escape" id="waitHomeBtn" onclick="goHome()">🏠 Home</button>
       </span>
     </div>
-    <!-- Starter cards live OUTSIDE the message list so login/welcome never wipes them -->
-    <div class="prompt-grid" id="promptGrid">
-      <button type="button" class="prompt-card" onclick="usePrompt(t('prompt1_title'))">
-        <div class="prompt-icon">☕</div>
-        <div class="prompt-title" id="prompt1Title">Save a memory</div>
-        <div class="prompt-desc" id="prompt1Desc">Tell Binai something to remember forever</div>
-      </button>
-      <button type="button" class="prompt-card" onclick="usePrompt(t('prompt2_title'))">
-        <div class="prompt-icon">🧠</div>
-        <div class="prompt-title" id="prompt2Title">Recall memories</div>
-        <div class="prompt-desc" id="prompt2Desc">See what Binai already knows about you</div>
-      </button>
-      <button type="button" class="prompt-card" onclick="switchTab('briefing');loadBriefing(true)">
-        <div class="prompt-icon">🌅</div>
-        <div class="prompt-title" id="prompt3Title">Morning briefing</div>
-        <div class="prompt-desc" id="prompt3Desc">Weather, reminders, and LCAI in one tap</div>
-      </button>
-    </div>
+    <!-- Starter prompt cards removed — chat opens clean -->
+    <div class="prompt-grid is-hidden" id="promptGrid" hidden aria-hidden="true"></div>
     <div class="chat-messages" id="chatMessages"></div>
     <div class="chat-footer">
       <div class="chat-quick-actions" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
@@ -1065,8 +1049,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-12';</script>
-<script src="i18n-ui.js?v=20260724-12"></script>
+<script>window.BINAI_BUILD = '20260724-13';</script>
+<script src="i18n-ui.js?v=20260724-13"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -1208,11 +1192,11 @@ function hidePrompts() {
   const g = document.getElementById('promptGrid');
   if (!g) return;
   g.classList.add('is-hidden');
+  g.hidden = true;
 }
 function showPrompts() {
-  const g = document.getElementById('promptGrid');
-  if (!g) return;
-  g.classList.remove('is-hidden');
+  // Starter cards removed — keep empty/hidden always
+  hidePrompts();
 }
 function usePrompt(text) {
   if (!requireWalletReady()) return;
