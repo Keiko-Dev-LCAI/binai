@@ -35,7 +35,7 @@ _test_flag = os.environ.get("TEST_MODE", "true").lower()
 TEST_MODE = _test_flag not in ("0", "false", "no", "off")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
-BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-19")
+BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-20")
 LIGHTCHAT_API = os.environ.get(
     "LIGHTCHAT_API", "https://web-production-bc64f.up.railway.app"
 ).rstrip("/")
@@ -156,7 +156,13 @@ RULES:
 - Reference PRIVATE ABOUT ME and stored memories when relevant — personalize, don't lecture.
 - Never repeat the entire About Me document back unless the user asks.
 - For live weather and directions, Binai can answer with GPS + Frequent Places; still help if they ask in general terms.
-- Never claim to send texts, make calls, book appointments, or access external services.
+- PHONE CONTACTS: You DO know the user's Binai-saved phone contacts listed in PHONE CONTACTS below
+  (Settings → Phone contacts). When they ask what numbers/contacts they have, list those names and numbers.
+  You do NOT access the phone's system address book (iOS/Android Contacts app) — only Binai-saved entries.
+  Dialing: the app opens the phone dialer when the user says "call Name" or "call +number" in chat.
+  You cannot place the call yourself from this chat — if they want to dial, tell them to say "call Name"
+  (or "call" + full number). Never invent numbers that are not in PHONE CONTACTS or the message.
+- Never claim to send SMS/texts, book appointments, or access other external services beyond the above.
   If asked to book a doctor, restaurant, etc., explain kindly that you cannot do that yet
   and give simple steps the user can follow themselves.
 - NEVER ask for private keys, seed phrases, passwords, or personal financial credentials.
@@ -167,6 +173,8 @@ RULES:
 
 USER PROFILE:
 {profile}
+
+{phone_contacts_block}
 
 PRIVATE ABOUT ME (confidential — only this user; never share or recite wholesale):
 {about_me}
@@ -744,14 +752,41 @@ def build_prompt(wallet, user_message, language_override=None, local_hour=None):
     if gender_key not in PERSONA_GENDER:
         gender_key = "neutral"
     lang = resolve_lang(wallet, language_override, user_message)
+    # Keep bulky phone list out of raw prefs dump — shown in phone_contacts_block instead
+    prefs_for_profile = {
+        k: v for k, v in prefs.items() if k != "phone_contacts"
+    }
     profile_text = json.dumps(
         {
             "name": prof.get("display_name") or "unknown",
             "language": lang,
-            "preferences": prefs,
+            "preferences": prefs_for_profile,
         },
         indent=2,
     )
+    pc_raw = prefs.get("phone_contacts") or []
+    pc_lines = []
+    if isinstance(pc_raw, list):
+        for c in pc_raw[:30]:
+            if not isinstance(c, dict):
+                continue
+            nm = str(c.get("name") or c.get("label") or "").strip()
+            ph = str(
+                c.get("phone") or c.get("number") or c.get("tel") or ""
+            ).strip()
+            if nm and ph:
+                pc_lines.append(f"- {nm}: {ph}")
+    if pc_lines:
+        phone_contacts_block = (
+            "PHONE CONTACTS (Binai-saved only — list these when asked; "
+            "user dials with \"call Name\"):\n" + "\n".join(pc_lines)
+        )
+    else:
+        phone_contacts_block = (
+            "PHONE CONTACTS: (none saved yet in Binai Settings → Phone contacts. "
+            "If they ask for numbers, say none are saved yet and how to add one. "
+            "Do not claim you cannot ever see contacts — only that the list is empty.)"
+        )
     bio_raw = (prof.get("bio") or "").strip()
     if len(bio_raw) > MAX_BIO_CHARS:
         bio_raw = bio_raw[:MAX_BIO_CHARS]
@@ -798,6 +833,7 @@ def build_prompt(wallet, user_message, language_override=None, local_hour=None):
         dinner_hint_block=dinner_hint_block,
         memory_confirm_block=memory_block,
         profile=profile_text,
+        phone_contacts_block=phone_contacts_block,
         about_me=about_me_text,
         memories=mem_text,
         recent_chat=get_recent_chat(wallet),

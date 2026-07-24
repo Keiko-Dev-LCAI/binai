@@ -1071,8 +1071,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-19';</script>
-<script src="i18n-ui.js?v=20260724-19"></script>
+<script>window.BINAI_BUILD = '20260724-20';</script>
+<script src="i18n-ui.js?v=20260724-20"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -2383,6 +2383,8 @@ function matchConnectorCommand(msg) {
 // ── Phone dialer (“call Mom” / “call 555-…”) ───────────────────────────────
 const PHONE_CONTACT_PRESETS = ['Mom', 'Dad', 'Spouse', 'Home', 'Work'];
 const MAX_PHONE_CONTACTS = 30;
+/** True after user adds/removes contacts or we load a non-empty list — avoids wiping server with []. */
+let phoneContactsTouched = false;
 
 function normalizeContactEntry(c) {
   if (!c || typeof c !== 'object') return null;
@@ -2405,13 +2407,14 @@ function getPhoneContacts() {
     return [];
   }
 }
-function setPhoneContacts(list) {
+function setPhoneContacts(list, opts) {
   const clean = (list || []).map(normalizeContactEntry).filter(Boolean).slice(0, MAX_PHONE_CONTACTS);
   // de-dupe by normalized name (keep last)
   const map = new Map();
   clean.forEach(c => map.set(normalizeContactKey(c.name), c));
   const out = [...map.values()];
   localStorage.setItem('binai_phone_contacts', JSON.stringify(out));
+  if (!opts || opts.touch !== false) phoneContactsTouched = true;
   return out;
 }
 function parseProfilePrefs(prof) {
@@ -2434,7 +2437,10 @@ async function ensurePhoneContactsFresh() {
     remote.map(normalizeContactEntry).filter(Boolean).forEach(c => byName.set(normalizeContactKey(c.name), c));
     local.forEach(c => byName.set(normalizeContactKey(c.name), c));
     const merged = [...byName.values()];
-    if (merged.length) setPhoneContacts(merged);
+    if (merged.length) {
+      setPhoneContacts(merged, { touch: true });
+      phoneContactsTouched = true;
+    }
     return getPhoneContacts();
   } catch (_) {
     return getPhoneContacts();
@@ -2468,21 +2474,74 @@ function normalizeContactKey(s) {
     .trim()
     .replace(/\s+/g, ' ');
 }
-/** If the message contains a saved contact name, return that contact (longest name wins). */
+/** If the message contains a saved contact name (full or any word), return that contact. */
 function findPhoneContactInMessage(text) {
   const lower = String(text || '').toLowerCase();
   const contacts = getPhoneContacts();
   if (!contacts.length) return null;
   const sorted = [...contacts].sort((a, b) => String(b.name).length - String(a.name).length);
+  // 1) Full name (or letters-only full name) appears in message
   for (const c of sorted) {
     const n = String(c.name || '').trim().toLowerCase();
     if (n.length >= 2 && lower.includes(n)) return c;
-    // letters-only fallback (Sherry === sherry)
     const n2 = n.replace(/[^a-z0-9\u4e00-\u9fff]/g, '');
     const t2 = lower.replace(/[^a-z0-9\u4e00-\u9fff]/g, '');
     if (n2.length >= 2 && t2.includes(n2)) return c;
   }
+  // 2) Any word of the contact name — "call sherry" matches "Sherry Chen"
+  const msgTokens = lower
+    .replace(/[^a-z0-9\u4e00-\u9fff\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  const msgSet = new Set(msgTokens);
+  const skipWords = new Set([
+    'call', 'dial', 'phone', 'ring', 'please', 'can', 'you', 'could', 'would', 'will',
+    'me', 'to', 'the', 'a', 'an', 'my', 'for', 'now', 'hey', 'binai', 'and', 'or',
+  ]);
+  for (const c of sorted) {
+    const parts = String(c.name || '')
+      .toLowerCase()
+      .split(/[^a-z0-9\u4e00-\u9fff]+/)
+      .filter(p => p.length >= 2 && !skipWords.has(p));
+    for (const p of parts) {
+      if (msgSet.has(p) || lower.includes(p)) {
+        // Prefer distinctive tokens (3+ chars) or single-word names
+        if (p.length >= 3 || parts.length === 1) return c;
+      }
+    }
+  }
   return null;
+}
+function suggestPhoneContacts(query) {
+  const q = normalizeContactKey(query);
+  if (!q || q === '(unknown)') return [];
+  const qParts = q.split(/\s+/).filter(Boolean);
+  return getPhoneContacts().filter(c => {
+    const n = normalizeContactKey(c.name);
+    if (!n) return false;
+    if (n.includes(q) || q.includes(n)) return true;
+    const parts = n.split(/\s+/);
+    return qParts.some(qp => parts.some(p => p.startsWith(qp) || qp.startsWith(p)));
+  }).slice(0, 5);
+}
+function isPhoneContactsListQuery(msg) {
+  const m = String(msg || '').trim().toLowerCase();
+  if (!m) return false;
+  if (/^(show|list|see|view)\s+(me\s+)?(my\s+)?(phone\s+)?contacts?\b/.test(m)) return true;
+  if (/\b(what|which|any)\s+(phone\s+)?(numbers?|contacts?)\b/.test(m)) return true;
+  if (/\b(my\s+)?(phone\s+)?contacts?\b/.test(m) && /\b(what|which|show|list|have|got|see|numbers?|who)\b/.test(m)) return true;
+  if (/\bnumbers?\s+(do\s+you\s+have|in\s+my|saved|on\s+file)\b/.test(m)) return true;
+  if (/电话联系人|我的联系人|通讯录|有哪些联系人|联系人里有谁/.test(msg)) return true;
+  return false;
+}
+function formatPhoneContactsListReply() {
+  const list = getPhoneContacts();
+  if (!list.length) {
+    return "You don't have any Binai phone contacts saved yet. Open Settings → Phone contacts, add a name + number (at least 7 digits), then say call Name — I'll open the dialer.";
+  }
+  const lines = list.map(c => `• ${c.name}: ${c.phone}`).join('\n');
+  const sample = list[0].name;
+  return `Your Binai phone contacts (${list.length}):\n${lines}\n\nSay “call ${sample}” to dial.`;
 }
 function extractCallName(text) {
   let t = String(text || '').trim();
@@ -2847,6 +2906,10 @@ async function fetchSavePlaceChat(msg) {
 }
 async function tryInstantChatReply(msg) {
   try {
+    if (isPhoneContactsListQuery(msg)) {
+      try { await ensurePhoneContactsFresh(); } catch (_) {}
+      return { reply: formatPhoneContactsListReply() };
+    }
     if (isSavePlaceQuery(msg)) {
       const d = await fetchSavePlaceChat(msg);
       if (d.ok && d.reply) {
@@ -2983,9 +3046,13 @@ async function sendChat() {
     if (callTarget.missing) {
       const raw = localStorage.getItem('binai_phone_contacts') || '[]';
       const names = getPhoneContacts().map(c => c.name).filter(Boolean);
-      const have = names.length
+      const hints = suggestPhoneContacts(callTarget.missing);
+      let have = names.length
         ? ` Contacts on this device: ${names.join(', ')}.`
         : ` No phone contacts loaded (raw storage length ${raw.length}). Re-add in Settings → Phone contacts.`;
+      if (hints.length) {
+        have += ` Did you mean: ${hints.map(h => h.name).join(', ')}?`;
+      }
       addBotMsg(
         `Couldn't match “${callTarget.missing}”.` + have
         + ' Or try: call + full number.'
@@ -2998,6 +3065,14 @@ async function sendChat() {
     } else {
       addBotMsg(`Number for ${callTarget.label} looks invalid: ${callTarget.phone}`);
     }
+    return;
+  }
+  // List contacts instantly (no AI wait / no Home-Cancel bar)
+  if (isPhoneContactsListQuery(msg)) {
+    input.value = '';
+    addUserMsg(msg);
+    try { await ensurePhoneContactsFresh(); } catch (_) {}
+    addBotMsg(formatPhoneContactsListReply());
     return;
   }
   input.value = '';
@@ -3483,9 +3558,9 @@ async function loadProfile() {
     const localLang = localStorage.getItem('binai_lang');
     if (prof.language && !localLang) {
       localStorage.setItem('binai_lang', prof.language);
-    } else if (localLang && localLang !== prof.language) {
-      await saveProfile();
     }
+    // Defer language push until after contacts merge — never wipe phone_contacts with []
+    const langNeedsPush = !!(localLang && prof.language && localLang !== prof.language);
     const prefs = parseProfilePrefs(prof);
     if (prefs.personality) {
       selectedPersonality = prefs.personality;
@@ -3527,12 +3602,16 @@ async function loadProfile() {
       const local = getPhoneContacts();
       const byName = new Map();
       prefs.phone_contacts.forEach(c => {
-        if (c && c.name && c.phone) byName.set(normalizeContactKey(c.name), c);
+        const n = normalizeContactEntry(c);
+        if (n) byName.set(normalizeContactKey(n.name), n);
       });
       local.forEach(c => {
         if (c && c.name && c.phone) byName.set(normalizeContactKey(c.name), c);
       });
-      setPhoneContacts([...byName.values()]);
+      const merged = [...byName.values()];
+      // touch:false so a pure load doesn't force empty POST later
+      setPhoneContacts(merged, { touch: merged.length > 0 || phoneContactsTouched });
+      if (merged.length) phoneContactsTouched = true;
     }
     window._binaiPlacesCache = prefs.frequent_places || {};
     populatePlacesUI(window._binaiPlacesCache);
@@ -3543,6 +3622,7 @@ async function loadProfile() {
     updateChatPlaceholder();
     renderCustomQuickActions();
     renderPhoneContacts();
+    if (langNeedsPush) await saveProfile();
   } catch (_) {}
 }
 function readPersonalizePrefs() {
@@ -3577,32 +3657,36 @@ function readPersonalizePrefs() {
 }
 async function saveProfile() {
   window._binaiPlacesCache = readPlacesFromUI();
-  const name = document.getElementById('nameInput').value.trim() ||
+  const name = document.getElementById('nameInput')?.value.trim() ||
     localStorage.getItem('binai_name') || '';
   if (name) localStorage.setItem('binai_name', name);
   const personal = readPersonalizePrefs();
   updateChatPlaceholder();
   if (!wallet) return;
+  const preferences = {
+    personality: selectedPersonality,
+    political: selectedPolitical,
+    persona_gender: selectedGender,
+    reply_depth: selectedReplyDepth,
+    assistant_name: personal.assistant_name,
+    friend_mode: personal.friend_mode,
+    gentle_suggestions: personal.gentle_suggestions,
+    lightchat_enabled: personal.lightchat_enabled,
+    lightchat_show_memories: personal.lightchat_show_memories,
+    lightchat_primary_handle: personal.lightchat_primary_handle,
+    quick_actions: personal.quick_actions,
+    frequent_places: personal.frequent_places,
+  };
+  // Never POST phone_contacts:[] unless user actually cleared the list — preserves server copy
+  if (personal.phone_contacts.length > 0 || phoneContactsTouched) {
+    preferences.phone_contacts = personal.phone_contacts;
+  }
   await fetch(API + '/api/profile/' + wallet, {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
       display_name: name,
       language: localStorage.getItem('binai_lang') || 'en',
-      preferences: {
-        personality: selectedPersonality,
-        political: selectedPolitical,
-        persona_gender: selectedGender,
-        reply_depth: selectedReplyDepth,
-        assistant_name: personal.assistant_name,
-        friend_mode: personal.friend_mode,
-        gentle_suggestions: personal.gentle_suggestions,
-        lightchat_enabled: personal.lightchat_enabled,
-        lightchat_show_memories: personal.lightchat_show_memories,
-        lightchat_primary_handle: personal.lightchat_primary_handle,
-        quick_actions: personal.quick_actions,
-        phone_contacts: personal.phone_contacts,
-        frequent_places: personal.frequent_places,
-      },
+      preferences,
     }),
   });
 }
