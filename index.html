@@ -2416,43 +2416,92 @@ function openPhoneDialer(phone) {
   window.location.href = 'tel:' + encodeURIComponent(tel).replace(/%2B/g, '+');
   return true;
 }
+function normalizeContactKey(s) {
+  return String(s || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+function findPhoneContactByName(rawName) {
+  const key = normalizeContactKey(rawName);
+  if (!key) return null;
+  const contacts = getPhoneContacts();
+  if (!contacts.length) return null;
+  // 1) exact
+  let hit = contacts.find(c => normalizeContactKey(c.name) === key);
+  if (hit) return hit;
+  // 2) contact name is contained in spoken name or vice versa (sherry / sherry smith)
+  hit = contacts.find(c => {
+    const n = normalizeContactKey(c.name);
+    return n && (n === key || key.startsWith(n + ' ') || n.startsWith(key + ' ') || key.includes(n) || n.includes(key));
+  });
+  if (hit) return hit;
+  // 3) first token match ("sherry" vs "Sherry L.")
+  const token = key.split(' ')[0];
+  if (token && token.length >= 2) {
+    hit = contacts.find(c => normalizeContactKey(c.name).split(' ')[0] === token);
+    if (hit) return hit;
+  }
+  return null;
+}
+function extractCallName(text) {
+  let t = String(text || '').trim();
+  // drop polite / assistant fluff
+  t = t.replace(/^(hey\s+)?(binai\s+)?/i, '');
+  t = t.replace(/^(please\s+)?(can you|could you|would you|will you|i need you to|i want you to|i need to|i wanna|wanna)\s+/i, '');
+  t = t.replace(/^(please\s+)/i, '');
+  // Chinese
+  let m = t.match(/(?:打电话给|拨打|打给)\s*(.+?)(?:吧|啊|哦|呀)?[.!?]*$/);
+  if (m) return m[1].trim();
+  // "call mom" / "call mom please" / "call mom for me"
+  m = t.match(/^(?:call|dial|phone|ring)(?:\s+me)?\s+(?:to\s+)?(.+)$/i);
+  if (m) {
+    return m[1]
+      .replace(/\s+(please|for me|real quick|now|thanks|thank you)[.!?]*$/i, '')
+      .replace(/\s+on\s+(the\s+)?phone.*$/i, '')
+      .replace(/[.!?]+$/g, '')
+      .trim();
+  }
+  // "I need to call sherry" / "go ahead and call sherry"
+  m = t.match(/\b(?:call|dial|phone|ring)\s+(?:to\s+)?([A-Za-z\u4e00-\u9fff][\w\s'.\-]{0,40}?)$/i);
+  if (m) {
+    return m[1]
+      .replace(/\s+(please|for me|real quick|now|thanks|thank you)[.!?]*$/i, '')
+      .replace(/[.!?]+$/g, '')
+      .trim();
+  }
+  return '';
+}
 function resolvePhoneCall(msg) {
   const text = String(msg || '').trim();
   if (!text) return null;
   // Prefer an explicit number in the message
   const direct = extractPhoneFromText(text);
-  const isCallish = /^(call|dial|phone|ring|text)\b/i.test(text)
+  const isCallish = /^(call|dial|phone|ring)\b/i.test(text)
     || /\b(call|dial|phone|ring)\s+/i.test(text)
+    || /(?:can|could|would|will)\s+you\s+(please\s+)?(call|dial|phone|ring)\b/i.test(text)
+    || /\b(i\s+(need|want)\s+(you\s+)?to\s+)?(call|dial)\b/i.test(text)
     || /打电话|拨打|打给/.test(text);
   if (direct && (isCallish || /^\+?\d[\d\s().\-]{6,}\d$/.test(text))) {
     return { phone: direct, label: direct };
   }
   if (!isCallish) return null;
-  // "call mom" / "dial dad please" / "打电话给妈妈"
-  let name = '';
-  let m = text.match(/^(?:please\s+)?(?:call|dial|phone|ring)(?:\s+me)?\s+(?:to\s+)?(.+?)(?:\s+please)?[.!?]*$/i);
-  if (m) name = m[1].trim();
-  if (!name) {
-    m = text.match(/(?:打电话给|拨打|打给)\s*(.+?)[.!?]*$/);
-    if (m) name = m[1].trim();
-  }
+  let name = extractCallName(text);
   if (!name) return null;
   // Don't steal LightChat calls
   if (/light\s*chat/i.test(name)) return null;
-  // Strip trailing "on the phone" etc.
-  name = name.replace(/\s+on\s+(the\s+)?phone.*$/i, '').trim();
   if (extractPhoneFromText(name)) {
     const p = extractPhoneFromText(name);
     return { phone: p, label: p };
   }
-  const contacts = getPhoneContacts();
-  const key = name.toLowerCase();
-  const hit = contacts.find(c => {
-    const n = (c.name || '').toLowerCase();
-    return n === key || n.includes(key) || key.includes(n);
-  });
+  const hit = findPhoneContactByName(name);
   if (hit) return { phone: hit.phone, label: hit.name };
-  return { missing: name };
+  // Debug-friendly missing: still show how many contacts we have
+  const n = getPhoneContacts().length;
+  return { missing: name, contactCount: n };
 }
 function renderPhoneContacts() {
   const list = getPhoneContacts();
