@@ -620,6 +620,11 @@ def _migrate_db():
     conn.close()
 
 
+try:
+    _migrate_db()
+except Exception:
+    pass
+
 MAX_BIO_CHARS = 12000
 
 
