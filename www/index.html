@@ -607,9 +607,9 @@ body::before {
     <div class="chat-footer">
       <div class="chat-quick-actions" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
         <button class="btn btn-ghost chat-home-btn" id="homeBtn" type="button" onclick="goHome()">🏠 Home</button>
+        <button class="btn btn-primary" id="quickActionsBtn" type="button" onclick="openQuickActionsSheet()" style="font-size:15px">⚡ Quick Actions</button>
         <button class="btn btn-ghost" id="catchUpBtn" type="button" onclick="loadCatchUp(true)" style="font-size:15px">☀️ Catch Me Up</button>
         <button class="btn btn-ghost" id="lightchatBtn" type="button" onclick="openLightChat()" style="font-size:15px">💬 Messages</button>
-        <span id="chatCustomQuickActions" style="display:contents"></span>
       </div>
       <div class="input-row">
         <button class="btn btn-mic btn-ghost" id="micBtn" onclick="toggleMic()" title="Voice input" type="button" aria-label="Voice input">🎤</button>
@@ -1049,8 +1049,19 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-12';</script>
-<script src="i18n-ui.js?v=20260724-12"></script>
+<!-- Quick Actions sheet (main screen) -->
+<div class="overlay hidden" id="qaSheetOverlay" onclick="if(event.target===this)closeQuickActionsSheet()">
+  <div class="modal" style="max-width:420px;width:100%">
+    <h2 id="qaSheetTitle" style="margin:0 0 8px">⚡ Quick Actions</h2>
+    <p id="qaSheetSub" class="card-sub" style="margin:0 0 14px">Your personal shortcuts — only you see these.</p>
+    <div id="qaSheetList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;max-height:50vh;overflow-y:auto"></div>
+    <button class="btn btn-primary" type="button" id="qaSheetManageBtn" style="width:100%;margin-bottom:8px" onclick="closeQuickActionsSheet();switchTab('settings');setTimeout(()=>{const el=document.getElementById('settingsShortcutsTitle');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},100)">➕ Manage / add shortcuts</button>
+    <button class="btn btn-ghost" type="button" id="qaSheetCloseBtn" style="width:100%" onclick="closeQuickActionsSheet()">Close</button>
+  </div>
+</div>
+
+<script>window.BINAI_BUILD = '20260724-14';</script>
+<script src="i18n-ui.js?v=20260724-14"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -1192,11 +1203,11 @@ function hidePrompts() {
   const g = document.getElementById('promptGrid');
   if (!g) return;
   g.classList.add('is-hidden');
+  g.hidden = true;
 }
 function showPrompts() {
-  const g = document.getElementById('promptGrid');
-  if (!g) return;
-  g.classList.remove('is-hidden');
+  // Starter cards removed — keep empty/hidden always
+  hidePrompts();
 }
 function usePrompt(text) {
   if (!requireWalletReady()) return;
