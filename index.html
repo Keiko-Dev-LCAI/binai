@@ -627,16 +627,16 @@ body::before {
   </nav>
   <div class="sidebar-foot">
     <div class="wallet-pill" id="walletPillSide" onclick="connectWallet()" style="max-width:100%;margin-bottom:10px">Connect wallet</div>
-    <div style="font-size:13px;color:var(--text2)" id="usageSide">Beta — unlimited</div>
+    <div style="font-size:13px;color:var(--text2)" id="usageSide">20 free AI chats</div>
   </div>
 </aside>
 
 <div class="workspace">
-<div class="top-disclaimer" id="topDisclaimer"><span id="topDisclaimerText">Disclaimer: Binai is beta software provided as-is. AI responses are not professional advice. The service may go offline or be discontinued at any time. No refunds.</span><button class="top-disclaimer-close" onclick="dismissTopDisclaimer()" aria-label="Close">✕</button></div>
+<div class="top-disclaimer" id="topDisclaimer"><span id="topDisclaimerText">Disclaimer: Binai is provided as-is. AI responses are not professional, medical, legal, or financial advice. 20 free AI messages per wallet; calendar/contacts/notes free. Full AI $3/mo LCAI (amount floats with price). No refunds. Service may change or end.</span><button class="top-disclaimer-close" onclick="dismissTopDisclaimer()" aria-label="Close">✕</button></div>
 <div class="update-banner" id="updateBanner" onclick="applyBinaiUpdate()" role="button" tabindex="0" aria-live="polite">
   <span id="updateBannerText">✨ Binai updated — tap here to refresh</span>
 </div>
-<div class="beta-banner" id="betaBanner">🧪 Community beta — everyone gets unlimited AI for testing</div>
+<div class="beta-banner" id="betaBanner">💜 20 free AI chats · Calendar, contacts & notes stay free · Full AI $3/mo LCAI</div>
 <div class="header mobile-only">
   <div class="header-row">
     <div class="logo">Binai <span>💜</span></div>
@@ -801,7 +801,7 @@ body::before {
     <div class="card">
       <div class="card-title" id="settingsSubTitle">Subscription</div>
       <div class="card-sub" id="subStatus">Connect wallet to see status.</div>
-      <button class="btn btn-primary" id="subscribeBtn" style="margin-top:12px;width:100%" onclick="subscribe()">Subscribe — $1/mo LCAI</button>
+      <button class="btn btn-primary" id="subscribeBtn" style="margin-top:12px;width:100%" onclick="subscribe()">Subscribe — $3/mo LCAI</button>
       <div class="err" id="subErr"></div>
     </div>
     <div class="card">
@@ -923,7 +923,7 @@ body::before {
     </div>
     <div class="card">
       <div class="card-title" id="settingsAboutTitle">About Binai</div>
-      <div class="card-sub" id="settingsAboutSub">Personal AI on Lightchain AIVM. Remembers you. Community beta for Discord family. Fast mode when REST API ships.</div>
+      <div class="card-sub" id="settingsAboutSub">Personal AI on Lightchain AIVM. Remembers you. 20 free AI chats; calendar, contacts &amp; notes free forever. Full AI $3/mo LCAI.</div>
       <p id="settingsUpdateHelp" style="margin-top:10px;font-size:14px;color:var(--text2);line-height:1.5"></p>
       <a class="btn btn-primary" id="settingsApkBtn" href="Binai.apk" download style="display:block;text-align:center;margin-top:14px;text-decoration:none">📲 Download Android App</a>
       <p id="settingsApkHelp" style="margin-top:8px;font-size:13px;color:var(--text2);line-height:1.45">Download → open → Install. Allow unknown apps if asked.</p>
@@ -932,7 +932,7 @@ body::before {
   </div>
 </div>
 
-<div class="status-bar" id="statusBar">Binai 💜 — Lightchain community beta</div>
+<div class="status-bar" id="statusBar">Binai 💜 — Personal AI on Lightchain</div>
 </div>
 
 <!-- Fixed bottom escape while AI is thinking — always tappable -->
@@ -964,7 +964,7 @@ body::before {
   </div>
   <div class="insight-card">
     <h3 id="insightBuiltTitle">Built on</h3>
-    <div class="insight-sub" id="insightBuiltSub">Lightchain AIVM · LCAI · Community beta<br>Fast mode when REST API ships</div>
+    <div class="insight-sub" id="insightBuiltSub">Lightchain AIVM · LCAI<br>20 free AI · tools free forever</div>
   </div>
 </aside>
 
@@ -1090,7 +1090,7 @@ body::before {
 
       <div class="terms-section">
         <h3>6. Beta &amp; Service Availability</h3>
-        <p>Binai is in active beta. Features, limits, pricing, and availability may change without notice. The service may be slow, buggy, offline, or <strong style="color:var(--text)">permanently discontinued at any time</strong>. AI responses depend on Lightchain AIVM and third-party infrastructure outside the operator's control.</p>
+        <p>Binai is live software still evolving. Features, limits, pricing, and availability may change without notice. The service may be slow, buggy, offline, or <strong style="color:var(--text)">permanently discontinued at any time</strong>. AI responses depend on Lightchain AIVM and third-party infrastructure outside the operator's control.</p>
       </div>
       <div class="terms-divider"></div>
 
@@ -1129,13 +1129,31 @@ body::before {
   <div class="modal">
     <h2 id="onboardTitle">Welcome to Binai 💜</h2>
     <p id="onboardP1">The AI assistant that remembers you — without Big Tech watching. Built for the Lightchain community.</p>
-    <p id="onboardBeta" style="font-size:14px;color:var(--gold)">Beta: unlimited AI for everyone while we test. Responses take 1–2 minutes — speed upgrade coming.</p>
+    <p id="onboardBeta" style="font-size:14px;color:var(--gold)">20 free AI messages to try full chat. Calendar, contacts, notes &amp; dialer are free forever. Full AI: $3/mo in LCAI. Responses may take 1–2 minutes.</p>
     <label id="onboardLangLabel" style="font-size:14px;color:var(--text2);display:block;margin-bottom:6px">Your language</label>
     <div class="lang-grid" id="langGrid"></div>
     <input class="field" id="onboardName" placeholder="Your name (optional)">
     <p id="onboardPinNote" style="font-size:13px;color:var(--text2);margin:0 0 12px;line-height:1.45">Wallet setup is once. After that, you'll set a PIN tied to <em>your</em> wallet — so two accounts can both use "1234" without mixing up.</p>
     <p id="onboardTerms" style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:12px">By continuing you confirm you accepted our <a class="footer-link" href="#" onclick="showTerms('view');return false">Terms &amp; Disclosures</a>.</p>
     <button class="btn btn-primary" id="onboardContinueBtn" style="width:100%" onclick="finishOnboarding()">Continue → Connect wallet</button>
+  </div>
+</div>
+
+<!-- First-login feature tour (after prefs) -->
+<div class="overlay hidden" id="featureTourOverlay">
+  <div class="modal setup-modal" style="max-width:520px">
+    <h2 id="tourTitle">How to use Binai 💜</h2>
+    <p id="tourIntro" style="margin-bottom:12px">Quick tour — free tools always work. AI chat uses your free messages, then $3/mo LCAI.</p>
+    <div id="tourSlides" style="display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow-y:auto;margin-bottom:14px">
+      <div class="card" style="margin:0"><div class="card-title">💬 AI Chat</div><div class="card-sub">Ask anything. You get <strong>20 free AI messages</strong> per wallet. After that, subscribe for full chat.</div></div>
+      <div class="card" style="margin:0"><div class="card-title">📅 Calendar</div><div class="card-sub">Day / week / month. Tap a day for full list. Chat: “show today’s calendar”, “add dentist tomorrow”, “every Monday gym”. <strong>Free forever.</strong></div></div>
+      <div class="card" style="margin:0"><div class="card-title">📞 Phone contacts</div><div class="card-sub">Settings → add name + number. Say “call Sherry” or “call + number”. Opens your phone dialer. <strong>Free forever.</strong></div></div>
+      <div class="card" style="margin:0"><div class="card-title">📝 Notes &amp; 🧠 Memory</div><div class="card-sub">Save notes anytime. Say “remember …” so Binai keeps facts. About Me is private to your wallet.</div></div>
+      <div class="card" style="margin:0"><div class="card-title">⚡ Quick Actions &amp; ☀️ Catch Me Up</div><div class="card-sub">Your shortcuts (TikTok, etc.). Catch Me Up summarizes what’s waiting.</div></div>
+      <div class="card" style="margin:0"><div class="card-title">💳 Free vs paid</div><div class="card-sub">Calendar, contacts, notes, dialer = free. Full AI chat after free messages = <strong>$3/mo LCAI</strong> (amount floats with price). No refunds. Not professional advice.</div></div>
+    </div>
+    <button class="btn btn-primary" type="button" style="width:100%;margin-bottom:8px" onclick="finishFeatureTour()">Got it — start using Binai</button>
+    <button class="btn btn-ghost" type="button" style="width:100%" onclick="finishFeatureTour()">Skip tour</button>
   </div>
 </div>
 
@@ -1201,8 +1219,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-26';</script>
-<script src="i18n-ui.js?v=20260724-26"></script>
+<script>window.BINAI_BUILD = '20260724-27';</script>
+<script src="i18n-ui.js?v=20260724-27"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -1522,8 +1540,31 @@ async function finishPrefsSetup() {
   await saveProfile();
   markPrefsSetupDone(wallet);
   document.getElementById('prefsSetupOverlay').classList.add('hidden');
+  if (needsFeatureTour(wallet)) {
+    openFeatureTour();
+    return;
+  }
   await finishSessionWelcome();
 }
+
+const FEATURE_TOUR_VERSION = '1';
+function featureTourKey(w) {
+  return `binai_feature_tour_v${FEATURE_TOUR_VERSION}_${(w || '').toLowerCase()}`;
+}
+function needsFeatureTour(w) {
+  return isValidWallet(w) && !localStorage.getItem(featureTourKey(w));
+}
+function openFeatureTour() {
+  const el = document.getElementById('featureTourOverlay');
+  if (el) el.classList.remove('hidden');
+}
+function finishFeatureTour() {
+  if (isValidWallet(wallet)) localStorage.setItem(featureTourKey(wallet), '1');
+  const el = document.getElementById('featureTourOverlay');
+  if (el) el.classList.add('hidden');
+  finishSessionWelcome();
+}
+window.finishFeatureTour = finishFeatureTour;
 
 // ── Onboarding ─────────────────────────────────────────────────────────────
 function initOnboarding() {
@@ -1637,6 +1678,10 @@ async function completeWalletSession() {
   await loadProfile();
   if (needsPrefsSetup(wallet)) {
     openPrefsSetupModal();
+    return;
+  }
+  if (needsFeatureTour(wallet)) {
+    openFeatureTour();
     return;
   }
   await finishSessionWelcome();
@@ -3374,7 +3419,12 @@ async function sendChat() {
     if (!r.ok) {
       if (think.parentNode) think.remove();
       if (gen === chatGeneration) addBotMsg(d.error || t('err_generic'));
-      if (d.code === 'limit_reached') switchTab('settings');
+      if (d.code === 'limit_reached') {
+        switchTab('settings');
+        try {
+          document.getElementById('subscribeBtn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch (_) {}
+      }
     } else {
       let result = d;
       if (d.job_id) {
@@ -3455,16 +3505,24 @@ function updateUsage(d) {
     if (ip) ip.textContent = t('insight_beta_mode');
     return;
   }
+  if (d.free_forever) {
+    if (el) el.textContent = 'Unlimited AI 💜';
+    if (side) side.textContent = 'Unlimited AI';
+    if (iu) iu.textContent = '∞';
+    if (ip) ip.textContent = 'Free forever';
+    return;
+  }
   if (d.subscribed) {
     if (el) el.textContent = t('usage_subscribed');
     if (side) side.textContent = t('usage_subscribed');
     if (iu) iu.textContent = t('usage_pro');
     if (ip) ip.textContent = t('usage_pro');
   } else {
-    const rem = d.remaining_free ?? 5;
-    if (el) el.textContent = t('usage_free_left', { rem });
-    if (side) side.textContent = t('usage_free_side', { rem });
-    if (iu) iu.textContent = t('usage_free_stat', { rem });
+    const rem = d.remaining_free ?? 20;
+    const lim = d.free_limit || 20;
+    if (el) el.textContent = t('usage_free_left', { rem, limit: lim });
+    if (side) side.textContent = t('usage_free_side', { rem, limit: lim });
+    if (iu) iu.textContent = t('usage_free_stat', { rem, limit: lim });
     if (ip) ip.textContent = t('usage_free_plan');
   }
 }
@@ -5102,9 +5160,26 @@ async function refreshSub() {
   const r = await fetch(API + '/api/subscription/' + wallet);
   const d = await r.json();
   const el = document.getElementById('subStatus');
+  const subBtn = document.getElementById('subscribeBtn');
+  const price = d.monthly_price_usd != null ? Number(d.monthly_price_usd) : 3;
+  if (subBtn) {
+    subBtn.textContent = `Subscribe — $${price.toFixed(0)}/mo LCAI`;
+    const hidePay = !!(d.testing || d.free_forever || d.subscribed);
+    subBtn.style.display = hidePay ? 'none' : '';
+  }
+  if (!el) {
+    updateUsage(d);
+    return;
+  }
   if (d.testing) el.textContent = t('sub_testing');
-  else if (d.subscribed) el.textContent = t('sub_subscribed_until', { date: new Date(d.expires_at * 1000).toLocaleDateString() });
-  else el.textContent = t('sub_free_tier', { rem: d.remaining_free, limit: d.free_limit });
+  else if (d.free_forever) el.textContent = 'Unlimited AI on this wallet (free forever) 💜';
+  else if (d.subscribed && d.expires_at)
+    el.textContent = t('sub_subscribed_until', { date: new Date(d.expires_at * 1000).toLocaleDateString() });
+  else if (d.subscribed) el.textContent = t('usage_subscribed');
+  else el.textContent = t('sub_free_tier', {
+    rem: d.remaining_free ?? 0,
+    limit: d.free_limit || 20,
+  });
   updateUsage(d);
 }
 
@@ -5318,6 +5393,20 @@ async function loadAppConfig() {
     if (d.test_mode) {
       testMode = true;
       applyTestModeUI();
+    } else {
+      testMode = false;
+      // Show free-tier strip once (not unlimited beta)
+      const banner = document.getElementById('betaBanner');
+      if (banner) {
+        banner.classList.add('visible');
+        banner.textContent = typeof t === 'function'
+          ? t('beta_banner')
+          : '💜 20 free AI chats · tools free forever · Full AI $3/mo LCAI';
+      }
+      const subBtn = document.getElementById('subscribeBtn');
+      if (subBtn && d.monthly_price_usd != null) {
+        subBtn.textContent = `Subscribe — $${Number(d.monthly_price_usd).toFixed(0)}/mo LCAI`;
+      }
     }
   } catch (_) {}
 }

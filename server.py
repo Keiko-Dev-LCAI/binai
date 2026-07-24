@@ -28,14 +28,16 @@ AIVM_RELAY = os.environ.get(
 OWNER_WALLET = os.environ.get(
     "OWNER_WALLET", "0x6518fd07b3da01b17bd37d7c40f9a5e3c87a09ba"
 ).lower()
-MONTHLY_PRICE_USD = float(os.environ.get("MONTHLY_PRICE_USD", "1.00"))
-FREE_ACTIONS_LIFETIME = int(os.environ.get("FREE_ACTIONS_LIFETIME", "5"))
-# Beta default: everyone unlimited. Set TEST_MODE=false when billing goes live.
-_test_flag = os.environ.get("TEST_MODE", "true").lower()
-TEST_MODE = _test_flag not in ("0", "false", "no", "off")
+MONTHLY_PRICE_USD = float(os.environ.get("MONTHLY_PRICE_USD", "3.00"))
+FREE_ACTIONS_LIFETIME = int(os.environ.get("FREE_ACTIONS_LIFETIME", "20"))
+# Production default: billing on. Set TEST_MODE=true only for unlimited internal testing.
+_test_flag = os.environ.get("TEST_MODE", "false").lower()
+TEST_MODE = _test_flag in ("1", "true", "yes", "on")
+# Comma-separated wallets with unlimited free AI forever (owner + testers).
+FREE_FOREVER_WALLETS_RAW = os.environ.get("FREE_FOREVER_WALLETS", "")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
-BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-26")
+BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-27")
 LIGHTCHAT_API = os.environ.get(
     "LIGHTCHAT_API", "https://web-production-bc64f.up.railway.app"
 ).rstrip("/")
@@ -72,6 +74,7 @@ def _run_chat_job(
     job_id, wallet, message, lang, reason, safe, safety_category, safety_reply, local_hour=None
 ):
     try:
+        used_aivm = False
         if not safe:
             reply = safety_reply
             log_chat(wallet, "assistant", f"[safety:{safety_category}] {reply[:200]}")
@@ -87,6 +90,7 @@ def _run_chat_job(
             if quick:
                 reply = quick
             else:
+                # Real AIVM call — only this path burns free AI quota
                 prompt = build_prompt(
                     wallet, message, language_override=lang, local_hour=local_hour
                 )
@@ -98,6 +102,7 @@ def _run_chat_job(
                     ):
                         reply = run_aivm_chat(languages.retry_prompt(lang, message), lang)
                     reply = languages.enforce_brief_reply(reply, message, depth)
+                    used_aivm = True
                 except Exception as e:
                     err = str(e).lower()
                     if any(
@@ -109,7 +114,8 @@ def _run_chat_job(
                         _set_job(job_id, status="error", error=str(e)[:300])
                         return
             log_chat(wallet, "assistant", reply)
-        increment_usage(wallet)
+        if used_aivm:
+            increment_usage(wallet)
         payload = usage_payload(wallet)
         payload.update({"reply": reply, "tier": reason, "status": "done"})
         advice_meta = languages.build_advice_meta(message, lang)
@@ -121,7 +127,7 @@ def _run_chat_job(
 
 BINAI_SYSTEM = """You are {assistant_name} 💜, a warm personal AI assistant on the Binai app (Lightchain AIVM).
 You remember the user across sessions. Speak naturally, concisely, and kindly.
-You are in BETA — responses may take up to 2 minutes (fast mode coming soon).
+Responses may take up to 2 minutes while running on Lightchain AIVM.
 
 {friend_mode_block}
 
@@ -520,7 +526,22 @@ def norm_wallet(w):
     return (w or "").strip().lower()
 
 
+def free_forever_wallets():
+    """Wallets with unlimited free AI (owner + allowlisted testers)."""
+    out = set()
+    for part in (FREE_FOREVER_WALLETS_RAW or "").split(","):
+        w = norm_wallet(part)
+        if w and w.startswith("0x") and len(w) == 42:
+            out.add(w)
+    return out
+
+
+def is_free_forever(wallet):
+    return norm_wallet(wallet) in free_forever_wallets()
+
+
 def is_subscribed(wallet):
+    """Paid subscription active (not free-forever allowlist)."""
     w = norm_wallet(wallet)
     now = int(time.time())
     conn = get_db()
@@ -542,6 +563,8 @@ def get_usage(wallet):
 def can_use_ai(wallet):
     if TEST_MODE:
         return True, "testing"
+    if is_free_forever(wallet):
+        return True, "free_forever"
     if is_subscribed(wallet):
         return True, "subscribed"
     used = get_usage(wallet)
@@ -553,22 +576,38 @@ def can_use_ai(wallet):
 def usage_payload(wallet):
     w = norm_wallet(wallet)
     used = get_usage(w)
+    forever = is_free_forever(w)
     sub = is_subscribed(w)
     if TEST_MODE:
         return {
             "testing": True,
             "subscribed": False,
+            "free_forever": False,
             "actions_used": used,
             "free_limit": FREE_ACTIONS_LIFETIME,
             "remaining_free": None,
+            "monthly_price_usd": MONTHLY_PRICE_USD,
             "tier": "testing",
+        }
+    if forever:
+        return {
+            "testing": False,
+            "subscribed": True,
+            "free_forever": True,
+            "actions_used": used,
+            "free_limit": FREE_ACTIONS_LIFETIME,
+            "remaining_free": None,
+            "monthly_price_usd": MONTHLY_PRICE_USD,
+            "tier": "free_forever",
         }
     return {
         "testing": False,
         "subscribed": sub,
+        "free_forever": False,
         "actions_used": used,
         "free_limit": FREE_ACTIONS_LIFETIME,
-        "remaining_free": max(0, FREE_ACTIONS_LIFETIME - used),
+        "remaining_free": max(0, FREE_ACTIONS_LIFETIME - used) if not sub else None,
+        "monthly_price_usd": MONTHLY_PRICE_USD,
         "tier": "subscribed" if sub else "free",
     }
 
@@ -593,8 +632,9 @@ def check_rate_limit(wallet):
 
 
 def increment_usage(wallet):
+    """Count only when free-tier user successfully used AIVM (not instant/local tools)."""
     w = norm_wallet(wallet)
-    if TEST_MODE or is_subscribed(w):
+    if TEST_MODE or is_free_forever(w) or is_subscribed(w):
         return
     conn = get_db()
     conn.execute(
@@ -1371,11 +1411,12 @@ def health():
             "ok": True,
             "service": "Binai",
             "aivm_relay": AIVM_RELAY,
-            "free_actions": FREE_ACTIONS_LIFETIME,
-            "test_mode": TEST_MODE,
-            "safety_filters": True,
-            "beta": True,
             "build": BUILD_VERSION,
+            "test_mode": TEST_MODE,
+            "free_actions": FREE_ACTIONS_LIFETIME,
+            "monthly_price_usd": MONTHLY_PRICE_USD,
+            "beta": TEST_MODE,
+            "safety_filters": True,
         }
     )
 
@@ -1838,8 +1879,14 @@ def api_chat():
     if not ok:
         return jsonify(
             {
-                "error": "Free limit reached. Subscribe for $1/mo in LCAI.",
+                "error": (
+                    f"Free AI limit reached ({FREE_ACTIONS_LIFETIME} messages). "
+                    f"Subscribe for ${MONTHLY_PRICE_USD:.0f}/mo in LCAI for full chat. "
+                    "Calendar, contacts, notes, and dialer stay free."
+                ),
                 "code": "limit_reached",
+                "free_limit": FREE_ACTIONS_LIFETIME,
+                "monthly_price_usd": MONTHLY_PRICE_USD,
             }
         ), 402
     ensure_profile(wallet)
