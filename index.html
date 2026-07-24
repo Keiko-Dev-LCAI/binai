@@ -733,8 +733,12 @@ body::before {
       <div id="phoneContactsList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
       <input class="field" id="phoneNameInput" placeholder="Name (e.g. Mom)" maxlength="40" style="margin-bottom:8px">
       <input class="field" id="phoneNumberInput" placeholder="Phone number" maxlength="32" style="margin-bottom:8px" inputmode="tel">
-      <button class="btn btn-primary" type="button" id="phoneAddBtn" style="width:100%" onclick="addPhoneContact()">➕ Add contact</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" type="button" id="phoneAddBtn" style="flex:1;min-width:140px" onclick="addPhoneContact()">➕ Add contact</button>
+        <button class="btn btn-ghost" type="button" id="phoneCancelEditBtn" style="display:none;min-width:100px" onclick="cancelEditPhoneContact()">Cancel</button>
+      </div>
       <p id="phoneErr" style="font-size:13px;color:var(--red,#f66);margin:8px 0 0;min-height:1.2em"></p>
+      <p id="phoneEditHint" style="font-size:12px;color:var(--text2);margin:6px 0 0;min-height:1.2em"></p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px" id="phonePresets"></div>
     </div>
     <div class="card">
@@ -1071,8 +1075,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-20';</script>
-<script src="i18n-ui.js?v=20260724-20"></script>
+<script>window.BINAI_BUILD = '20260724-21';</script>
+<script src="i18n-ui.js?v=20260724-21"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -2608,6 +2612,62 @@ function resolvePhoneCall(msg) {
   if (hit2) return { phone: hit2.phone, label: hit2.name };
   return { missing: name, contactCount: getPhoneContacts().length };
 }
+/** When set, Add form updates this contact id instead of creating a new one. */
+let editingPhoneContactId = null;
+
+function syncPhoneContactFormUI() {
+  const addBtn = document.getElementById('phoneAddBtn');
+  const cancelBtn = document.getElementById('phoneCancelEditBtn');
+  const hint = document.getElementById('phoneEditHint');
+  const editing = !!editingPhoneContactId;
+  if (addBtn) {
+    addBtn.textContent = editing
+      ? (typeof t === 'function' ? t('phone_save') : '💾 Save changes')
+      : (typeof t === 'function' ? t('phone_add') : '➕ Add contact');
+  }
+  if (cancelBtn) cancelBtn.style.display = editing ? '' : 'none';
+  if (hint) {
+    if (editing) {
+      const c = getPhoneContacts().find(x => x.id === editingPhoneContactId);
+      const nm = c ? c.name : '';
+      hint.textContent = typeof t === 'function'
+        ? t('phone_editing', { name: nm || '…' })
+        : `Editing ${nm || 'contact'} — change name/number, then Save.`;
+    } else {
+      hint.textContent = '';
+    }
+  }
+}
+
+function startEditPhoneContact(id) {
+  const c = getPhoneContacts().find(x => x.id === id);
+  if (!c) return;
+  editingPhoneContactId = c.id;
+  const ni = document.getElementById('phoneNameInput');
+  const pi = document.getElementById('phoneNumberInput');
+  const err = document.getElementById('phoneErr');
+  if (err) err.textContent = '';
+  if (ni) { ni.value = c.name || ''; ni.focus(); }
+  if (pi) pi.value = c.phone || '';
+  syncPhoneContactFormUI();
+  renderPhoneContacts();
+  try {
+    document.getElementById('phoneNameInput')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } catch (_) {}
+}
+
+function cancelEditPhoneContact() {
+  editingPhoneContactId = null;
+  const ni = document.getElementById('phoneNameInput');
+  const pi = document.getElementById('phoneNumberInput');
+  const err = document.getElementById('phoneErr');
+  if (err) err.textContent = '';
+  if (ni) ni.value = '';
+  if (pi) pi.value = '';
+  syncPhoneContactFormUI();
+  renderPhoneContacts();
+}
+
 function renderPhoneContacts() {
   const list = getPhoneContacts();
   const box = document.getElementById('phoneContactsList');
@@ -2622,23 +2682,37 @@ function renderPhoneContacts() {
     } else {
       list.forEach(c => {
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px';
+        const isEditing = editingPhoneContactId && c.id === editingPhoneContactId;
+        row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid '
+          + (isEditing ? 'var(--purple,#8b5cf6)' : 'var(--border)')
+          + ';border-radius:10px;flex-wrap:wrap'
+          + (isEditing ? ';background:rgba(139,92,246,0.12)' : '');
         const label = document.createElement('div');
-        label.style.cssText = 'flex:1;font-size:14px;line-height:1.35';
+        label.style.cssText = 'flex:1;min-width:120px;font-size:14px;line-height:1.35';
         label.textContent = `📞 ${c.name} · ${c.phone}`;
         const callBtn = document.createElement('button');
         callBtn.type = 'button';
         callBtn.className = 'btn btn-ghost';
         callBtn.style.cssText = 'padding:6px 10px;font-size:13px';
-        callBtn.textContent = 'Call';
+        callBtn.textContent = typeof t === 'function' ? t('phone_call') : 'Call';
         callBtn.onclick = () => openPhoneDialer(c.phone);
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'btn btn-ghost';
+        editBtn.style.cssText = 'padding:6px 10px;font-size:13px';
+        editBtn.textContent = typeof t === 'function' ? t('phone_edit') : 'Edit';
+        editBtn.onclick = () => startEditPhoneContact(c.id);
         const del = document.createElement('button');
         del.type = 'button';
         del.className = 'btn btn-ghost';
         del.style.cssText = 'padding:6px 10px;font-size:13px;color:var(--red,#f66)';
         del.textContent = '✕';
-        del.onclick = () => removePhoneContact(c.id);
-        row.append(label, callBtn, del);
+        del.title = typeof t === 'function' ? t('phone_delete') : 'Delete';
+        del.onclick = () => {
+          if (editingPhoneContactId === c.id) cancelEditPhoneContact();
+          removePhoneContact(c.id);
+        };
+        row.append(label, callBtn, editBtn, del);
         box.appendChild(row);
       });
     }
@@ -2652,8 +2726,9 @@ function renderPhoneContacts() {
       b.className = 'btn btn-ghost';
       b.style.cssText = 'font-size:13px;padding:6px 10px';
       b.textContent = exists ? `✓ ${name}` : `+ ${name}`;
-      b.disabled = exists;
+      b.disabled = exists || !!editingPhoneContactId;
       b.onclick = () => {
+        if (editingPhoneContactId) return;
         const ni = document.getElementById('phoneNameInput');
         if (ni) { ni.value = name; ni.focus(); }
         const pi = document.getElementById('phoneNumberInput');
@@ -2662,15 +2737,12 @@ function renderPhoneContacts() {
       presets.appendChild(b);
     });
   }
+  syncPhoneContactFormUI();
 }
 function addPhoneContact(presetName, presetPhone) {
   const err = document.getElementById('phoneErr');
   if (err) err.textContent = '';
   let list = getPhoneContacts();
-  if (list.length >= MAX_PHONE_CONTACTS) {
-    if (err) err.textContent = (typeof t === 'function' ? t('phone_max') : `Max ${MAX_PHONE_CONTACTS} contacts.`);
-    return;
-  }
   const name = (presetName || document.getElementById('phoneNameInput')?.value || '').trim().slice(0, 40);
   const rawPhone = presetPhone || document.getElementById('phoneNumberInput')?.value || '';
   const phone = normalizeDialNumber(rawPhone);
@@ -2681,6 +2753,42 @@ function addPhoneContact(presetName, presetPhone) {
   const entry = normalizeContactEntry({ name, phone });
   if (!entry) {
     if (err) err.textContent = (typeof t === 'function' ? t('phone_need_both') : 'Need a name and a valid phone number.');
+    return;
+  }
+
+  // Edit existing by id (name can change)
+  if (editingPhoneContactId) {
+    const idx = list.findIndex(c => c.id === editingPhoneContactId);
+    if (idx < 0) {
+      editingPhoneContactId = null;
+    } else {
+      // Block rename into another contact's name
+      const clash = list.findIndex(
+        (c, i) => i !== idx && normalizeContactKey(c.name) === normalizeContactKey(name)
+      );
+      if (clash >= 0) {
+        if (err) err.textContent = typeof t === 'function'
+          ? t('phone_name_taken')
+          : 'That name is already used by another contact.';
+        return;
+      }
+      entry.id = list[idx].id;
+      list[idx] = entry;
+      setPhoneContacts(list);
+      editingPhoneContactId = null;
+      const ni = document.getElementById('phoneNameInput');
+      const pi = document.getElementById('phoneNumberInput');
+      if (ni) ni.value = '';
+      if (pi) pi.value = '';
+      if (err) err.textContent = '';
+      renderPhoneContacts();
+      if (wallet) saveProfile().catch(() => {});
+      return;
+    }
+  }
+
+  if (list.length >= MAX_PHONE_CONTACTS) {
+    if (err) err.textContent = (typeof t === 'function' ? t('phone_max') : `Max ${MAX_PHONE_CONTACTS} contacts.`);
     return;
   }
   // update if same name (case-insensitive)
@@ -2696,6 +2804,7 @@ function addPhoneContact(presetName, presetPhone) {
   const pi = document.getElementById('phoneNumberInput');
   if (ni && !presetName) ni.value = '';
   if (pi && !presetPhone) pi.value = '';
+  editingPhoneContactId = null;
   renderPhoneContacts();
   // Force save so "call Sherry" works after re-login / other devices
   if (wallet) {
@@ -2703,12 +2812,21 @@ function addPhoneContact(presetName, presetPhone) {
   }
 }
 function removePhoneContact(id) {
+  if (editingPhoneContactId === id) {
+    editingPhoneContactId = null;
+    const ni = document.getElementById('phoneNameInput');
+    const pi = document.getElementById('phoneNumberInput');
+    if (ni) ni.value = '';
+    if (pi) pi.value = '';
+  }
   setPhoneContacts(getPhoneContacts().filter(c => c.id !== id));
   renderPhoneContacts();
   if (wallet) saveProfile();
 }
 window.addPhoneContact = addPhoneContact;
 window.removePhoneContact = removePhoneContact;
+window.startEditPhoneContact = startEditPhoneContact;
+window.cancelEditPhoneContact = cancelEditPhoneContact;
 window.openPhoneDialer = openPhoneDialer;
 async function runConnectorCommand(kind) {
   if (kind === 'lightchat') { openLightChat(); addBotMsg(t('connector_open_lightchat')); return; }

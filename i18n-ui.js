@@ -26,6 +26,13 @@ window.BINAI_I18N = {
     phone_name_ph: 'Name (e.g. Mom)',
     phone_number_ph: 'Phone number',
     phone_add: '➕ Add contact',
+    phone_save: '💾 Save changes',
+    phone_edit: 'Edit',
+    phone_call: 'Call',
+    phone_delete: 'Delete',
+    phone_cancel_edit: 'Cancel',
+    phone_editing: 'Editing {name} — change name/number, then Save.',
+    phone_name_taken: 'That name is already used by another contact.',
     phone_empty: 'No contacts yet. Add Mom, Dad, or any number.',
     phone_need_both: 'Need a name and a valid phone number.',
     phone_max: 'Max 30 contacts.',
@@ -264,6 +271,13 @@ window.BINAI_I18N = {
     phone_name_ph: '姓名（如 妈妈）',
     phone_number_ph: '电话号码',
     phone_add: '➕ 添加联系人',
+    phone_save: '💾 保存修改',
+    phone_edit: '编辑',
+    phone_call: '拨打',
+    phone_delete: '删除',
+    phone_cancel_edit: '取消',
+    phone_editing: '正在编辑 {name} — 改好姓名/号码后点保存。',
+    phone_name_taken: '这个名字已被其他联系人使用。',
     phone_empty: '还没有联系人。可添加妈妈、爸爸等。',
     phone_need_both: '请填写姓名和有效电话号码。',
     phone_max: '最多 30 个联系人。',
@@ -555,6 +569,10 @@ window.applyI18n = function() {
   setPh('phoneNameInput', 'phone_name_ph');
   setPh('phoneNumberInput', 'phone_number_ph');
   set('phoneAddBtn', 'phone_add');
+  set('phoneCancelEditBtn', 'phone_cancel_edit');
+  if (typeof syncPhoneContactFormUI === 'function') {
+    try { syncPhoneContactFormUI(); } catch (_) {}
+  }
   if (typeof renderCustomQuickActions === 'function') renderCustomQuickActions();
   if (typeof renderPhoneContacts === 'function') renderPhoneContacts();
   if (typeof updateVoiceMuteBtn === 'function') updateVoiceMuteBtn();
