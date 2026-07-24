@@ -1071,8 +1071,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-16';</script>
-<script src="i18n-ui.js?v=20260724-16"></script>
+<script>window.BINAI_BUILD = '20260724-17';</script>
+<script src="i18n-ui.js?v=20260724-17"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -2384,18 +2384,61 @@ function matchConnectorCommand(msg) {
 const PHONE_CONTACT_PRESETS = ['Mom', 'Dad', 'Spouse', 'Home', 'Work'];
 const MAX_PHONE_CONTACTS = 30;
 
+function normalizeContactEntry(c) {
+  if (!c || typeof c !== 'object') return null;
+  const name = String(c.name || c.label || c.title || '').trim().slice(0, 40);
+  const phoneRaw = c.phone || c.number || c.tel || c.mobile || c.phone_number || '';
+  const phone = normalizeDialNumber(phoneRaw) || String(phoneRaw || '').replace(/[^\d+]/g, '');
+  if (!name || !phone || String(phone).replace(/\D/g, '').length < 7) return null;
+  return {
+    id: c.id || ('ph_' + normalizeContactKey(name) + '_' + String(phone).slice(-4)),
+    name,
+    phone: normalizeDialNumber(phone) || phone,
+  };
+}
 function getPhoneContacts() {
   try {
     const list = JSON.parse(localStorage.getItem('binai_phone_contacts') || '[]');
-    return Array.isArray(list) ? list.filter(c => c && c.name && c.phone).slice(0, MAX_PHONE_CONTACTS) : [];
+    if (!Array.isArray(list)) return [];
+    return list.map(normalizeContactEntry).filter(Boolean).slice(0, MAX_PHONE_CONTACTS);
   } catch (_) {
     return [];
   }
 }
 function setPhoneContacts(list) {
-  const clean = (list || []).filter(c => c && c.name && c.phone).slice(0, MAX_PHONE_CONTACTS);
-  localStorage.setItem('binai_phone_contacts', JSON.stringify(clean));
-  return clean;
+  const clean = (list || []).map(normalizeContactEntry).filter(Boolean).slice(0, MAX_PHONE_CONTACTS);
+  // de-dupe by normalized name (keep last)
+  const map = new Map();
+  clean.forEach(c => map.set(normalizeContactKey(c.name), c));
+  const out = [...map.values()];
+  localStorage.setItem('binai_phone_contacts', JSON.stringify(out));
+  return out;
+}
+function parseProfilePrefs(prof) {
+  if (!prof) return {};
+  const raw = prof.preferences;
+  if (!raw) return {};
+  if (typeof raw === 'object') return raw;
+  try { return JSON.parse(raw); } catch (_) { return {}; }
+}
+/** Always refresh contacts from server+local before dialing by name */
+async function ensurePhoneContactsFresh() {
+  const local = getPhoneContacts();
+  if (!wallet) return local;
+  try {
+    const r = await fetch(API + '/api/profile/' + wallet);
+    const prof = await r.json();
+    const prefs = parseProfilePrefs(prof);
+    const remote = Array.isArray(prefs.phone_contacts) ? prefs.phone_contacts : [];
+    const byName = new Map();
+    remote.map(normalizeContactEntry).filter(Boolean).forEach(c => byName.set(normalizeContactKey(c.name), c));
+    local.forEach(c => byName.set(normalizeContactKey(c.name), c));
+    const merged = [...byName.values()];
+    if (merged.length) setPhoneContacts(merged);
+    return getPhoneContacts();
+  } catch (_) {
+    return getPhoneContacts();
+  }
 }
 function normalizeDialNumber(raw) {
   let s = String(raw || '').trim();
@@ -2908,9 +2951,17 @@ async function sendChat() {
     input.value = '';
     addUserMsg(msg);
     if (callTarget.missing) {
-      addBotMsg(typeof t === 'function'
-        ? t('phone_missing', { name: callTarget.missing })
-        : `I don't have a number for “${callTarget.missing}”. Add them in Settings → Phone contacts, or say a full number like “call 555-123-4567”.`);
+      const names = getPhoneContacts().map(c => c.name).filter(Boolean);
+      const have = names.length
+        ? ` I currently know: ${names.slice(0, 8).join(', ')}${names.length > 8 ? '…' : ''}.`
+        : ' Your phone contact list is empty on this device.';
+      addBotMsg(
+        (typeof t === 'function'
+          ? t('phone_missing', { name: callTarget.missing })
+          : `I don't have a number for “${callTarget.missing}”.`)
+        + have
+        + ' Check Settings → Phone contacts (name must match), or say a full number like “call 555-123-4567”.'
+      );
       return;
     }
     const ok = openPhoneDialer(callTarget.phone);
@@ -3445,8 +3496,17 @@ async function loadProfile() {
     if (Array.isArray(prefs.quick_actions)) {
       setCustomQuickActions(prefs.quick_actions);
     }
+    // Merge server contacts with local (don't wipe a contact just added on this device)
     if (Array.isArray(prefs.phone_contacts)) {
-      setPhoneContacts(prefs.phone_contacts);
+      const local = getPhoneContacts();
+      const byName = new Map();
+      prefs.phone_contacts.forEach(c => {
+        if (c && c.name && c.phone) byName.set(normalizeContactKey(c.name), c);
+      });
+      local.forEach(c => {
+        if (c && c.name && c.phone) byName.set(normalizeContactKey(c.name), c);
+      });
+      setPhoneContacts([...byName.values()]);
     }
     window._binaiPlacesCache = prefs.frequent_places || {};
     populatePlacesUI(window._binaiPlacesCache);
