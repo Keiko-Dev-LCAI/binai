@@ -37,7 +37,7 @@ TEST_MODE = _test_flag in ("1", "true", "yes", "on")
 FREE_FOREVER_WALLETS_RAW = os.environ.get("FREE_FOREVER_WALLETS", "")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
-BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-27")
+BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-28")
 LIGHTCHAT_API = os.environ.get(
     "LIGHTCHAT_API", "https://web-production-bc64f.up.railway.app"
 ).rstrip("/")
@@ -1415,7 +1415,7 @@ def health():
             "test_mode": TEST_MODE,
             "free_actions": FREE_ACTIONS_LIFETIME,
             "monthly_price_usd": MONTHLY_PRICE_USD,
-            "beta": TEST_MODE,
+            
             "safety_filters": True,
         }
     )

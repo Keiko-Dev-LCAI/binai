@@ -1,6 +1,6 @@
 /* Binai service worker — fresh updates for home-screen testers (iOS + Android).
  * Bump CACHE_VERSION on every frontend deploy so phones pick up the new app. */
-const CACHE_VERSION = '20260724-27';
+const CACHE_VERSION = '20260724-28';
 const CACHE_SHELL = 'binai-shell-' + CACHE_VERSION;
 
 const NETWORK_FIRST = [
