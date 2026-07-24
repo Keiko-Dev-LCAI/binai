@@ -35,7 +35,7 @@ _test_flag = os.environ.get("TEST_MODE", "true").lower()
 TEST_MODE = _test_flag not in ("0", "false", "no", "off")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
-BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-3")
+BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-5")
 LIGHTCHAT_API = os.environ.get(
     "LIGHTCHAT_API", "https://web-production-bc64f.up.railway.app"
 ).rstrip("/")
@@ -1511,15 +1511,27 @@ def patch_reminder(wallet, rid):
 
 @app.route("/api/chat-history/<wallet>")
 def api_chat_history(wallet):
+    """Return recent chat only (default last 36h). Stale logs stay on disk but do not auto-replay on login."""
     w = norm_wallet(wallet)
     limit = min(request.args.get("limit", 40, type=int), 100)
+    # max_age_hours=0 means all history (export); default 36 keeps Father's Day from last year off the screen
+    max_age_hours = request.args.get("max_age_hours", 36, type=int)
     conn = get_db()
-    rows = conn.execute(
-        """SELECT id, role, content, created_at FROM chat_log
-           WHERE wallet = ? AND content NOT LIKE '[safety:%'
-           ORDER BY id DESC LIMIT ?""",
-        (w, limit),
-    ).fetchall()
+    if max_age_hours and max_age_hours > 0:
+        since = int(time.time()) - int(max_age_hours * 3600)
+        rows = conn.execute(
+            """SELECT id, role, content, created_at FROM chat_log
+               WHERE wallet = ? AND content NOT LIKE '[safety:%' AND created_at >= ?
+               ORDER BY id DESC LIMIT ?""",
+            (w, since, limit),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """SELECT id, role, content, created_at FROM chat_log
+               WHERE wallet = ? AND content NOT LIKE '[safety:%'
+               ORDER BY id DESC LIMIT ?""",
+            (w, limit),
+        ).fetchall()
     conn.close()
     return jsonify([dict(r) for r in reversed(rows)])
 

@@ -112,10 +112,10 @@ body::before {
 .pin-hint { font-size: 13px; color: var(--text2); margin-bottom: 12px; line-height: 1.5; }
 @keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
 
-.input-row { display: flex; gap: 8px; align-items: flex-end; }
-.chat-input { flex: 1; background: var(--bg3); border: 1px solid var(--border);
+.input-row { display: flex; gap: 8px; align-items: flex-end; width: 100%; }
+.chat-input { flex: 1; min-width: 0; background: var(--bg3); border: 1px solid var(--border);
   border-radius: 12px; padding: 12px 14px; color: var(--text); font-size: 17px;
-  font-family: inherit; resize: none; min-height: 48px; max-height: 120px; outline: none; }
+  font-family: inherit; resize: none; min-height: 48px; max-height: 140px; outline: none; }
 .chat-input:focus { border-color: var(--purple); }
 .btn { border: none; border-radius: 12px; padding: 12px 18px; font-weight: 700;
   font-size: 17px; cursor: pointer; font-family: inherit; }
@@ -126,6 +126,45 @@ body::before {
   flex-shrink: 0; }
 .btn-mic.listening { background: var(--red); color: #fff; animation: pulse 1s infinite; }
 .btn-mic.muted { opacity: 0.55; border: 1px solid var(--border); }
+.btn-mic.speaking-active { background: rgba(232,75,106,0.25); border: 1px solid var(--red); color: #fff; }
+#sendBtn { flex-shrink: 0; padding: 12px 16px; }
+
+/* Mobile: full-bleed chat input edge-to-edge */
+@media (max-width: 899px) {
+  .main { padding-left: 0; padding-right: 0; padding-bottom: 0; }
+  #panel-chat {
+    display: flex; flex-direction: column;
+    min-height: calc(100dvh - 130px);
+    padding: 0;
+  }
+  #panel-chat .wait-banner { margin: 0 12px 8px; }
+  #panel-chat .chat-messages {
+    flex: 1; min-height: 0; overflow-y: auto;
+    padding: 8px 12px 12px; margin-bottom: 0;
+  }
+  #panel-chat .chat-footer {
+    margin-top: 0;
+    padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border);
+    background: rgba(13,13,26,0.96);
+    backdrop-filter: blur(10px);
+    width: 100%;
+  }
+  #panel-chat .chat-quick-actions { margin-bottom: 8px; }
+  #panel-chat .input-row { gap: 6px; width: 100%; }
+  #panel-chat .chat-input {
+    min-height: 52px;
+    font-size: 16px; /* avoid iOS zoom */
+    padding: 14px 12px;
+  }
+  #panel-chat .btn-mic { width: 46px; height: 46px; font-size: 20px; }
+  #panel-chat #sendBtn { padding: 12px 14px; font-size: 15px; min-height: 46px; }
+  #panel-chat .chat-hint { margin: 8px 2px 0; font-size: 12px; }
+  /* Other panels keep comfortable side padding */
+  #panel-briefing, #panel-notes, #panel-reminders, #panel-memory,
+  #panel-aboutme, #panel-settings { padding: 0 16px 20px; }
+  .hero-strip { margin-left: 16px; margin-right: 16px; }
+}
 
 .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
   padding: 14px 16px; margin-bottom: 10px; }
@@ -342,7 +381,7 @@ body::before {
   .sidebar, .insight-panel { backdrop-filter: blur(12px); }
 }
 </style>
-<style>.keiko-android-install{text-align:center;padding:12px 16px;border-top:1px solid rgba(255,255,255,.08)}.keiko-android-install a{display:inline-block;background:#a855f7;color:#fff;font-weight:800;padding:10px 18px;border-radius:10px;text-decoration:none}.keiko-android-install p{margin-top:6px;font-size:12px;opacity:.65}</style>
+
 </head>
 <body>
 
@@ -436,9 +475,10 @@ body::before {
         <span id="chatCustomQuickActions" style="display:contents"></span>
       </div>
       <div class="input-row">
-        <button class="btn btn-mic btn-ghost" id="micBtn" onclick="toggleMic()" title="Voice input">🎤</button>
-        <button class="btn btn-mic btn-ghost" id="voiceMuteBtn" onclick="toggleVoiceMute()" title="Mute Binai voice" type="button">🔊</button>
-        <textarea class="chat-input" id="chatInput" rows="1" placeholder="Talk to Binai…"
+        <button class="btn btn-mic btn-ghost" id="micBtn" onclick="toggleMic()" title="Voice input" type="button" aria-label="Voice input">🎤</button>
+        <button class="btn btn-mic btn-ghost" id="voiceMuteBtn" onclick="toggleVoiceMute()" title="Mute Binai voice" type="button" aria-label="Mute voice">🔊</button>
+        <button class="btn btn-mic btn-ghost" id="voiceStopBtn" onclick="stopSpeaking()" title="Stop speaking" type="button" aria-label="Stop speaking">⏹</button>
+        <textarea class="chat-input" id="chatInput" rows="2" placeholder="Talk to Binai…"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
         <button class="btn btn-primary" id="sendBtn" onclick="sendChat()">Send</button>
       </div>
@@ -606,6 +646,8 @@ body::before {
       <div class="card-title" id="settingsAboutTitle">About Binai</div>
       <div class="card-sub" id="settingsAboutSub">Personal AI on Lightchain AIVM. Remembers you. Community beta for Discord family. Fast mode when REST API ships.</div>
       <p id="settingsUpdateHelp" style="margin-top:10px;font-size:14px;color:var(--text2);line-height:1.5"></p>
+      <a class="btn btn-primary" id="settingsApkBtn" href="Binai.apk" download style="display:block;text-align:center;margin-top:14px;text-decoration:none">📲 Download Android App</a>
+      <p id="settingsApkHelp" style="margin-top:8px;font-size:13px;color:var(--text2);line-height:1.45">Download → open → Install. Allow unknown apps if asked.</p>
       <p style="margin-top:10px"><a class="footer-link" href="https://x.com/KeikoDevLCAI" target="_blank">@KeikoDevLCAI on X</a></p>
     </div>
   </div>
@@ -863,8 +905,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-3';</script>
-<script src="i18n-ui.js?v=20260724-3"></script>
+<script>window.BINAI_BUILD = '20260724-5';</script>
+<script src="i18n-ui.js?v=20260724-5"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -2489,10 +2531,24 @@ function updateVoiceMuteBtn() {
   btn.title = muted ? t('voice_unmute') : t('voice_mute');
   btn.classList.toggle('muted', muted);
 }
+function updateVoiceStopBtn(active) {
+  const btn = document.getElementById('voiceStopBtn');
+  if (!btn) return;
+  const speaking = active === true || (window.speechSynthesis && speechSynthesis.speaking);
+  btn.classList.toggle('speaking-active', !!speaking);
+  btn.title = (typeof t === 'function' ? t('voice_stop') : 'Stop speaking');
+  btn.setAttribute('aria-pressed', speaking ? 'true' : 'false');
+}
+function stopSpeaking() {
+  try {
+    if (window.speechSynthesis) speechSynthesis.cancel();
+  } catch (_) {}
+  updateVoiceStopBtn(false);
+}
 
 function toggleVoiceMute() {
   localStorage.setItem('binai_voice_muted', isVoiceMuted() ? '0' : '1');
-  if (isVoiceMuted() && window.speechSynthesis) speechSynthesis.cancel();
+  if (isVoiceMuted()) stopSpeaking();
   updateVoiceMuteBtn();
 }
 
@@ -2531,7 +2587,11 @@ function speak(text) {
   const u = new SpeechSynthesisUtterance(text.slice(0, 800));
   u.lang = speechLang();
   u.rate = 1;
+  u.onstart = () => updateVoiceStopBtn(true);
+  u.onend = () => updateVoiceStopBtn(false);
+  u.onerror = () => updateVoiceStopBtn(false);
   speechSynthesis.cancel();
+  updateVoiceStopBtn(true);
   speechSynthesis.speak(u);
 }
 
@@ -3171,6 +3231,5 @@ async function boot() {
 }
 boot();
 </script>
-<div class="keiko-android-install"><a href="Binai.apk" download>📲 Download Android App</a><p>Download → open → Install. Allow unknown apps if asked.</p></div>
 </body>
 </html>

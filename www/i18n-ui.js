@@ -9,6 +9,9 @@ window.BINAI_I18N = {
     logged_off: 'You are logged off. Enter your PIN (or connect wallet) to continue 💜',
     wallet_locked: '🔒 Locked',
     pin_skip_confirm: 'Skip PIN? Anyone with this phone can open Binai for this wallet. Set a PIN for better safety.',
+    voice_stop: 'Stop speaking',
+    settings_apk: '📲 Download Android App',
+    settings_apk_help: 'Download → open → Install. Allow unknown apps if asked.',
     sidebar_tagline: 'The AI that remembers you — powered by Lightchain AIVM.',
     disclaimer: 'Disclaimer: Binai is beta software provided as-is. AI responses are not professional advice. The service may go offline or be discontinued at any time. No refunds.',
     beta_banner: '🧪 Community beta — everyone gets unlimited AI for testing',
@@ -224,6 +227,9 @@ window.BINAI_I18N = {
     logged_off: '已退出。输入 PIN（或连接钱包）继续 💜',
     wallet_locked: '🔒 已锁定',
     pin_skip_confirm: '跳过 PIN？任何拿到此手机的人都能打开此钱包的 Binai。建议设置 PIN。',
+    voice_stop: '停止朗读',
+    settings_apk: '📲 下载 Android 应用',
+    settings_apk_help: '下载 → 打开 → 安装。如提示请允许未知来源应用。',
     sidebar_tagline: '记住你的 AI 助手 — 由 Lightchain AIVM 驱动。',
     disclaimer: '免责声明：Binai 为测试版软件，按原样提供。AI 回复不构成专业建议。服务可能随时下线或终止。不退款。',
     beta_banner: '🧪 社区测试版 — 测试期间所有人无限使用 AI',
@@ -557,6 +563,10 @@ window.applyI18n = function() {
   set('termsModalTitle', 'terms_title');
   set('settingsAboutTitle', 'about_title');
   set('settingsAboutSub', 'about_sub');
+  set('settingsApkBtn', 'settings_apk');
+  set('settingsApkHelp', 'settings_apk_help');
+  const stopBtn = document.getElementById('voiceStopBtn');
+  if (stopBtn) stopBtn.title = t('voice_stop');
   set('wcTitle', 'wc_title');
   set('wcSetupIntro', 'wc_setup');
   set('wcStep1', 'wc_step1');
