@@ -728,6 +728,16 @@ body::before {
       <div id="customPlacesGrid" class="places-grid" style="margin-top:8px"></div>
     </div>
     <div class="card">
+      <div class="card-title" id="settingsPhoneTitle">Phone contacts</div>
+      <div class="card-sub" id="settingsPhoneSub" style="margin-bottom:12px">Say “call Mom” or “call 555-123-4567” — Binai opens your phone dialer. Contacts stay private on your account.</div>
+      <div id="phoneContactsList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+      <input class="field" id="phoneNameInput" placeholder="Name (e.g. Mom)" maxlength="40" style="margin-bottom:8px">
+      <input class="field" id="phoneNumberInput" placeholder="Phone number" maxlength="32" style="margin-bottom:8px" inputmode="tel">
+      <button class="btn btn-primary" type="button" id="phoneAddBtn" style="width:100%" onclick="addPhoneContact()">➕ Add contact</button>
+      <p id="phoneErr" style="font-size:13px;color:var(--red,#f66);margin:8px 0 0;min-height:1.2em"></p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px" id="phonePresets"></div>
+    </div>
+    <div class="card">
       <div class="card-title" id="settingsConnectedTitle">Connected apps</div>
       <div class="card-sub" id="settingsConnectedSub" style="margin-bottom:12px">LightChat is built-in. Add your own Quick Action links below (TikTok, YouTube, etc.).</div>
       <label class="setup-check">
@@ -1061,8 +1071,8 @@ body::before {
   </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-15';</script>
-<script src="i18n-ui.js?v=20260724-15"></script>
+<script>window.BINAI_BUILD = '20260724-16';</script>
+<script src="i18n-ui.js?v=20260724-16"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -1789,7 +1799,14 @@ function switchTab(name) {
   if (name === 'reminders') loadReminders();
   if (name === 'memory') loadMemories();
   if (name === 'aboutme') loadAboutMe();
-  if (name === 'settings') { refreshSub(); initPreferencePickers(); initSettingsToggles(); loadProfile(); }
+  if (name === 'settings') {
+    refreshSub();
+    initPreferencePickers();
+    initSettingsToggles();
+    loadProfile();
+    renderPhoneContacts();
+    renderCustomQuickActions();
+  }
   if (name === 'briefing') loadBriefing(false);
 }
 
@@ -2357,11 +2374,176 @@ function removeCustomQuickAction(id) {
 function matchConnectorCommand(msg) {
   const m = (msg || '').trim().toLowerCase();
   if (/^(open\s+)?light\s*chat|打开\s*lightchat|打开\s*聊天/.test(m)) return 'lightchat';
-  if (/call.+light\s*chat|light\s*chat.+call|视频.+lightchat|用\s*lightchat\s*打|打电话给/.test(m)) return 'lightchat_call';
+  if (/call.+light\s*chat|light\s*chat.+call|视频.+lightchat|用\s*lightchat\s*打/.test(m)) return 'lightchat_call';
   if (/did\s+.+\s+message|message\s+me\s+on\s+lightchat|lightchat\s+message/.test(m)) return 'lightchat_check';
   if (/发消息|谁给我发|lightchat.*消息/.test(msg)) return 'lightchat_check';
   return null;
 }
+
+// ── Phone dialer (“call Mom” / “call 555-…”) ───────────────────────────────
+const PHONE_CONTACT_PRESETS = ['Mom', 'Dad', 'Spouse', 'Home', 'Work'];
+const MAX_PHONE_CONTACTS = 30;
+
+function getPhoneContacts() {
+  try {
+    const list = JSON.parse(localStorage.getItem('binai_phone_contacts') || '[]');
+    return Array.isArray(list) ? list.filter(c => c && c.name && c.phone).slice(0, MAX_PHONE_CONTACTS) : [];
+  } catch (_) {
+    return [];
+  }
+}
+function setPhoneContacts(list) {
+  const clean = (list || []).filter(c => c && c.name && c.phone).slice(0, MAX_PHONE_CONTACTS);
+  localStorage.setItem('binai_phone_contacts', JSON.stringify(clean));
+  return clean;
+}
+function normalizeDialNumber(raw) {
+  let s = String(raw || '').trim();
+  // keep leading + and digits only
+  const hasPlus = s.trim().startsWith('+');
+  const digits = s.replace(/\D/g, '');
+  if (digits.length < 7) return '';
+  return (hasPlus ? '+' : '') + digits;
+}
+function extractPhoneFromText(msg) {
+  const m = String(msg || '').match(/(?:\+?\d[\d\s().\-]{6,}\d)/);
+  return m ? normalizeDialNumber(m[0]) : '';
+}
+function openPhoneDialer(phone) {
+  const tel = normalizeDialNumber(phone);
+  if (!tel) return false;
+  // tel: works on mobile; on desktop may open a calling app if installed
+  window.location.href = 'tel:' + encodeURIComponent(tel).replace(/%2B/g, '+');
+  return true;
+}
+function resolvePhoneCall(msg) {
+  const text = String(msg || '').trim();
+  if (!text) return null;
+  // Prefer an explicit number in the message
+  const direct = extractPhoneFromText(text);
+  const isCallish = /^(call|dial|phone|ring|text)\b/i.test(text)
+    || /\b(call|dial|phone|ring)\s+/i.test(text)
+    || /打电话|拨打|打给/.test(text);
+  if (direct && (isCallish || /^\+?\d[\d\s().\-]{6,}\d$/.test(text))) {
+    return { phone: direct, label: direct };
+  }
+  if (!isCallish) return null;
+  // "call mom" / "dial dad please" / "打电话给妈妈"
+  let name = '';
+  let m = text.match(/^(?:please\s+)?(?:call|dial|phone|ring)(?:\s+me)?\s+(?:to\s+)?(.+?)(?:\s+please)?[.!?]*$/i);
+  if (m) name = m[1].trim();
+  if (!name) {
+    m = text.match(/(?:打电话给|拨打|打给)\s*(.+?)[.!?]*$/);
+    if (m) name = m[1].trim();
+  }
+  if (!name) return null;
+  // Don't steal LightChat calls
+  if (/light\s*chat/i.test(name)) return null;
+  // Strip trailing "on the phone" etc.
+  name = name.replace(/\s+on\s+(the\s+)?phone.*$/i, '').trim();
+  if (extractPhoneFromText(name)) {
+    const p = extractPhoneFromText(name);
+    return { phone: p, label: p };
+  }
+  const contacts = getPhoneContacts();
+  const key = name.toLowerCase();
+  const hit = contacts.find(c => {
+    const n = (c.name || '').toLowerCase();
+    return n === key || n.includes(key) || key.includes(n);
+  });
+  if (hit) return { phone: hit.phone, label: hit.name };
+  return { missing: name };
+}
+function renderPhoneContacts() {
+  const list = getPhoneContacts();
+  const box = document.getElementById('phoneContactsList');
+  const presets = document.getElementById('phonePresets');
+  if (box) {
+    box.innerHTML = '';
+    if (!list.length) {
+      const empty = document.createElement('div');
+      empty.className = 'card-sub';
+      empty.textContent = (typeof t === 'function' ? t('phone_empty') : 'No contacts yet. Add Mom, Dad, or any number.');
+      box.appendChild(empty);
+    } else {
+      list.forEach(c => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px';
+        const label = document.createElement('div');
+        label.style.cssText = 'flex:1;font-size:14px;line-height:1.35';
+        label.textContent = `📞 ${c.name} · ${c.phone}`;
+        const callBtn = document.createElement('button');
+        callBtn.type = 'button';
+        callBtn.className = 'btn btn-ghost';
+        callBtn.style.cssText = 'padding:6px 10px;font-size:13px';
+        callBtn.textContent = 'Call';
+        callBtn.onclick = () => openPhoneDialer(c.phone);
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'btn btn-ghost';
+        del.style.cssText = 'padding:6px 10px;font-size:13px;color:var(--red,#f66)';
+        del.textContent = '✕';
+        del.onclick = () => removePhoneContact(c.id);
+        row.append(label, callBtn, del);
+        box.appendChild(row);
+      });
+    }
+  }
+  if (presets) {
+    presets.innerHTML = '';
+    PHONE_CONTACT_PRESETS.forEach(name => {
+      const exists = list.some(c => (c.name || '').toLowerCase() === name.toLowerCase());
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost';
+      b.style.cssText = 'font-size:13px;padding:6px 10px';
+      b.textContent = exists ? `✓ ${name}` : `+ ${name}`;
+      b.disabled = exists;
+      b.onclick = () => {
+        const ni = document.getElementById('phoneNameInput');
+        if (ni) { ni.value = name; ni.focus(); }
+        const pi = document.getElementById('phoneNumberInput');
+        if (pi) pi.focus();
+      };
+      presets.appendChild(b);
+    });
+  }
+}
+function addPhoneContact(presetName, presetPhone) {
+  const err = document.getElementById('phoneErr');
+  if (err) err.textContent = '';
+  let list = getPhoneContacts();
+  if (list.length >= MAX_PHONE_CONTACTS) {
+    if (err) err.textContent = (typeof t === 'function' ? t('phone_max') : `Max ${MAX_PHONE_CONTACTS} contacts.`);
+    return;
+  }
+  const name = (presetName || document.getElementById('phoneNameInput')?.value || '').trim().slice(0, 40);
+  const phone = normalizeDialNumber(presetPhone || document.getElementById('phoneNumberInput')?.value || '');
+  if (!name || !phone) {
+    if (err) err.textContent = (typeof t === 'function' ? t('phone_need_both') : 'Need a name and a valid phone number.');
+    return;
+  }
+  // update if same name
+  const existing = list.findIndex(c => (c.name || '').toLowerCase() === name.toLowerCase());
+  const row = { id: existing >= 0 ? list[existing].id : ('ph_' + Date.now().toString(36)), name, phone };
+  if (existing >= 0) list[existing] = row;
+  else list.push(row);
+  setPhoneContacts(list);
+  const ni = document.getElementById('phoneNameInput');
+  const pi = document.getElementById('phoneNumberInput');
+  if (ni && !presetName) ni.value = '';
+  if (pi && !presetPhone) pi.value = '';
+  renderPhoneContacts();
+  if (wallet) saveProfile();
+}
+function removePhoneContact(id) {
+  setPhoneContacts(getPhoneContacts().filter(c => c.id !== id));
+  renderPhoneContacts();
+  if (wallet) saveProfile();
+}
+window.addPhoneContact = addPhoneContact;
+window.removePhoneContact = removePhoneContact;
+window.openPhoneDialer = openPhoneDialer;
 async function runConnectorCommand(kind) {
   if (kind === 'lightchat') { openLightChat(); addBotMsg(t('connector_open_lightchat')); return; }
   if (kind === 'lightchat_call') { openLightChatCall(); addBotMsg(t('connector_call_lightchat', { handle: primaryLightchatHandle() })); return; }
@@ -2669,6 +2851,27 @@ async function sendChat() {
     input.value = '';
     addUserMsg(msg);
     await runConnectorCommand(cmd);
+    return;
+  }
+  // Phone dialer — before AIVM (call Mom / call 555-…)
+  const callTarget = resolvePhoneCall(msg);
+  if (callTarget) {
+    input.value = '';
+    addUserMsg(msg);
+    if (callTarget.missing) {
+      addBotMsg(typeof t === 'function'
+        ? t('phone_missing', { name: callTarget.missing })
+        : `I don't have a number for “${callTarget.missing}”. Add them in Settings → Phone contacts, or say a full number like “call 555-123-4567”.`);
+      return;
+    }
+    const ok = openPhoneDialer(callTarget.phone);
+    if (ok) {
+      addBotMsg(typeof t === 'function'
+        ? t('phone_dialing', { name: callTarget.label })
+        : `Opening your phone dialer for ${callTarget.label}…`);
+    } else {
+      addBotMsg(typeof t === 'function' ? t('phone_bad_number') : 'That phone number doesn’t look valid.');
+    }
     return;
   }
   input.value = '';
@@ -3193,6 +3396,9 @@ async function loadProfile() {
     if (Array.isArray(prefs.quick_actions)) {
       setCustomQuickActions(prefs.quick_actions);
     }
+    if (Array.isArray(prefs.phone_contacts)) {
+      setPhoneContacts(prefs.phone_contacts);
+    }
     window._binaiPlacesCache = prefs.frequent_places || {};
     populatePlacesUI(window._binaiPlacesCache);
     initLanguagePickers();
@@ -3201,6 +3407,7 @@ async function loadProfile() {
     applyI18n();
     updateChatPlaceholder();
     renderCustomQuickActions();
+    renderPhoneContacts();
   } catch (_) {}
 }
 function readPersonalizePrefs() {
@@ -3229,6 +3436,7 @@ function readPersonalizePrefs() {
     lightchat_show_memories: lcMem,
     lightchat_primary_handle: lcHandle,
     quick_actions: getCustomQuickActions(),
+    phone_contacts: getPhoneContacts(),
     frequent_places: readPlacesFromUI(),
   };
 }
@@ -3257,6 +3465,7 @@ async function saveProfile() {
         lightchat_show_memories: personal.lightchat_show_memories,
         lightchat_primary_handle: personal.lightchat_primary_handle,
         quick_actions: personal.quick_actions,
+        phone_contacts: personal.phone_contacts,
         frequent_places: personal.frequent_places,
       },
     }),
@@ -3539,6 +3748,7 @@ function startApp() {
   initSettingsToggles();
   applyI18n();
   renderCustomQuickActions();
+  renderPhoneContacts();
   updateVoiceMuteBtn();
   updateHero();
   if (localStorage.getItem('binai_name'))

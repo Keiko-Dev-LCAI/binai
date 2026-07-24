@@ -21,6 +21,17 @@ window.BINAI_I18N = {
     qa_sheet_close: 'Close',
     cancel_chat: '✕ Cancel',
     chat_cancelled: 'Cancelled. Tap Home or type something new.',
+    settings_phone_title: 'Phone contacts',
+    settings_phone_sub: 'Say “call Mom” or “call 555-123-4567” — opens your phone dialer.',
+    phone_name_ph: 'Name (e.g. Mom)',
+    phone_number_ph: 'Phone number',
+    phone_add: '➕ Add contact',
+    phone_empty: 'No contacts yet. Add Mom, Dad, or any number.',
+    phone_need_both: 'Need a name and a valid phone number.',
+    phone_max: 'Max 30 contacts.',
+    phone_missing: 'I don’t have a number for “{name}”. Add them in Settings → Phone contacts, or say a full number like “call 555-123-4567”.',
+    phone_dialing: 'Opening your phone dialer for {name}…',
+    phone_bad_number: 'That phone number doesn’t look valid.',
     sidebar_tagline: 'The AI that remembers you — powered by Lightchain AIVM.',
     disclaimer: 'Disclaimer: Binai is beta software provided as-is. AI responses are not professional advice. The service may go offline or be discontinued at any time. No refunds.',
     beta_banner: '🧪 Community beta — everyone gets unlimited AI for testing',
@@ -248,6 +259,17 @@ window.BINAI_I18N = {
     qa_sheet_close: '关闭',
     cancel_chat: '✕ 取消',
     chat_cancelled: '已取消。点「主页」或输入新问题。',
+    settings_phone_title: '电话联系人',
+    settings_phone_sub: '可以说“打电话给妈妈”或“call 555-123-4567” — 打开手机拨号。',
+    phone_name_ph: '姓名（如 妈妈）',
+    phone_number_ph: '电话号码',
+    phone_add: '➕ 添加联系人',
+    phone_empty: '还没有联系人。可添加妈妈、爸爸等。',
+    phone_need_both: '请填写姓名和有效电话号码。',
+    phone_max: '最多 30 个联系人。',
+    phone_missing: '我还没有“{name}”的号码。请在设置 → 电话联系人里添加，或直接说完整号码。',
+    phone_dialing: '正在为 {name} 打开拨号…',
+    phone_bad_number: '这个电话号码看起来无效。',
     sidebar_tagline: '记住你的 AI 助手 — 由 Lightchain AIVM 驱动。',
     disclaimer: '免责声明：Binai 为测试版软件，按原样提供。AI 回复不构成专业建议。服务可能随时下线或终止。不退款。',
     beta_banner: '🧪 社区测试版 — 测试期间所有人无限使用 AI',
@@ -528,7 +550,13 @@ window.applyI18n = function() {
   setPh('qaLabelInput', 'qa_label_ph');
   setPh('qaUrlInput', 'qa_url_ph');
   set('qaAddBtn', 'qa_add');
+  set('settingsPhoneTitle', 'settings_phone_title');
+  set('settingsPhoneSub', 'settings_phone_sub');
+  setPh('phoneNameInput', 'phone_name_ph');
+  setPh('phoneNumberInput', 'phone_number_ph');
+  set('phoneAddBtn', 'phone_add');
   if (typeof renderCustomQuickActions === 'function') renderCustomQuickActions();
+  if (typeof renderPhoneContacts === 'function') renderPhoneContacts();
   if (typeof updateVoiceMuteBtn === 'function') updateVoiceMuteBtn();
   set('chatHint', 'chat_hint');
   set('briefingIntro', 'briefing_intro');
