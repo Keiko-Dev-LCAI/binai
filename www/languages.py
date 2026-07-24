@@ -54,7 +54,7 @@ LANG_PACKS = {
         ),
         "aivm_busy": (
             "Still busy after waiting in line — too many testers right now. "
-            "Try again in a minute. (You were not charged — Keiko pays for beta AI.)"
+            "Try again in a minute. (This request was not charged against free AI.)"
         ),
     },
     "es": {
@@ -100,7 +100,7 @@ LANG_PACKS = {
         ),
         "aivm_busy": (
             "Sigue ocupado tras esperar en cola — demasiados testers ahora. "
-            "Inténtalo en un minuto. (No se te cobró — Keiko paga la IA beta.)"
+            "Inténtalo en un minuto. (Esta solicitud no descontó de tu IA gratis.)"
         ),
     },
     "fr": {
@@ -146,7 +146,7 @@ LANG_PACKS = {
         ),
         "aivm_busy": (
             "Toujours occupé après attente en file — trop de testeurs. "
-            "Réessaie dans une minute. (Pas de frais — Keiko paie l'IA beta.)"
+            "Réessaie dans une minute. (Cette demande n'a pas été décomptée de l'IA gratuite.)"
         ),
     },
     "pt": {
@@ -192,7 +192,7 @@ LANG_PACKS = {
         ),
         "aivm_busy": (
             "Ainda ocupado após esperar na fila — muitos testadores. "
-            "Tente em um minuto. (Você não foi cobrado — Keiko paga a IA beta.)"
+            "Tente em um minuto. (Esta solicitação não descontou da IA grátis.)"
         ),
     },
     "de": {
@@ -238,7 +238,7 @@ LANG_PACKS = {
         ),
         "aivm_busy": (
             "Nach Wartezeit immer noch ausgelastet — zu viele Tester. "
-            "Bitte in einer Minute erneut versuchen. (Keine Kosten für dich — Keiko zahlt.)"
+            "Bitte in einer Minute erneut versuchen. (Diese Anfrage zählt nicht zur kostenlosen KI.)"
         ),
     },
     "ja": {
@@ -283,7 +283,7 @@ LANG_PACKS = {
         ),
         "aivm_busy": (
             "順番待ちしてもまだ混雑しています。1分後にもう一度お試しください。"
-            "（料金はかかりません — Keiko がベータ AI を支払います）"
+            "（このリクエストは無料AI回数から差し引かれません）"
         ),
     },
     "zh": {
@@ -328,7 +328,7 @@ LANG_PACKS = {
         ),
         "aivm_busy": (
             "排队等了一阵子还是太忙了 — 测试人数较多。"
-            "请一分钟后再试。（你不会被收费 — Keiko 支付测试版 AI。）"
+            "请一分钟后再试。（此请求不扣除免费 AI 次数。）"
         ),
     },
 }
