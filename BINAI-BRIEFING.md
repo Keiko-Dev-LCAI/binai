@@ -1,5 +1,5 @@
 # Binai 💜 — Living Briefing (Grok + Claude)
-**Last updated:** 2026-06-21 · **Session:** brainstorm + ecosystem connectors  
+**Last updated:** 2026-07-24 · **Session:** leave beta + billing live + hub PR + profile/QA fix  
 **Read this first** every Binai session. Full product plan → `BINAI-PLAN.md` in this folder.
 
 **Started with Claude:** Session 116 (2026-06-18) — tagline, 6-phase build, UX improvements in `BINAI-PLAN.md`. Claude also keeps a memory node at `future_builds/binai.md` (see below).
@@ -15,174 +15,94 @@
 | **`future_builds/binai.md`** | **Claude** | Memory node — Claude auto-loads this; mirror of briefing summary |
 
 **Claude memory (same content, two copies — keep in sync):**
-- In repo: `~/Desktop/binai/future_builds/binai.md`
-- In Claude app: `~/.config/Claude/.../agent/memory/future_builds/binai.md`
+- In repo: `~/Desktop/Orca Apps/web/binai/future_builds/binai.md`
+- In Claude app: `~/.config/Claude/.../agent/memory/future_builds/binai.md` (if present)
 
-Also referenced in `~/Desktop/Importantant stuff/CLAUDE-MASTER-BRIEFING.md` and `GROK-BRIEFING.md`.
+Also referenced in `~/Desktop/Importantant stuff/CLAUDE-MASTER-BRIEFING.md` and `GROK-BRIEFING.md` · **App Manager** `orcapod-app/index.html`.
 
 ### Update protocol (end of every Binai session)
 
-Whoever worked on Binai last (Grok or Claude) **must** before closing:
-
-1. Update **Last updated** date and **Session log** row in this file  
-2. Update **Current status** and **Next up** if anything changed  
-3. Sync **`future_builds/binai.md`** (repo + Claude memory copy)  
-4. If brainstorm or phases shifted → edit matching section in `BINAI-PLAN.md`  
-5. Commit and push: `Keiko-Dev-LCAI/binai` (or tell Keiko to push)
-
-**Keiko:** Paste this whole file (or the Claude block at the bottom) into a new Claude chat when coordinating Binai.
+1. Update **Last updated** + **Session log** in this file  
+2. Update **Current status** / **Next up**  
+3. Sync **`future_builds/binai.md`**  
+4. Plan-only changes → `BINAI-PLAN.md`  
+5. Commit/push `Keiko-Dev-LCAI/binai` when code changed  
 
 ---
 
-## Current status (one glance)
+## Current status (one glance) — 2026-07-24 evening
 
 | Item | State |
 |------|--------|
-| **Live URL** | https://binai.win · Railway `binai-production` |
-| **Repo** | `Keiko-Dev-LCAI/binai` · local `~/Desktop/binai/` |
-| **Latest commit** | `ea6314d` (LightChat/快手 connectors + PWA auto-update) · live Railway deploy ✅ |
-| **Code shipped through** | `18e5a03` (About Me) |
-| **Phase** | 1b — web beta hardening + real-device testing |
-| **Mode** | Brainstorming — camera, retention, app connectors are **planned, not built** |
+| **Live URL** | https://binai.win · Railway project `binai` · volume `/app/data` |
+| **Repo** | `Keiko-Dev-LCAI/binai` · local `~/Desktop/Orca Apps/web/binai/` |
+| **Build** | **`20260724-30`** (profile/name/QA wipe fix) |
+| **Health** | `test_mode: false` · `free_actions: 20` · `monthly_price_usd: 3.0` |
+| **Phase** | **Out of beta** — production billing on |
+| **Hub PR** | https://github.com/lightchain-protocol/lcai-dApp-hub/pull/60 — **open**, X=`x.com/KeikoDevLCAI` |
 
-**TEST_MODE:** Keiko's dApp wallet pays all AIVM. Tester wallets = identity only (no LCAI needed).
+### Railway env (authoritative)
 
----
+| Variable | Value |
+|----------|--------|
+| `TEST_MODE` | **`false`** |
+| `FREE_ACTIONS_LIFETIME` | **`20`** |
+| `MONTHLY_PRICE_USD` | **`3`** |
+| `FREE_FOREVER_WALLETS` | `0xA3a653a8cBA0710ff57Ac34E2278C603B4259FD3` (Keiko — unlimited AI) |
+| `OWNER_WALLET` | `0x6518fd07b3da01b17bd37d7c40f9a5e3c87a09ba` (MetaMask fee collector) |
+| `DATA_DIR` | `/app/data` |
 
-## Brainstorm rule
+### Billing model (live)
 
-**Do what we can now → put the rest in the plan.** Grok ships web-beta-ready pieces; plan holds camera, connectors, retention, etc.
+| Layer | Rule |
+|--------|------|
+| **Free forever (no AIVM cost)** | Calendar, reminders, contacts, dialer, notes, local/instant chat commands |
+| **Free AI** | **20 lifetime** AIVM messages per wallet |
+| **Paid** | **~$3/mo LCAI** (dynamic from CoinGecko/price API) → MetaMask OWNER_WALLET |
+| **Free forever AI** | Wallets in `FREE_FOREVER_WALLETS` (comma-separated) |
+| **Quota** | Only real AIVM replies burn free count (not calendar/contacts/local) |
 
-## Shipped ✅ (web beta)
+### Product shipped (recent — 2026-07-24)
 
-- Async chat + iPhone `Load failed` fix (`f534087`)
-- Desktop Settings scroll (`7f1d754`)
-- Mute voice 🔊/🔇 (`6e7d2da`)
-- First-login setup wizard (`da928af`)
-- Reply length Short / Balanced / Chatty (`805afc2`)
-- About Me private bio tab, 12k chars (`18e5a03`)
-- **Friend mode** + opinion/appearance prompts (text chat)
-- **Assistant name** (custom, changeable)
-- **☀️ Catch Me Up** + gentle welcome suggestion
-- **LightChat connector v1** — `/api/lightchat`, Catch Me Up + welcome unread, 💬/📹 buttons, `apps-registry.json`, LightChat `?chat=` / `?call=` deep links
-- **快手 v1** — open 快手, auto-remember pasted links, Settings toggles
-- **PWA auto-update** — `sw.js` + purple “tap to refresh” banner (no delete icon needed)
+- First-login wizard + **feature tour** (skippable)  
+- Calendar full page: Day/Week/Month, tap day → full-day list, chat “show today’s calendar”  
+- Date-only + recurring events (every Monday, birthday yearly)  
+- Phone contacts + call-by-name (includes match, edit contacts)  
+- Custom Quick Actions + **快手** in Quick Add presets  
+- Log off, PIN, no auto-replay of stale chat  
+- Beta wording removed from UI  
+- Settings → **Contact** 𝕏 @KeikoDevLCAI  
+- Profile save fix: load before save; never wipe name/QA with empty POST  
 
-Details + commit table → `BINAI-PLAN.md` § Shipped Web Beta
-
----
-
-## Brainstorm only 📋 (not built)
-
-- **Camera / Google Lens** — 📷 in chat, Cloudflare vision, photo Q&A
-- **User-controlled retention** — 24h default; Remember / Save message / Save photo buttons
-- **OrcaVault / Archives** — "Save to Archives" for photos forever on-chain (Family Album, etc.)
-- **LightTunes** — 🎵 embed, play playlist, voice control
-- ~~**LightChat v1**~~ ✅ shipped — read bridge, Catch Me Up, deep links; Socket toast + voice-send still plan
-- ~~**快手 v1**~~ ✅ shipped — open + link memory; Android share-target still plan
-- **Keiko App Registry** — JSON manifest so Binai connects to more apps easily
-- ~~**Custom assistant name**~~ ✅ shipped
-- ~~**Friend mode / casual chat**~~ ✅ shipped (text); photo opinions need camera
-- **⭐ Smart UX (Keiko loves this)** — Catch Me Up, memory confirmation, gentle open suggestions — Phase 1c after phone testing
-- **Casual friend chat** — opinion questions, "what do you think?" text today (warm/playful); **photo opinions** need camera + vision (Phase 3)
-
-Full spec → `BINAI-PLAN.md` § User-Controlled Retention, App Connectors, OrcaVault, LightTunes, Smart UX
+### Local path note
+Code lives at **`~/Desktop/Orca Apps/web/binai/`** (not `~/Desktop/binai/`).
 
 ---
 
-## Next up (priority order)
+## Next up
 
-1. **Real phone testing** — Sherry (ZH iPhone) + Keiko (EN PC) — see checklist in `BINAI-PLAN.md`
-2. **⭐ Smart UX (Phase 1c)** — Catch Me Up button + memory confirmation + welcome-back — Keiko priority
-3. **Retention UI** — Remember / Save message + 24h chat roll-off
-4. **Camera v1** — 📷 + vision API
-5. **App connectors v1** — LightChat ✅ · Save to Archives handoff + LightTunes embed
-
-## From Claude plan — not discussed yet (still in BINAI-PLAN.md)
-
-| Item | Status | When |
-|------|--------|------|
-| **9 Smart UX ideas** ⭐ | Keiko priority — expanded in plan | **Phase 1c** after phone testing (web-first: Catch Me Up, memory confirm) |
-| **dApp Hub PR** | Not submitted | Before/after Discord — Claude task |
-| **www.binai.win** redirect | Optional | Claude / Cloudflare when you want |
-| **UI i18n** es/fr/pt/de/ja | AI backend yes; UI en+zh only | Before wider beta if non-CN testers |
-| **Biometrics** unlock | Plan says PIN or fingerprint | Android / Capacitor — not web |
-| **Live billing** `TEST_MODE=false` | Code exists, off | After beta testing |
-| **Auto-pay subscription relay** | Spec in `auto_subscription_relay.md` | Post-beta |
-| **Dual-track payment** (Google Play + managed wallet) | v2 roadmap | Far future |
-
-See audit in user session 2026-06-21 — Grok answered Keiko "anything from Claude plan missing?"
-
----
-
-## Who does what
-
-| Task type | Owner | Examples |
-|-----------|--------|----------|
-| **Code in `~/Desktop/binai/`** | **Grok** | Features, fixes, deploy, `server.py`, `index.html` |
-| **Cloudflare DNS, Railway env, docs** | **Claude** | `binai.win` DNS → Railway, briefing sync, copy review |
-| **Real-device testing** | **Keiko + Sherry** | Trust Wallet, languages, report bugs |
-| **Brainstorm / product** | **Keiko** | Decides direction; both AIs capture in plan files |
-| **Push to GitHub** | **Grok or Keiko** | After commits on `main` |
-
----
-
-## Architecture (short)
-
-```
-binai.win → Binai Railway → AIVM relay (web-production-aaaba.up.railway.app)
-                              → Keiko dApp wallet pays (~0x729fea…)
-```
-
-| Key file | Purpose |
-|----------|---------|
-| `server.py` | Backend — SQLite, chat, About Me, AIVM |
-| `index.html` | PWA frontend |
-| `languages.py` | AI languages + reply length logic |
-| `i18n-ui.js` | UI strings (en + zh only today) |
-
-**Related apps (connectors brainstorm):** OrcaVault `orcavault-app/` · LightTunes `lighttunes-app/` · relay `orcavault-production.up.railway.app`
-
----
-
-## Testing status
-
-| Test | Result |
-|------|--------|
-| Server / curl health + chat + About Me | ✅ |
-| Sherry iPhone Chinese | ⚠️ needs retest after latest deploy |
-| Keiko PC English | ⚠️ needs retest |
-
-Checklist → `BINAI-PLAN.md` § Community Beta — Testing Status
+1. **Real-device smoke** — Keiko free-forever wallet + a second wallet (20 free → paywall)  
+2. **Hub #60** — wait for Lightchain merge (rebased; X set)  
+3. Optional: more free-forever wallets (e.g. Sherry) via Railway `FREE_FOREVER_WALLETS`  
+4. Camera / retention / Archives / LightTunes embed — still plan only  
 
 ---
 
 ## Session log
 
-| Date | Who | What changed |
-|------|-----|----------------|
-| 2026-06-21 | Grok | Linked Claude's `future_builds/binai.md` to binai folder; synced memory node |
-| 2026-06-21 | Grok | Created `BINAI-BRIEFING.md`; full brainstorm in `BINAI-PLAN.md` (retention, camera, About Me, OrcaVault, LightTunes, app registry) |
-| 2026-06-18 | Claude | Session 116 — `BINAI-PLAN.md` major update (tagline, 6 phases, UX improvements, payment roadmap) |
-| 2026-06-20 | Claude | Session 134 — `binai.win` DNS → Railway live |
-| 2026-06-21 | Grok | Shipped About Me, reply length, setup wizard, mute, iPhone fix (commits through `18e5a03`) |
-| 2026-06-20 | — | Phase 1 community beta started; `binai.win` live on Railway |
-
-*Add a row at the end of every session.*
+| Date | Session | Notes |
+|------|---------|--------|
+| 2026-07-24 | Grok | Leave beta: 20 free AI, $3/mo, FREE_FOREVER, tour, disclosures, build 27–30; hub PR #60; profile wipe fix; hub PRs rebased + X |
+| 2026-07-24 | earlier | Name-first setup, QA, calendar, dialer, mobile UX |
 
 ---
 
-## Claude — paste this block
+## Claude paste block (short)
 
 ```
-Binai living docs: ~/Desktop/binai/BINAI-BRIEFING.md (status) + BINAI-PLAN.md (full spec) + future_builds/binai.md (your memory node)
-Live: binai.win · TEST_MODE=true · Keiko pays AIVM, tester wallet = identity only
-Shipped: async chat, mute, setup wizard, reply length, About Me
-Brainstorm only: camera/Lens, retention buttons, OrcaVault Archives, LightTunes connectors
-Top priority: real phone testing (Sherry ZH, Keiko EN) before Discord scale
-Grok owns code in ~/Desktop/binai/ — read briefing files before suggesting changes
+Binai 💜 LIVE https://binai.win — OUT OF BETA.
+TEST_MODE=false · 20 free AI / wallet · $3/mo LCAI · FREE_FOREVER_WALLETS=0xA3a6…9FD3
+Build 20260724-30 · calendar + contacts + dialer free forever · hub PR #60 open (x.com/KeikoDevLCAI)
+Repo: Keiko-Dev-LCAI/binai · local: ~/Desktop/Orca Apps/web/binai/
+Permission: told+confirmed only. Full briefing: BINAI-BRIEFING.md
 ```
-
----
-
-*Keiko-Dev-LCAI/binai · push after updates so both assistants stay in sync*

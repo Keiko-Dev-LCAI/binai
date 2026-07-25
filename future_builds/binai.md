@@ -1,47 +1,50 @@
 ---
 name: future-binai
-description: "Binai 💜 — LIVE at binai.win; personal AI assistant web beta; wallet+PIN; AIVM via aaaba relay; TEST_MODE=true; named after Cheng Bin (ai=爱 love)"
+description: "Binai 💜 — LIVE binai.win OUT OF BETA; 20 free AI; $3/mo LCAI; FREE_FOREVER_WALLETS; calendar/contacts free; hub PR #60; build 20260724-30"
 metadata:
   node_type: memory
   type: project
-  originSessionId: d65fa248-a00e-4183-b6dd-f030a84a1eb4
 ---
 
 # Binai 💜 — Claude memory node
 
-**Canonical docs:** `BINAI-BRIEFING.md` (status) · `BINAI-PLAN.md` (full spec)
+**Canonical docs:** `BINAI-BRIEFING.md` (status) · `BINAI-PLAN.md` (full spec)  
+**Local path:** `~/Desktop/Orca Apps/web/binai/` · **GitHub:** Keiko-Dev-LCAI/binai
 
 **Brainstorm rule:** Do what we can now → rest stays in plan.
 
 ---
 
-## Live (2026-06-21)
+## Live (2026-07-24)
 
 | Item | Value |
 |------|--------|
 | URL | https://binai.win |
-| TEST_MODE | true — dApp wallet pays |
-| Phase | 1b testing + 1c Smart UX partial shipped |
+| TEST_MODE | **false** (billing on) |
+| Free AI | **20** lifetime AIVM msgs / wallet |
+| Paid | **$3/mo** LCAI → OWNER_WALLET MetaMask |
+| Free forever AI | `FREE_FOREVER_WALLETS` (Keiko `0xA3a6…9FD3`) |
+| Free tools | Calendar, contacts, dialer, notes, local chat cmds |
+| Build | **20260724-30** |
+| Hub | PR **#60** open · `x.com/KeikoDevLCAI` |
 
 ## Recently shipped
 
-- Friend mode + casual opinion prompts (text)
-- Custom assistant name
-- Catch Me Up button + API
-- Gentle welcome suggestion
-- About Me, reply length, setup wizard, mute, iPhone async chat
-- **LightChat v1** — read bridge, Catch Me Up lines, 💬/📹 buttons, deep links
-- **快手 v1** — open app, remember shared links
+- Leave beta + Railway billing vars
+- Calendar Day/Week/Month + chat schedule + recurrence
+- Phone contacts + dialer + edit
+- Quick Actions (快手 in presets) · feature tour
+- Profile save fix (name/QA no longer wiped on refresh)
+- Settings contact @KeikoDevLCAI
 
 ## Plan only
 
 - Camera / photo opinions
 - Retention buttons + 24h expiry
-- OrcaVault Archives, LightTunes connectors
+- OrcaVault Archives, LightTunes embed
 - LightChat Socket toast + voice-send
-- 快手 Android share-target
-- Calendar/location Smart UX
+- System phone address book (Capacitor)
 
 ## Next
 
-Real phone testing (Sherry ZH, Keiko EN)
+Device smoke · hub merge #60 · optional more free-forever wallets
