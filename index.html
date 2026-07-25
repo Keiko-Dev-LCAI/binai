@@ -921,7 +921,13 @@ body::before {
  <button class="btn btn-ghost" id="settingsTermsBtn" style="margin-top:10px;width:100%" onclick="showTerms('view')">📋 Terms &amp; Disclosures</button>
  <button class="btn btn-ghost" id="settingsPrivacyBtn" style="margin-top:8px;width:100%" onclick="showPrivacy()">🔐 Privacy Policy</button>
  </div>
- <div class="card">
+ 
+    <div class="card" id="settingsContactCard">
+      <div class="card-title">Contact</div>
+      <div class="card-sub" style="margin-bottom:10px">Questions or feedback about Binai.</div>
+      <a href="https://x.com/KeikoDevLCAI" target="_blank" rel="noopener" class="btn btn-ghost" style="width:100%;text-align:center;text-decoration:none">𝕏 @KeikoDevLCAI</a>
+    </div>
+<div class="card">
  <div class="card-title" id="settingsAboutTitle">About Binai</div>
  <div class="card-sub" id="settingsAboutSub">Personal AI on Lightchain AIVM. Remembers you. 20 free AI chats; calendar, contacts &amp; notes free forever. Full AI $3/mo LCAI.</div>
  <p id="settingsUpdateHelp" style="margin-top:10px;font-size:14px;color:var(--text2);line-height:1.5"></p>
@@ -1219,8 +1225,8 @@ body::before {
  </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-28';</script>
-<script src="i18n-ui.js?v=20260724-28"></script>
+<script>window.BINAI_BUILD = '20260724-29';</script>
+<script src="i18n-ui.js?v=20260724-29"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
