@@ -806,8 +806,8 @@ body::before {
  </div>
  <div class="card">
  <div class="card-title" id="settingsNameTitle">Your name</div>
- <input class="field" id="nameInput" placeholder="What should Binai call you?">
- <button class="btn btn-ghost" id="settingsSaveBtn" onclick="saveProfile()">Save</button>
+ <input class="field" id="nameInput" placeholder="What should Binai call you?" onchange="if(wallet)saveProfile()" onblur="if(wallet)saveProfile()">
+ <button class="btn btn-ghost" id="settingsSaveBtn" onclick="saveProfile().then(()=>{const e=document.getElementById('settingsSaveBtn');if(e){const o=e.textContent;e.textContent='Saved ✓';setTimeout(()=>e.textContent=o,1500);}})">Save</button>
  </div>
  <div class="card">
  <div class="card-title" id="settingsAssistantTitle">Assistant name</div>
@@ -1225,8 +1225,8 @@ body::before {
  </div>
 </div>
 
-<script>window.BINAI_BUILD = '20260724-29';</script>
-<script src="i18n-ui.js?v=20260724-29"></script>
+<script>window.BINAI_BUILD = '20260724-30';</script>
+<script src="i18n-ui.js?v=20260724-30"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -1680,8 +1680,10 @@ async function finishWalletConnect() {
 async function completeWalletSession() {
  if (!isValidWallet(wallet)) return;
  setSessionUnlocked(wallet);
- await saveProfile();
+ // Load server profile FIRST so name/lang/QA are not wiped by an empty save
  await loadProfile();
+ // Then push any local-only prefs (without blanking server fields)
+ await saveProfile({ preserveRemote: true });
  if (needsPrefsSetup(wallet)) {
  openPrefsSetupModal();
  return;
@@ -2349,6 +2351,7 @@ const QUICK_ACTION_PRESETS = [
  { label: 'X', url: 'https://x.com', icon: '𝕏' },
  { label: '快手', url: 'https://www.kuaishou.com', icon: '📱' },
  { label: 'Bilibili', url: 'https://www.bilibili.com', icon: '📺' },
+ { label: 'LightChat', url: 'https://lightchat.chat', icon: '💬' },
 ];
 const MAX_CUSTOM_QUICK_ACTIONS = 8;
 
@@ -2378,6 +2381,7 @@ function normalizeExternalUrl(raw) {
  return '';
  }
 }
+let quickActionsTouched = false;
 function getCustomQuickActions() {
  try {
  const list = JSON.parse(localStorage.getItem('binai_quick_actions') || '[]');
@@ -2386,9 +2390,10 @@ function getCustomQuickActions() {
  return [];
  }
 }
-function setCustomQuickActions(list) {
+function setCustomQuickActions(list, opts) {
  const clean = (list || []).filter(x => x && x.label && x.url).slice(0, MAX_CUSTOM_QUICK_ACTIONS);
  localStorage.setItem('binai_quick_actions', JSON.stringify(clean));
+ if (!opts || opts.touch !== false) quickActionsTouched = true;
  return clean;
 }
 function openCustomQuickAction(url) {
@@ -5024,10 +5029,25 @@ async function loadProfile() {
  try {
  const r = await fetch(API + '/api/profile/' + wallet);
  const prof = await r.json();
- if (prof.display_name) document.getElementById('nameInput').value = prof.display_name;
+ // Restore display name to input + localStorage (was missing → looked like name never saved)
+ if (prof.display_name) {
+ const nm = String(prof.display_name).trim();
+ if (nm) {
+ localStorage.setItem('binai_name', nm);
+ const ni = document.getElementById('nameInput');
+ if (ni) ni.value = nm;
+ const setupNi = document.getElementById('setupDisplayName');
+ if (setupNi && !setupNi.value.trim()) setupNi.value = nm;
+ }
+ }
  const localLang = localStorage.getItem('binai_lang');
- if (prof.language && !localLang) {
+ if (prof.language) {
+ // Prefer server language when local is empty OR only default en with no explicit pick
+ if (!localLang) {
  localStorage.setItem('binai_lang', prof.language);
+ } else if (localLang !== prof.language) {
+ // keep local pick; will push below if needed
+ }
  }
  // Defer language push until after contacts merge — never wipe phone_contacts with []
  const langNeedsPush = !!(localLang && prof.language && localLang !== prof.language);
@@ -5064,8 +5084,17 @@ async function loadProfile() {
  const hi = document.getElementById('lightchatHandleInput');
  if (hi) hi.value = prefs.lightchat_primary_handle;
  }
- if (Array.isArray(prefs.quick_actions)) {
- setCustomQuickActions(prefs.quick_actions);
+ // Merge quick actions — never wipe local shortcuts with empty server list
+ if (Array.isArray(prefs.quick_actions) && prefs.quick_actions.length) {
+ const local = getCustomQuickActions();
+ const byUrl = new Map();
+ prefs.quick_actions.forEach(x => {
+ if (x && x.label && x.url) byUrl.set(String(x.url).replace(/\/$/, ''), x);
+ });
+ local.forEach(x => {
+ if (x && x.label && x.url) byUrl.set(String(x.url).replace(/\/$/, ''), x);
+ });
+ setCustomQuickActions([...byUrl.values()]);
  }
  // Merge server contacts with local (don't wipe a contact just added on this device)
  if (Array.isArray(prefs.phone_contacts)) {
@@ -5125,9 +5154,10 @@ function readPersonalizePrefs() {
  frequent_places: readPlacesFromUI(),
  };
 }
-async function saveProfile() {
+async function saveProfile(opts) {
+ const preserveRemote = !!(opts && opts.preserveRemote);
  window._binaiPlacesCache = readPlacesFromUI();
- const name = document.getElementById('nameInput')?.value.trim() ||
+ const name = (document.getElementById('nameInput')?.value || '').trim() ||
  localStorage.getItem('binai_name') || '';
  if (name) localStorage.setItem('binai_name', name);
  const personal = readPersonalizePrefs();
@@ -5144,21 +5174,29 @@ async function saveProfile() {
  lightchat_enabled: personal.lightchat_enabled,
  lightchat_show_memories: personal.lightchat_show_memories,
  lightchat_primary_handle: personal.lightchat_primary_handle,
- quick_actions: personal.quick_actions,
  frequent_places: personal.frequent_places,
  };
- // Never POST phone_contacts:[] unless user actually cleared the list — preserves server copy
+ // Push QA when user has any or explicitly changed them (allows clearing last shortcut)
+ if (personal.quick_actions.length > 0 || quickActionsTouched) {
+ preferences.quick_actions = personal.quick_actions;
+ }
  if (personal.phone_contacts.length > 0 || phoneContactsTouched) {
  preferences.phone_contacts = personal.phone_contacts;
  }
- await fetch(API + '/api/profile/' + wallet, {
- method: 'POST', headers: {'Content-Type':'application/json'},
- body: JSON.stringify({
- display_name: name,
+ const body = {
  language: localStorage.getItem('binai_lang') || 'en',
  preferences,
- }),
+ };
+ // Never blank display_name — empty string would wipe server name (SQL COALESCE treats '' as value)
+ if (name) body.display_name = name;
+ try {
+ await fetch(API + '/api/profile/' + wallet, {
+ method: 'POST', headers: {'Content-Type':'application/json'},
+ body: JSON.stringify(body),
  });
+ } catch (e) {
+ console.error('[Binai] saveProfile failed', e);
+ }
 }
 
 async function refreshSub() {

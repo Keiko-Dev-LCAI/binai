@@ -37,7 +37,7 @@ TEST_MODE = _test_flag in ("1", "true", "yes", "on")
 FREE_FOREVER_WALLETS_RAW = os.environ.get("FREE_FOREVER_WALLETS", "")
 RATE_LIMIT_PER_HOUR = int(os.environ.get("RATE_LIMIT_PER_HOUR", "120"))
 LCAI_RPC = "https://rpc.mainnet.lightchain.ai"
-BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-29")
+BUILD_VERSION = os.environ.get("BINAI_BUILD", "20260724-30")
 LIGHTCHAT_API = os.environ.get(
     "LIGHTCHAT_API", "https://web-production-bc64f.up.railway.app"
 ).rstrip("/")
@@ -1499,8 +1499,22 @@ def api_profile(wallet):
     prefs_json = None
     if "preferences" in data and isinstance(data["preferences"], dict):
         existing = json.loads((get_profile(w) or {}).get("preferences") or "{}")
-        existing.update(data["preferences"])
+        incoming = data["preferences"]
+        # Don't wipe list prefs with empty arrays unless explicitly intended
+        for list_key in ("quick_actions", "phone_contacts"):
+            if list_key in incoming and isinstance(incoming[list_key], list):
+                if len(incoming[list_key]) == 0 and existing.get(list_key):
+                    incoming = dict(incoming)
+                    del incoming[list_key]
+        existing.update(incoming)
         prefs_json = json.dumps(existing)
+    # Empty string must not wipe name (SQLite COALESCE('','x') => '')
+    display_name = data.get("display_name")
+    if isinstance(display_name, str):
+        display_name = display_name.strip() or None
+    language = data.get("language")
+    if isinstance(language, str):
+        language = language.strip() or None
     conn = get_db()
     conn.execute(
         """UPDATE profiles SET display_name = COALESCE(?, display_name),
@@ -1508,8 +1522,8 @@ def api_profile(wallet):
            preferences = COALESCE(?, preferences),
            updated_at = ? WHERE wallet = ?""",
         (
-            data.get("display_name"),
-            data.get("language"),
+            display_name,
+            language,
             prefs_json,
             now,
             w,
