@@ -926,6 +926,8 @@ body::before {
       <div class="card-title">Contact</div>
       <div class="card-sub" style="margin-bottom:10px">Questions or feedback about Binai.</div>
       <a href="https://x.com/KeikoDevLCAI" target="_blank" rel="noopener" class="btn btn-ghost" style="width:100%;text-align:center;text-decoration:none">𝕏 @KeikoDevLCAI</a>
+      <a href="https://lightdex.app/" target="_blank" rel="noopener" class="btn btn-ghost" style="width:100%;text-align:center;text-decoration:none;margin-top:8px">Get LCAI · LCAI Swap ↗</a>
+      <a href="https://bridge.lightchain.ai/" target="_blank" rel="noopener" class="btn btn-ghost" style="width:100%;text-align:center;text-decoration:none;margin-top:8px">Bridge to Lightchain ↗</a>
     </div>
 <div class="card">
  <div class="card-title" id="settingsAboutTitle">About Binai</div>
@@ -5094,7 +5096,8 @@ async function loadProfile() {
  local.forEach(x => {
  if (x && x.label && x.url) byUrl.set(String(x.url).replace(/\/$/, ''), x);
  });
- setCustomQuickActions([...byUrl.values()]);
+ setCustomQuickActions([...byUrl.values()], { touch: false });
+ if ([...byUrl.values()].length) quickActionsTouched = true;
  }
  // Merge server contacts with local (don't wipe a contact just added on this device)
  if (Array.isArray(prefs.phone_contacts)) {
