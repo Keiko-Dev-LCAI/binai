@@ -19,7 +19,7 @@ import languages
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder=_ROOT, static_url_path="")
-CORS(app, origins="*")
+# see root server.py pattern
 
 # ── CONFIG ───────────────────────────────────────────────────────────────────
 AIVM_RELAY = os.environ.get(

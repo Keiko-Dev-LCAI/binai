@@ -19,7 +19,12 @@ import languages
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder=_ROOT, static_url_path="")
-CORS(app, origins="*")
+# Scoped CORS — override with CORS_ORIGINS env (comma-separated)
+_CORS_ORIGINS = [o.strip() for o in __import__('os').environ.get(
+    'CORS_ORIGINS',
+    'https://binai.win,http://localhost:5000,http://127.0.0.1:5000'
+).split(',') if o.strip()]
+CORS(app, origins=_CORS_ORIGINS)
 
 # ── CONFIG ───────────────────────────────────────────────────────────────────
 AIVM_RELAY = os.environ.get(
