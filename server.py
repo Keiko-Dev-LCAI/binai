@@ -1492,6 +1492,59 @@ def verify_subscription():
         return jsonify({"error": str(e)[:200]}), 500
 
 
+# ── KEIKO subscription rail (Filament ERC-20) ─────────────────────────────────
+import keiko_pay  # stdlib verifier next to this server
+
+KEIKO_RECEIVE_WALLET = os.environ.get("KEIKO_RECEIVE_WALLET", "").strip() or OWNER_WALLET
+KEIKO_PRICE = float(os.environ.get("KEIKO_PRICE", "234000"))  # ~$3/mo LCAI minus ~20%
+_keiko_used = keiko_pay.UsedTxStore(
+    os.path.join(_data_dir, "keiko_used_tx.json")
+)
+
+
+@app.route("/api/keiko/config", methods=["GET"])
+def keiko_config():
+    """Public config so the frontend can show Pay with KEIKO without hardcoding."""
+    enabled = bool(os.environ.get("KEIKO_RECEIVE_WALLET", "").strip() or OWNER_WALLET)
+    return jsonify({
+        "keiko_enabled": enabled,
+        "keiko_amount": KEIKO_PRICE,
+        "keiko_token": keiko_pay.KEIKO_TOKEN_ADDRESS,
+        "keiko_receive": KEIKO_RECEIVE_WALLET,
+    })
+
+
+@app.route("/api/keiko/verify", methods=["POST"])
+def keiko_verify():
+    """Verify a KEIKO Transfer and grant one month of Binai full AI."""
+    data = request.json or {}
+    wallet = norm_wallet(data.get("wallet") or data.get("walletAddress"))
+    tx_hash = (data.get("tx_hash") or data.get("txHash") or "").strip()
+    if not wallet or not tx_hash:
+        return jsonify({"error": "wallet and tx_hash required"}), 400
+    if not KEIKO_RECEIVE_WALLET:
+        return jsonify({"error": "KEIKO payments are not enabled"}), 503
+    ok, err = keiko_pay.register_keiko_payment(
+        tx_hash,
+        wallet,
+        to_wallet=KEIKO_RECEIVE_WALLET,
+        amount_keiko=KEIKO_PRICE,
+        used_tx_store=_keiko_used,
+    )
+    if not ok:
+        return jsonify({"error": err or "Payment could not be verified"}), 400
+    expires = int(time.time()) + 30 * 86400
+    conn = get_db()
+    conn.execute(
+        """INSERT INTO subscriptions (wallet, expires_at, tx_hash) VALUES (?, ?, ?)
+           ON CONFLICT(wallet) DO UPDATE SET expires_at = ?, tx_hash = ?""",
+        (wallet, expires, tx_hash, expires, tx_hash),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"subscribed": True, "expires_at": expires, "paid_with": "keiko"})
+
+
 @app.route("/api/profile/<wallet>", methods=["GET", "POST"])
 def api_profile(wallet):
     w = norm_wallet(wallet)

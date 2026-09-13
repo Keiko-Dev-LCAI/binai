@@ -802,6 +802,7 @@ body::before {
  <div class="card-title" id="settingsSubTitle">Subscription</div>
  <div class="card-sub" id="subStatus">Connect wallet to see status.</div>
  <button class="btn btn-primary" id="subscribeBtn" style="margin-top:12px;width:100%" onclick="subscribe()">Subscribe — $3/mo LCAI</button>
+ <button class="btn btn-ghost" id="subscribeKeikoBtn" style="margin-top:8px;width:100%;display:none;border:1px solid #c9a227;color:#c9a227" onclick="subscribeKeiko()">💜 Pay with KEIKO (save ~20%) — <span id="keikoSubAmount">234000</span> KEIKO/mo</button>
  <div class="err" id="subErr"></div>
  </div>
  <div class="card">
@@ -1229,6 +1230,7 @@ body::before {
 
 <script>window.BINAI_BUILD = '20260724-30';</script>
 <script src="i18n-ui.js?v=20260724-30"></script>
+<script src="keiko-pay.js"></script>
 <script>
 /* Bump BINAI_BUILD + sw.js CACHE_VERSION together on every UI deploy */
 const WC_PROJECT_ID = '3c6a0da53258912a28923198ddac3333';
@@ -5202,17 +5204,45 @@ async function saveProfile(opts) {
  }
 }
 
+let binaiKeikoCfg = null; // {enabled, amount, receive, token} from /api/keiko/config
+
+async function loadBinaiKeikoCfg() {
+ try {
+  const r = await fetch(API + '/api/keiko/config');
+  if (!r.ok) { binaiKeikoCfg = null; return; }
+  const d = await r.json();
+  binaiKeikoCfg = d.keiko_enabled ? {
+   enabled: true,
+   amount: d.keiko_amount,
+   receive: d.keiko_receive,
+   token: d.keiko_token,
+  } : null;
+  const amtEl = document.getElementById('keikoSubAmount');
+  if (amtEl && binaiKeikoCfg && binaiKeikoCfg.amount != null) {
+   amtEl.textContent = binaiKeikoCfg.amount;
+  }
+ } catch (_) {
+  binaiKeikoCfg = null;
+ }
+}
+
 async function refreshSub() {
  if (!wallet) return;
  const r = await fetch(API + '/api/subscription/' + wallet);
  const d = await r.json();
  const el = document.getElementById('subStatus');
  const subBtn = document.getElementById('subscribeBtn');
+ const keikoBtn = document.getElementById('subscribeKeikoBtn');
  const price = d.monthly_price_usd != null ? Number(d.monthly_price_usd) : 3;
+ const hidePay = !!(d.testing || d.free_forever || d.subscribed);
  if (subBtn) {
  subBtn.textContent = `Subscribe — $${price.toFixed(0)}/mo LCAI`;
- const hidePay = !!(d.testing || d.free_forever || d.subscribed);
  subBtn.style.display = hidePay ? 'none' : '';
+ }
+ if (!binaiKeikoCfg) await loadBinaiKeikoCfg();
+ if (keikoBtn) {
+  const showKeiko = !hidePay && !!(binaiKeikoCfg && binaiKeikoCfg.enabled && binaiKeikoCfg.receive && binaiKeikoCfg.amount);
+  keikoBtn.style.display = showKeiko ? '' : 'none';
  }
  if (!el) {
  updateUsage(d);
@@ -5299,10 +5329,12 @@ async function subscribe() {
  if (subscribing) return;
  if (!(await ensureProviderForPay())) return;
  const subBtn = document.getElementById('subscribeBtn');
+ const keikoBtn = document.getElementById('subscribeKeikoBtn');
  const errEl = document.getElementById('subErr');
  errEl.textContent = '';
  subscribing = true;
  if (subBtn) subBtn.disabled = true;
+ if (keikoBtn) keikoBtn.disabled = true;
  try {
  const pr = await fetch(API + '/api/price');
  const price = await pr.json();
@@ -5329,6 +5361,49 @@ async function subscribe() {
  } finally {
  subscribing = false;
  if (subBtn) subBtn.disabled = false;
+ if (keikoBtn) keikoBtn.disabled = false;
+ }
+}
+
+/** Pay Binai subscription with KEIKO ERC-20 (~20% under LCAI). */
+async function subscribeKeiko() {
+ if (!wallet) { setupWalletFirstTime(); return; }
+ if (subscribing) return;
+ if (typeof KeikoPay === 'undefined') {
+  const errEl = document.getElementById('subErr');
+  if (errEl) errEl.textContent = 'KEIKO pay helper not loaded';
+  return;
+ }
+ if (!binaiKeikoCfg) await loadBinaiKeikoCfg();
+ if (!binaiKeikoCfg || !binaiKeikoCfg.enabled || !binaiKeikoCfg.receive) {
+  const errEl = document.getElementById('subErr');
+  if (errEl) errEl.textContent = 'KEIKO payments are not enabled yet';
+  return;
+ }
+ const subBtn = document.getElementById('subscribeBtn');
+ const keikoBtn = document.getElementById('subscribeKeikoBtn');
+ const errEl = document.getElementById('subErr');
+ errEl.textContent = '';
+ subscribing = true;
+ if (subBtn) subBtn.disabled = true;
+ if (keikoBtn) keikoBtn.disabled = true;
+ try {
+  errEl.textContent = 'Confirm KEIKO transfer in your wallet (Ledger: confirm on device)…';
+  const r = await KeikoPay.pay({
+   to: binaiKeikoCfg.receive,
+   amount: binaiKeikoCfg.amount,
+   verifyUrl: API + '/api/keiko/verify',
+   meta: { item: 'binai-subscribe' },
+  });
+  if (!r.ok) throw new Error(r.error || 'KEIKO payment failed');
+  errEl.textContent = 'Subscribed with KEIKO! Thank you 💜';
+  refreshSub();
+ } catch (e) {
+  errEl.textContent = formatWalletError(e);
+ } finally {
+  subscribing = false;
+  if (subBtn) subBtn.disabled = false;
+  if (keikoBtn) keikoBtn.disabled = false;
  }
 }
 
