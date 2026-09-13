@@ -17,6 +17,7 @@
 <title>Binai 💜</title>
 <style>
 :root {
+  --on-accent: #0a0f1e;
  --bg: #0d0d1a; --bg2: #12122a; --bg3: #1a1a36;
  --border: rgba(255,255,255,0.10); --text: #f0f0ff; --text2: #9090b0;
  --purple: #9b7fe8; --purple-glow: rgba(155,127,232,0.15);
@@ -252,7 +253,7 @@ body::before {
  #panel-chat .prompt-card .prompt-icon { font-size: 18px; margin-bottom: 4px; }
  #panel-chat .prompt-card .prompt-title { font-size: 13px; margin-bottom: 2px; }
  #panel-chat .prompt-card .prompt-desc {
- font-size: 11px;
+ font-size:12px;
  line-height: 1.3;
  display: -webkit-box;
  -webkit-line-clamp: 2;
@@ -350,7 +351,7 @@ body::before {
 .cal-cell.selected { background: rgba(139,92,246,0.15); border-color: var(--purple); }
 .cal-cell .day-num { font-weight: 700; font-size: 13px; }
 .cal-dot {
- font-size: 10px; line-height: 1.2; white-space: nowrap; overflow: hidden;
+ font-size:12px; line-height: 1.2; white-space: nowrap; overflow: hidden;
  text-overflow: ellipsis; color: var(--text2);
 }
 .cal-week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 14px; }
@@ -448,7 +449,7 @@ body::before {
 .side-nav-item {
  display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 4px;
  border-radius: 12px; cursor: pointer; font-size: 17px; font-weight: 600; color: var(--text2);
- border-left: 3px solid transparent; transition: background 0.15s, color 0.15s;
+ border-left: 0 solid transparent; transition: background 0.15s, color 0.15s;
 }
 .side-nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
 .side-nav-item.active { background: var(--purple-glow); color: var(--purple); border-left-color: var(--purple); }
@@ -530,7 +531,7 @@ body::before {
 .terms-section p, .terms-section li { color: var(--text2); font-size: 14px; line-height: 1.65; margin-bottom: 8px; }
 .terms-section ul { padding-left: 18px; margin-bottom: 8px; }
 .terms-divider { height: 1px; background: var(--border); margin: 14px 0; }
-.terms-updated { font-size: 11px; color: var(--text2); margin-bottom: 14px; }
+.terms-updated { font-size:12px; color: var(--text2); margin-bottom: 14px; }
 .terms-modal-foot { padding: 16px 24px 22px; border-top: 1px solid var(--border); flex-shrink: 0; }
 .terms-check-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; font-size: 14px; line-height: 1.5; color: var(--text2); }
 .terms-check-row input { width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; cursor: pointer; }
