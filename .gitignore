@@ -7,3 +7,8 @@ data/
 *.db
 .DS_Store
 .grok/
+
+# Android signing keys / keystores — never commit
+*.jks
+*.keystore
+key.properties
