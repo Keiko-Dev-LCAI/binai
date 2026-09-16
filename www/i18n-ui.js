@@ -151,8 +151,7 @@ window.BINAI_I18N = {
  mem_ph: 'Remember that…', no_notes: 'No notes yet.', no_reminders: 'No reminders.',
  no_memories: 'No memories yet — chat with Binai!', no_memories_insight: 'No memories yet. Say "remember …" in chat.',
  insight_plan: 'Your plan', insight_quick: 'Quick action', insight_memory: 'Memory preview',
- insight_built: 'Built on', insight_built_sub: 'Lightchain AIVM · LCAI
-20 次免费 AI · 工具永久免费',
+ insight_built: 'Built on', insight_built_sub: 'Lightchain AIVM · LCAI\n20 次免费 AI · 工具永久免费',
  insight_morning_btn: '🌅 Morning briefing', insight_msg_btn: '💬 New message',
  insight_connect_mem: 'Connect wallet to see what Binai remembers.',
  status_default: 'Binai 💜 — Personal AI on Lightchain',
@@ -398,8 +397,7 @@ window.BINAI_I18N = {
  mem_ph: '记住…', no_notes: '暂无笔记。', no_reminders: '暂无提醒。',
  no_memories: '暂无记忆 — 和 Binai 聊聊吧！', no_memories_insight: '暂无记忆。在聊天中说「记住…」。',
  insight_plan: '你的方案', insight_quick: '快捷操作', insight_memory: '记忆预览',
- insight_built: '技术栈', insight_built_sub: 'Lightchain AIVM · LCAI
-20 次免费 AI · 工具永久免费',
+ insight_built: '技术栈', insight_built_sub: 'Lightchain AIVM · LCAI\n20 次免费 AI · 工具永久免费',
  insight_morning_btn: '🌅 晨间简报', insight_msg_btn: '💬 新消息',
  insight_connect_mem: '连接钱包查看 Binai 的记忆。',
  status_default: 'Binai 💜 — Lightchain 私人 AI',
